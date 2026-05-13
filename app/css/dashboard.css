@@ -510,6 +510,92 @@ body {
     gap: 12px;
 }
 
+/* Logo Upload Styles */
+.logo-preview {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: var(--bg-light);
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+}
+
+.logo-preview img {
+    max-width: 150px;
+    max-height: 150px;
+    display: block;
+    border-radius: 8px;
+}
+
+.btn-remove-logo {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--error-color);
+    color: var(--white);
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.btn-remove-logo:hover {
+    background: #B86A5A;
+    transform: scale(1.1);
+}
+
+.logo-upload-area {
+    text-align: center;
+    padding: 20px;
+    background: var(--bg-light);
+    border-radius: 12px;
+    border: 2px dashed var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.logo-upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(139, 115, 85, 0.03);
+}
+
+.btn-upload-logo {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 15px 25px;
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.btn-upload-logo:hover {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+}
+
+.upload-icon {
+    font-size: 2em;
+}
+
+.upload-hint {
+    margin-top: 12px;
+    font-size: 0.8em;
+    color: var(--text-light);
+}
+
 .user-info {
     background: var(--bg-light);
     padding: 14px;

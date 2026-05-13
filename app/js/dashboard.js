@@ -118,6 +118,89 @@ createApp({
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
         },
 
+        async handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Dateityp prüfen
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                alert('Bitte nur JPG, PNG, GIF oder WebP Bilder verwenden.');
+                return;
+            }
+
+            // Dateigröße prüfen (max 2MB)
+            const maxSize = 2 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('Das Bild darf maximal 2MB groß sein.');
+                return;
+            }
+
+            // Bild einlesen und als Base64 speichern
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64String = e.target.result;
+                
+                // Komprimieren wenn nötig (für große Bilder)
+                if (file.size > 500 * 1024) {
+                    this.compressImage(base64String, (compressed) => {
+                        this.companyLogo = compressed;
+                        this.saveCompanySettings();
+                        alert('Logo erfolgreich hochgeladen!');
+                    });
+                } else {
+                    this.companyLogo = base64String;
+                    this.saveCompanySettings();
+                    alert('Logo erfolgreich hochgeladen!');
+                }
+            };
+            reader.onerror = () => {
+                alert('Fehler beim Lesen des Bildes.');
+            };
+            reader.readAsDataURL(file);
+
+            // Input zurücksetzen damit gleiches Bild nochmal gewählt werden kann
+            this.$refs.logoInput.value = '';
+        },
+
+        compressImage(base64, callback) {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Maximal 300px Breite/Höhe für Speicherplatz
+                const maxDim = 300;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round(height * maxDim / width);
+                        width = maxDim;
+                    } else {
+                        width = Math.round(width * maxDim / height);
+                        height = maxDim;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Als JPEG mit 80% Qualität komprimieren
+                const compressed = canvas.toDataURL('image/jpeg', 0.8);
+                callback(compressed);
+            };
+            img.src = base64;
+        },
+
+        removeLogo() {
+            if (confirm('Möchtest du das Logo wirklich entfernen?')) {
+                this.companyLogo = null;
+                this.saveCompanySettings();
+            }
+        },
+
         async loadData() {
             // TODO: Echte Daten aus Supabase laden
             // Für jetzt Mock-Daten für Demo-Zwecke
