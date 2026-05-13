@@ -26,7 +26,9 @@ createApp({
             companyName: 'FireWoodFlow',
             companyLogo: null,
             companyAddress: '',
+            storageLocation: '',
             costPerKm: 0,
+            roundingMode: 'exact',
             
             // Inventar Daten
             inventoryCount: 0,
@@ -86,9 +88,15 @@ createApp({
             );
         },
 
+        deliveryFromAddress() {
+            // Wenn Holzlagerplatz eingetragen ist, verwende diesen, sonst Firmenadresse
+            return this.storageLocation.trim() || this.companyAddress;
+        },
+
         deliveryCost() {
             if (!this.distanceResult) return 0;
-            return this.distanceResult.distance * this.costPerKm;
+            const rawCost = this.distanceResult.distance * this.costPerKm;
+            return this.roundDeliveryCost(rawCost);
         }
     },
 
@@ -120,7 +128,9 @@ createApp({
                 this.companyName = data.name || 'FireWoodFlow';
                 this.companyLogo = data.logo || null;
                 this.companyAddress = data.address || '';
+                this.storageLocation = data.storageLocation || '';
                 this.costPerKm = parseFloat(data.costPerKm) || 0;
+                this.roundingMode = data.roundingMode || 'exact';
             }
         },
 
@@ -129,7 +139,9 @@ createApp({
                 name: this.companyName,
                 logo: this.companyLogo,
                 address: this.companyAddress,
-                costPerKm: this.costPerKm
+                storageLocation: this.storageLocation,
+                costPerKm: this.costPerKm,
+                roundingMode: this.roundingMode
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
         },
@@ -251,6 +263,25 @@ createApp({
             return `${mins} min`;
         },
 
+        roundDeliveryCost(amount) {
+            // Rundet den Betrag entsprechend der Einstellung
+            switch (this.roundingMode) {
+                case '10cent':
+                    // Auf nächste 10 Cent aufrunden
+                    return Math.ceil(amount * 10) / 10;
+                case '50cent':
+                    // Auf nächste 50 Cent aufrunden
+                    return Math.ceil(amount * 2) / 2;
+                case '1euro':
+                    // Auf ganzen Euro aufrunden
+                    return Math.ceil(amount);
+                case 'exact':
+                default:
+                    // Exakter Betrag
+                    return amount;
+            }
+        },
+
         async showDeliveryCost(customer) {
             this.selectedCustomer = customer;
             this.showDeliveryModal = true;
@@ -259,17 +290,18 @@ createApp({
             this.distanceResult = null;
 
             // Prüfen ob beide Adressen vorhanden sind
-            if (!this.companyAddress || !customer.address) {
-                this.distanceError = 'Bitte tragen Sie sowohl Firmenadresse als auch Kundenadresse ein.';
+            const fromAddress = this.deliveryFromAddress;
+            if (!fromAddress || !customer.address) {
+                this.distanceError = 'Bitte tragen Sie sowohl Startadresse (Firma oder Lager) als auch Kundenadresse ein.';
                 this.loadingDistance = false;
                 return;
             }
 
             try {
-                // Geocoding: Firmenadresse zu Koordinaten
-                const companyCoords = await this.geocodeAddress(this.companyAddress);
-                if (!companyCoords) {
-                    this.distanceError = 'Firmenadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
+                // Geocoding: Startadresse zu Koordinaten
+                const fromCoords = await this.geocodeAddress(fromAddress);
+                if (!fromCoords) {
+                    this.distanceError = 'Startadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
                     this.loadingDistance = false;
                     return;
                 }
@@ -283,12 +315,12 @@ createApp({
                 }
 
                 // Route berechnen mit OSRM
-                const route = await this.calculateRoute(companyCoords, customerCoords);
+                const route = await this.calculateRoute(fromCoords, customerCoords);
                 
                 this.distanceResult = {
                     distance: route.distance, // in km
                     duration: route.duration, // in Sekunden
-                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(this.companyAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`
+                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`
                 };
 
             } catch (error) {

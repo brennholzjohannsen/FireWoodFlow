@@ -639,6 +639,35 @@ body {
     color: var(--text-light);
 }
 
+.select-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.95em;
+    font-family: inherit;
+    background: var(--cream);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B5D52' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+}
+
+.select-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: var(--white);
+}
+
+.field-hint {
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: var(--text-light);
+}
+
 /* Delivery Cost Modal Styles */
 .delivery-info {
     padding: 10px 0;
