@@ -418,7 +418,10 @@ createApp({
             if (unit === 'SRM') {
                 const srm = lengthPrices.srm;
                 // Nur zurückgeben wenn explizit gesetzt und nicht leer
-                return (srm !== undefined && srm !== null && srm !== '') ? String(srm) : '';
+                if (srm === undefined || srm === null || srm === '') {
+                    return '';
+                }
+                return String(srm);
             } else if (unit === 'RM') {
                 // Zuerst prüfen ob RM-Preis explizit gesetzt ist
                 const rm = lengthPrices.rm;
@@ -429,8 +432,12 @@ createApp({
                 // Sonst aus SRM berechnen
                 const srm = lengthPrices.srm;
                 if (srm !== undefined && srm !== null && srm !== '' && !isNaN(parseFloat(srm))) {
-                    const calculated = (parseFloat(srm) * 1.42).toFixed(2);
-                    return calculated;
+                    const srmNum = parseFloat(srm);
+                    // Sicherstellen dass es eine gültige Zahl ist
+                    if (srmNum > 0) {
+                        const calculated = (srmNum * 1.42).toFixed(2);
+                        return calculated;
+                    }
                 }
                 return '';
             }
@@ -454,17 +461,20 @@ createApp({
                 
                 // RM automatisch berechnen WENN noch kein manueller RM-Wert existiert
                 const currentRM = this.newProduct.priceLengths[length].rm;
-                const calculatedRM = value && value !== '' && !isNaN(parseFloat(value)) 
-                    ? (parseFloat(value) * 1.42).toFixed(2) 
-                    : '';
                 
-                // Prüfen ob RM bereits manuell gesetzt wurde (unterschiedlich vom berechneten Wert)
-                const hasManualRM = currentRM && currentRM !== '' && currentRM !== calculatedRM;
-                
-                if (!hasManualRM) {
-                    this.newProduct.priceLengths[length].rm = calculatedRM;
-                } else if (!value || value === '') {
-                    // Wenn SRM geleert wird, auch RM leeren (außer es war manuell)
+                // Nur berechnen wenn SRM einen gültigen Wert hat
+                if (value && value !== '' && !isNaN(parseFloat(value))) {
+                    const calculatedRM = (parseFloat(value) * 1.42).toFixed(2);
+                    
+                    // Prüfen ob RM bereits manuell gesetzt wurde (unterschiedlich vom berechneten Wert)
+                    const hasManualRM = currentRM && currentRM !== '' && currentRM !== calculatedRM;
+                    
+                    if (!hasManualRM) {
+                        this.newProduct.priceLengths[length].rm = calculatedRM;
+                    }
+                } else {
+                    // SRM ist leer oder ungültig → RM auch leeren (wenn nicht manuell)
+                    const hasManualRM = currentRM && currentRM !== '' && currentRM !== '1.42';
                     if (!hasManualRM) {
                         this.newProduct.priceLengths[length].rm = '';
                     }
