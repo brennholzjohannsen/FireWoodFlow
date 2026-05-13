@@ -411,15 +411,17 @@ createApp({
             const lengthPrices = prices[length] || {};
             
             if (unit === 'SRM') {
-                return lengthPrices.srm || '';
+                return lengthPrices.srm !== undefined && lengthPrices.srm !== '' ? lengthPrices.srm : '';
             } else if (unit === 'RM') {
-                // Wenn RM-Preis existiert, diesen verwenden
-                if (lengthPrices.rm && lengthPrices.rm !== '') {
+                // Wenn RM-Preis explizit gesetzt ist, diesen verwenden
+                if (lengthPrices.rm !== undefined && lengthPrices.rm !== '') {
                     return lengthPrices.rm;
                 }
                 // Sonst automatisch aus SRM berechnen (× 1,42)
-                if (lengthPrices.srm && lengthPrices.srm !== '') {
-                    return (parseFloat(lengthPrices.srm) * 1.42).toFixed(2);
+                if (lengthPrices.srm !== undefined && lengthPrices.srm !== '' && !isNaN(parseFloat(lengthPrices.srm))) {
+                    const calculated = (parseFloat(lengthPrices.srm) * 1.42).toFixed(2);
+                    console.log(`Berechne RM-Preis für ${length}cm: SRM=${lengthPrices.srm} × 1.42 = ${calculated}`);
+                    return calculated;
                 }
                 return '';
             }
@@ -427,6 +429,8 @@ createApp({
         },
 
         updatePriceForLength(length, unit, value) {
+            console.log(`Update Preis: Länge=${length}, Einheit=${unit}, Wert=${value}`);
+            
             if (!this.newProduct.priceLengths) {
                 this.newProduct.priceLengths = {};
             }
@@ -438,13 +442,21 @@ createApp({
                 this.newProduct.priceLengths[length].srm = value;
                 // RM automatisch berechnen wenn nicht manuell gesetzt
                 if (!this.newProduct.priceLengths[length].rm || this.newProduct.priceLengths[length].rm === '') {
-                    if (value && value !== '') {
-                        this.newProduct.priceLengths[length].rm = (parseFloat(value) * 1.42).toFixed(2);
+                    if (value && value !== '' && !isNaN(parseFloat(value))) {
+                        const rmPrice = (parseFloat(value) * 1.42).toFixed(2);
+                        this.newProduct.priceLengths[length].rm = rmPrice;
+                        console.log(`RM automatisch berechnet: ${rmPrice}`);
+                    } else {
+                        this.newProduct.priceLengths[length].rm = '';
                     }
                 }
             } else if (unit === 'RM') {
                 this.newProduct.priceLengths[length].rm = value;
+                console.log(`RM manuell gesetzt: ${value}`);
             }
+            
+            // Force Vue reactivity durch neues Objekt
+            this.newProduct = { ...this.newProduct };
         },
 
         async loadData() {
