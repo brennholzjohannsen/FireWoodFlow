@@ -572,6 +572,9 @@
                             <span class="result-label">Fahrzeit (ca.):</span>
                             <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
                         </div>
+                        <div v-if="distanceResult.isFallback" class="fallback-hint">
+                            ⚠️ Berechnung basiert auf Luftlinien-Entfernung (keine Straßenroute verfügbar)
+                        </div>
                         <div class="result-row highlight">
                             <span class="result-label">Lieferkosten pro km (einfach):</span>
                             <span class="result-value">{{ formatCurrency(costPerKm) }}</span>

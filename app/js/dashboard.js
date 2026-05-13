@@ -331,7 +331,8 @@ createApp({
                 this.distanceResult = {
                     distance: route.distance, // in km
                     duration: route.duration, // in Sekunden
-                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`
+                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`,
+                    isFallback: route.isFallback || false
                 };
 
             } catch (error) {
@@ -405,26 +406,67 @@ createApp({
 
         async calculateRoute(from, to) {
             // OSRM Routing API (kostenlos, OpenStreetMap)
+            // OSRM snapt automatisch zur nächsten befahrbaren Straße!
             const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
             
-            const response = await fetch(url);
+            console.log('Berechne Route:', from, '→', to);
             
-            if (!response.ok) {
-                throw new Error('OSRM API Fehler');
+            try {
+                const response = await fetch(url, { timeout: 10000 });
+                
+                if (!response.ok) {
+                    throw new Error(`OSRM API Fehler: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                    // Fallback: Luftlinien-Entfernung wenn keine Route gefunden
+                    console.warn('Keine Route gefunden, verwende Luftlinie');
+                    const distance = this.calculateHaversineDistance(from.lat, from.lon, to.lat, to.lon);
+                    return {
+                        distance: distance,
+                        duration: distance * 60, // Schätzung: 1 km ≈ 1 min
+                        isFallback: true
+                    };
+                }
+                
+                const route = data.routes[0];
+                
+                console.log('Route gefunden:', route.distance / 1000, 'km');
+                
+                return {
+                    distance: route.distance / 1000, // Meter → km
+                    duration: route.duration // Sekunden
+                };
+            } catch (error) {
+                console.error('Fehler bei Routenberechnung:', error);
+                
+                // Fallback: Luftlinien-Entfernung
+                const distance = this.calculateHaversineDistance(from.lat, from.lon, to.lat, to.lon);
+                return {
+                    distance: distance,
+                    duration: distance * 60,
+                    isFallback: true,
+                    errorMessage: error.message
+                };
             }
+        },
+
+        calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+            // Haversine Formel für Luftlinien-Entfernung
+            const R = 6371; // Erdradius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
             
-            const data = await response.json();
-            
-            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                throw new Error('Keine Route gefunden');
-            }
-            
-            const route = data.routes[0];
-            
-            return {
-                distance: route.distance / 1000, // Meter → km
-                duration: route.duration // Sekunden
-            };
+            console.log('Luftlinien-Entfernung:', distance.toFixed(1), 'km');
+            return distance;
         },
 
         // Produkt Methoden

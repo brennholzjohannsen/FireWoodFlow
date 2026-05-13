@@ -702,15 +702,21 @@ body {
 
 /* Delivery Cost Modal Styles */
 .delivery-info {
-    padding: 10px 0;
+    margin-top: 20px;
 }
 
-.customer-header-small h3 {
-    color: var(--text-dark);
-    font-size: 1.2em;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--bg-light);
+.fallback-hint {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-size: 0.9em;
+    color: #856404;
+}
+
+.customer-header-small {
+    margin-bottom: 20px;
 }
 
 .address-box {
