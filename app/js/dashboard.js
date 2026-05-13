@@ -253,6 +253,15 @@ createApp({
             }).format(value);
         },
 
+        formatDate(dateString) {
+            if (!dateString) return '-';
+            return new Date(dateString).toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        },
+
         formatDuration(seconds) {
             if (!seconds) return '-';
             const hours = Math.floor(seconds / 3600);
