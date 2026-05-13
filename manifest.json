@@ -2,7 +2,7 @@
   "name": "FireWoodFlow",
   "short_name": "FireWoodFlow",
   "description": "Web-App für Brennholzhändler - Inventar, Kunden und mehr",
-  "start_url": "/FireWoddFlow/app/index.html",
+  "start_url": "/FireWoodFlow/app/index.html",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#667eea",

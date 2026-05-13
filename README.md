@@ -155,7 +155,7 @@ Query ausführen (grüner Play-Button).
 
 Die Dateien sind bereits im Repo. Nach dem Push ist die App live unter:
 
-**https://brennholzjohannsen.github.io/FireWoddFlow/app/index.html**
+**https://brennholzjohannsen.github.io/FireWoodFlow/app/index.html**
 
 ### 6. Ersten User registrieren
 
