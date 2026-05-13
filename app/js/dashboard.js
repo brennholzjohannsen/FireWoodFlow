@@ -1016,17 +1016,19 @@ createApp({
         },
 
         addProductToOrderWithQuantity(isEditing = false) {
-            // Menge aus Input-Feld lesen
-            const quantityInput = document.getElementById(isEditing ? 'editOrderProductQuantity' : 'orderProductQuantity');
-            const selectInput = document.getElementById(isEditing ? 'editOrderProductSelect' : 'orderProductSelect');
+            // Menge aus dem reaktiven Wert lesen
+            const quantity = isEditing ? this.editOrderItemQuantity : this.newOrderItemQuantity;
             
-            if (!selectInput.value) {
+            // Produkt-Select ID bestimmen
+            const selectId = isEditing ? 'editOrderProductSelect' : 'orderProductSelect';
+            const selectInput = document.getElementById(selectId);
+            
+            if (!selectInput || !selectInput.value) {
                 alert('Bitte wähle ein Produkt aus.');
                 return;
             }
             
-            const quantity = parseInt(quantityInput.value) || 1;
-            if (quantity <= 0) {
+            if (!quantity || quantity <= 0) {
                 alert('Die Menge muss größer als 0 sein.');
                 return;
             }
@@ -1040,7 +1042,7 @@ createApp({
             
             // Lagerbestand prüfen
             if (product.quantity < quantity) {
-                alert(`❌ Nicht genügend Lagerbestand!\\nVerfügbar: ${product.quantity} ${product.unit}\\nBestellt: ${quantity} ${product.unit}`);
+                alert(`❌ Nicht genügend Lagerbestand!\nVerfügbar: ${product.quantity} ${product.unit}\nBestellt: ${quantity} ${product.unit}`);
                 return;
             }
             
@@ -1067,17 +1069,17 @@ createApp({
                 total: quantity * product.price
             });
             
-            // Input zurücksetzen
-            quantityInput.value = 1;
+            // Eingabefelder zurücksetzen
+            selectInput.value = '';
             if (isEditing) {
                 this.editOrderItemQuantity = 1;
             } else {
                 this.newOrderItemQuantity = 1;
             }
-            selectInput.value = '';
             
             this.calculateOrderTotals();
             console.log('Produkt mit Menge hinzugefügt:', product.name, quantity);
+            alert('✓ ' + product.name + ' (' + quantity + ' ' + product.unit + ') hinzugefügt!');
         },
 
         removeProductFromOrder(itemId, isEditing = false) {
