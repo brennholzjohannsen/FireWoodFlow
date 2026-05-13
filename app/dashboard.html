@@ -723,8 +723,10 @@
                                     {{ p.name }} - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
                                 </option>
                             </select>
-                            <button type="button" @click="addProductToOrder(products.find(p => p.id === document.getElementById('orderProductSelect').value)); document.getElementById('orderProductSelect').value=''" class="btn-add-mini">➕ Hinzufügen</button>
+                            <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="1" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
+                            <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-mini">➕ Hinzufügen</button>
                         </div>
+                        <p class="field-hint">Gib die Bestellmenge ein bevor du das Produkt hinzufügst</p>
                     </div>
 
                     <!-- Bestellpositionen -->
@@ -737,7 +739,7 @@
                                     <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
                                     <span>{{ item.unit }}</span>
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
-                                    <button type="button" @click="removeProductFromOrder(item.productId)" class="btn-remove-item">×</button>
+                                    <button type="button" @click="removeProductFromOrder(item.productId, false)" class="btn-remove-item">×</button>
                                 </div>
                             </div>
                         </div>
@@ -845,8 +847,10 @@
                                     {{ p.name }} ({{ p.quantity }} {{ p.unit }} verfügbar)
                                 </option>
                             </select>
-                            <button type="button" @click="addProductToOrder(products.find(p => p.id === document.getElementById('editOrderProductSelect').value)); document.getElementById('editOrderProductSelect').value=''" class="btn-add-mini">➕ Hinzufügen</button>
+                            <input type="number" id="editOrderProductQuantity" v-model.number="editOrderItemQuantity" min="1" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
+                            <button type="button" @click="addProductToOrderWithQuantity(true)" class="btn-add-mini">➕ Hinzufügen</button>
                         </div>
+                        <p class="field-hint">Gib die Bestellmenge ein bevor du das Produkt hinzufügst</p>
                     </div>
 
                     <!-- Positionen -->
@@ -859,7 +863,7 @@
                                     <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
                                     <span>{{ item.unit }}</span>
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
-                                    <button type="button" @click="removeProductFromOrder(item.productId)" class="btn-remove-item">×</button>
+                                    <button type="button" @click="removeProductFromOrder(item.productId, true)" class="btn-remove-item">×</button>
                                 </div>
                             </div>
                         </div>

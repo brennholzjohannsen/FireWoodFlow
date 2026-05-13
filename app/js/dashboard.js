@@ -89,6 +89,8 @@ createApp({
             showAddOrder: false,
             showEditOrder: false,
             editingOrder: null,
+            newOrderItemQuantity: 1,
+            editOrderItemQuantity: 1,
             newOrder: {
                 customerId: '',
                 customerName: '',
@@ -987,13 +989,18 @@ createApp({
         },
 
         addProductToOrder(product) {
-            // Produkt zur Bestellung hinzufügen
-            const existingItem = this.newOrder.items.find(item => item.productId === product.id);
-            
-            if (existingItem) {
-                existingItem.quantity += 1;
-            } else {
+            if (product && product.id) {
+                // Prüfen ob Produkt bereits in Bestellung
+                const existingItem = this.newOrder.items.find(item => item.productId === product.id);
+                
+                if (existingItem) {
+                    alert('Dieses Produkt wurde bereits hinzugefügt. Bitte ändere die Menge direkt in der Liste.');
+                    return;
+                }
+                
+                // Neues Item mit Standard-Menge 1
                 this.newOrder.items.push({
+                    id: Date.now().toString() + Math.random().toString().slice(2, 7),
                     productId: product.id,
                     productName: product.name,
                     quantity: 1,
@@ -1008,9 +1015,78 @@ createApp({
             console.log('Produkt hinzugefügt:', product.name);
         },
 
-        removeProductFromOrder(itemId) {
-            this.newOrder.items = this.newOrder.items.filter(item => item.id !== itemId && item.productId !== itemId);
+        addProductToOrderWithQuantity(isEditing = false) {
+            // Menge aus Input-Feld lesen
+            const quantityInput = document.getElementById(isEditing ? 'editOrderProductQuantity' : 'orderProductQuantity');
+            const selectInput = document.getElementById(isEditing ? 'editOrderProductSelect' : 'orderProductSelect');
+            
+            if (!selectInput.value) {
+                alert('Bitte wähle ein Produkt aus.');
+                return;
+            }
+            
+            const quantity = parseInt(quantityInput.value) || 1;
+            if (quantity <= 0) {
+                alert('Die Menge muss größer als 0 sein.');
+                return;
+            }
+            
+            const product = this.products.find(p => p.id === selectInput.value);
+            
+            if (!product) {
+                alert('Produkt nicht gefunden.');
+                return;
+            }
+            
+            // Lagerbestand prüfen
+            if (product.quantity < quantity) {
+                alert(`❌ Nicht genügend Lagerbestand!\\nVerfügbar: ${product.quantity} ${product.unit}\\nBestellt: ${quantity} ${product.unit}`);
+                return;
+            }
+            
+            // Ziel-Array bestimmen (newOrder oder editingOrder)
+            const targetItems = isEditing ? this.editingOrder.items : this.newOrder.items;
+            
+            // Prüfen ob Produkt bereits vorhanden
+            const existingItem = targetItems.find(item => item.productId === product.id);
+            
+            if (existingItem) {
+                alert('Dieses Produkt wurde bereits hinzugefügt. Bitte ändere die Menge direkt in der Liste.');
+                return;
+            }
+            
+            // Neues Item mit der eingegebenen Menge
+            targetItems.push({
+                id: Date.now().toString() + Math.random().toString().slice(2, 7),
+                productId: product.id,
+                productName: product.name,
+                quantity: quantity,
+                unit: product.unit,
+                pricePerUnit: product.price,
+                priceUnit: product.priceUnit || product.unit,
+                total: quantity * product.price
+            });
+            
+            // Input zurücksetzen
+            quantityInput.value = 1;
+            if (isEditing) {
+                this.editOrderItemQuantity = 1;
+            } else {
+                this.newOrderItemQuantity = 1;
+            }
+            selectInput.value = '';
+            
             this.calculateOrderTotals();
+            console.log('Produkt mit Menge hinzugefügt:', product.name, quantity);
+        },
+
+        removeProductFromOrder(itemId, isEditing = false) {
+            const targetItems = isEditing ? this.editingOrder.items : this.newOrder.items;
+            const index = targetItems.findIndex(item => item.productId === itemId);
+            if (index !== -1) {
+                targetItems.splice(index, 1);
+                this.calculateOrderTotals();
+            }
         },
 
         updateItemQuantity(itemId, newQuantity) {
@@ -1027,13 +1103,23 @@ createApp({
         },
 
         calculateOrderTotals() {
-            // Zwischensumme berechnen
+            // Zwischensumme berechnen (für newOrder)
             const subtotal = this.newOrder.items.reduce((sum, item) => {
                 return sum + (item.quantity * item.pricePerUnit);
             }, 0);
             
             this.newOrder.subtotal = subtotal;
             this.newOrder.total = subtotal + this.newOrder.deliveryCosts;
+            
+            // Auch für editingOrder berechnen falls vorhanden
+            if (this.editingOrder && this.editingOrder.items) {
+                const editSubtotal = this.editingOrder.items.reduce((sum, item) => {
+                    return sum + (item.quantity * item.pricePerUnit);
+                }, 0);
+                
+                this.editingOrder.subtotal = editSubtotal;
+                this.editingOrder.total = editSubtotal + (this.editingOrder.deliveryCosts || 0);
+            }
         },
 
         async calculateDeliveryCostsForOrder() {
