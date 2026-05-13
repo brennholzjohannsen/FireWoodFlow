@@ -488,6 +488,44 @@
             </div>
         </div>
 
+        <!-- Edit Customer Modal -->
+        <div class="modal-overlay" v-if="showEditCustomer" @click="showEditCustomer = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditCustomer = false">&times;</button>
+                <h2>Kunde bearbeiten</h2>
+                
+                <form @submit.prevent="saveCustomer">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" v-model="editingCustomer.name" required placeholder="Vorname Nachname oder Firmenname">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse</label>
+                        <textarea v-model="editingCustomer.address" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" v-model="editingCustomer.phone" placeholder="+49 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>E-Mail</label>
+                            <input type="email" v-model="editingCustomer.email" placeholder="email@beispiel.de">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="editingCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
+                </form>
+            </div>
+        </div>
+
         <!-- Delivery Cost Modal -->
         <div class="modal-overlay" v-if="showDeliveryModal" @click="showDeliveryModal = false">
             <div class="modal-content" @click.stop>

@@ -51,6 +51,8 @@ createApp({
             customerCount: 0,
             customers: [],
             showAddCustomer: false,
+            showEditCustomer: false,
+            editingCustomer: null,
             showDeliveryModal: false,
             selectedCustomer: null,
             loadingDistance: false,
@@ -489,14 +491,65 @@ createApp({
         },
 
         editCustomer(customer) {
-            // TODO: Edit-Modal öffnen
-            alert('Bearbeiten: ' + customer.name);
+            // Kunde zum Bearbeiten laden
+            this.editingCustomer = { ...customer };
+            this.showEditCustomer = true;
+        },
+
+        async saveCustomer() {
+            try {
+                // Validierung
+                if (!this.editingCustomer.name || !this.editingCustomer.name.trim()) {
+                    alert('Bitte geben Sie einen Namen ein.');
+                    return;
+                }
+
+                console.log('Speichere Änderungen:', this.editingCustomer);
+
+                // Index des Kunden finden
+                const index = this.customers.findIndex(c => c.id === this.editingCustomer.id);
+                
+                if (index !== -1) {
+                    // Aktualisierten Kunden speichern
+                    const updatedCustomer = {
+                        ...this.editingCustomer,
+                        name: this.editingCustomer.name.trim(),
+                        address: (this.editingCustomer.address || '').trim(),
+                        phone: (this.editingCustomer.phone || '').trim(),
+                        email: (this.editingCustomer.email || '').trim(),
+                        notes: (this.editingCustomer.notes || '').trim(),
+                        updatedAt: new Date().toISOString()
+                    };
+
+                    // Array kopieren um Reaktivität sicherzustellen
+                    const updatedCustomers = [...this.customers];
+                    updatedCustomers[index] = updatedCustomer;
+                    this.customers = updatedCustomers;
+
+                    console.log('Kunde aktualisiert:', updatedCustomer);
+
+                    // Modal schließen
+                    setTimeout(() => {
+                        this.showEditCustomer = false;
+                        this.editingCustomer = null;
+                    }, 100);
+
+                    alert('✓ Kunde erfolgreich aktualisiert!');
+                } else {
+                    throw new Error('Kunde nicht gefunden');
+                }
+
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert('❌ Fehler beim Speichern: ' + error.message);
+            }
         },
 
         deleteCustomer(customer) {
             if (confirm('Möchtest du "' + customer.name + '" wirklich löschen?')) {
                 this.customers = this.customers.filter(c => c.id !== customer.id);
                 this.customerCount = this.customers.length;
+                alert('✓ Kunde gelöscht.');
             }
         },
 
