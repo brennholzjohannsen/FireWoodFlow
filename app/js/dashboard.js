@@ -309,8 +309,15 @@ createApp({
             }
 
             try {
+                console.log('=== Lieferkosten Berechnung ===');
+                console.log('Von:', fromAddress);
+                console.log('Nach:', customer.address);
+                
                 // Geocoding: Startadresse zu Koordinaten
+                console.log('Geocode Startadresse...');
                 const fromCoords = await this.geocodeAddress(fromAddress);
+                console.log('Startkoordinaten:', fromCoords);
+                
                 if (!fromCoords) {
                     this.distanceError = 'Startadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
                     this.loadingDistance = false;
@@ -318,7 +325,10 @@ createApp({
                 }
 
                 // Geocoding: Kundenadresse zu Koordinaten
+                console.log('Geocode Kundenadresse...');
                 const customerCoords = await this.geocodeAddress(customer.address);
+                console.log('Kundenkoordinaten:', customerCoords);
+                
                 if (!customerCoords) {
                     this.distanceError = 'Kundenadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
                     this.loadingDistance = false;
@@ -407,14 +417,27 @@ createApp({
         async calculateRoute(from, to) {
             // OSRM Routing API (kostenlos, OpenStreetMap)
             // OSRM snapt automatisch zur nächsten befahrbaren Straße!
+            // WICHTIG: OSRM erwartet Format: lon,lat (Longitude zuerst!)
+            
+            // Validiere Koordinaten
+            if (!from || !to || 
+                typeof from.lat !== 'number' || typeof from.lon !== 'number' ||
+                typeof to.lat !== 'number' || typeof to.lon !== 'number') {
+                console.error('Ungültige Koordinaten:', from, to);
+                throw new Error('Ungültige Koordinaten');
+            }
+            
             const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
             
             console.log('Berechne Route:', from, '→', to);
+            console.log('URL:', url);
             
             try {
                 const response = await fetch(url, { timeout: 10000 });
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('OSRM Response:', response.status, errorText);
                     throw new Error(`OSRM API Fehler: ${response.status}`);
                 }
                 
