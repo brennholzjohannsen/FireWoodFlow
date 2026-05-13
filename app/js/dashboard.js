@@ -91,6 +91,8 @@ createApp({
             editingOrder: null,
             newOrderItemQuantity: 1,
             editOrderItemQuantity: 1,
+            newOrderItemUnit: 'RM',
+            editOrderItemUnit: 'RM',
             newOrder: {
                 customerId: '',
                 customerName: '',
@@ -1016,8 +1018,9 @@ createApp({
         },
 
         addProductToOrderWithQuantity(isEditing = false) {
-            // Menge aus dem reaktiven Wert lesen
+            // Menge und Einheit aus den reaktiven Werten lesen
             const quantity = isEditing ? this.editOrderItemQuantity : this.newOrderItemQuantity;
+            const orderUnit = isEditing ? this.editOrderItemUnit : this.newOrderItemUnit;
             
             // Produkt-Select ID bestimmen
             const selectId = isEditing ? 'editOrderProductSelect' : 'orderProductSelect';
@@ -1040,9 +1043,21 @@ createApp({
                 return;
             }
             
-            // Lagerbestand prüfen
-            if (product.quantity < quantity) {
-                alert(`❌ Nicht genügend Lagerbestand!\nVerfügbar: ${product.quantity} ${product.unit}\nBestellt: ${quantity} ${product.unit}`);
+            // Umrechnungsfaktoren (in RM als Basis)
+            // 1 FM = 1.42 RM
+            // 1 RM = 1.42 SRM → 1 FM = 1.42 * 1.42 = 2.0164 SRM
+            const toRM = {
+                'FM': 1.42,
+                'RM': 1,
+                'SRM': 1 / 1.42
+            };
+            
+            // Bestellmenge in Produkteinheit umrechnen für Lagerbestandsprüfung
+            const quantityInProductUnit = quantity * toRM[orderUnit] / toRM[product.unit];
+            
+            // Lagerbestand prüfen (mit der umgerechneten Menge)
+            if (product.quantity < quantityInProductUnit) {
+                alert(`❌ Nicht genügend Lagerbestand!\nVerfügbar: ${product.quantity.toFixed(2)} ${product.unit}\nBestellt: ${quantityInProductUnit.toFixed(2)} ${product.unit} (${quantity} ${orderUnit})`);
                 return;
             }
             
@@ -1053,33 +1068,71 @@ createApp({
             const existingItem = targetItems.find(item => item.productId === product.id);
             
             if (existingItem) {
-                alert('Dieses Produkt wurde bereits hinzugefügt. Bitte ändere die Menge direkt in der Liste.');
-                return;
+                // Wenn gleiche Einheit, Menge addieren
+                if (existingItem.unit === orderUnit) {
+                    existingItem.quantity += quantity;
+                    existingItem.total = existingItem.quantity * existingItem.pricePerUnit;
+                    
+                    // Preis anpassen wenn Preiseinheit anders ist
+                    if (product.priceUnit && product.priceUnit !== orderUnit) {
+                        // Umrechnung für korrekte Preisanzeige
+                        const conversionFactor = toRM[orderUnit] / toRM[product.priceUnit];
+                        existingItem.pricePerUnit = product.price * conversionFactor;
+                    }
+                    
+                    this.calculateOrderTotals();
+                    selectInput.value = '';
+                    if (isEditing) {
+                        this.editOrderItemQuantity = 1;
+                        this.editOrderItemUnit = 'RM';
+                    } else {
+                        this.newOrderItemQuantity = 1;
+                        this.newOrderItemUnit = 'RM';
+                    }
+                    alert('✓ Menge aktualisiert: ' + existingItem.quantity.toFixed(2) + ' ' + existingItem.unit);
+                    return;
+                } else {
+                    alert('Dieses Produkt wurde bereits mit einer anderen Einheit hinzugefügt (' + existingItem.unit + '). Bitte entferne es zuerst und füge es neu hinzu.');
+                    return;
+                }
             }
             
-            // Neues Item mit der eingegebenen Menge
+            // Preis pro Einheit berechnen basierend auf Produktpreis
+            let pricePerUnit = product.price;
+            const priceUnit = product.priceUnit || product.unit;
+            
+            // Wenn Bestelleinheit != Preiseinheit, Preis umrechnen
+            if (orderUnit !== priceUnit) {
+                // Preis von Preiseinheit auf Bestelleinheit umrechnen
+                // Beispiel: Preis ist €100/FM, Bestellung in RM → €100/1.42 = €70.42/RM
+                pricePerUnit = product.price * (toRM[priceUnit] / toRM[orderUnit]);
+            }
+            
+            // Neues Item mit der eingegebenen Menge und Einheit
             targetItems.push({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
                 productName: product.name,
                 quantity: quantity,
-                unit: product.unit,
-                pricePerUnit: product.price,
-                priceUnit: product.priceUnit || product.unit,
-                total: quantity * product.price
+                unit: orderUnit,
+                pricePerUnit: pricePerUnit,
+                priceUnit: priceUnit,
+                total: quantity * pricePerUnit
             });
             
             // Eingabefelder zurücksetzen
             selectInput.value = '';
             if (isEditing) {
                 this.editOrderItemQuantity = 1;
+                this.editOrderItemUnit = 'RM';
             } else {
                 this.newOrderItemQuantity = 1;
+                this.newOrderItemUnit = 'RM';
             }
             
             this.calculateOrderTotals();
-            console.log('Produkt mit Menge hinzugefügt:', product.name, quantity);
-            alert('✓ ' + product.name + ' (' + quantity + ' ' + product.unit + ') hinzugefügt!');
+            console.log('Produkt mit Menge hinzugefügt:', product.name, quantity, orderUnit);
+            alert('✓ ' + product.name + ' (' + quantity.toFixed(2) + ' ' + orderUnit + ') hinzugefügt!');
         },
 
         removeProductFromOrder(itemId, isEditing = false) {
