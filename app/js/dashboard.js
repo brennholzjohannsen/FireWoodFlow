@@ -356,6 +356,37 @@ createApp({
             }
         },
 
+        async saveDeliveryCosts() {
+            try {
+                if (!this.selectedCustomer || !this.distanceResult) {
+                    alert('Keine Lieferkosten zum Speichern vorhanden.');
+                    return;
+                }
+
+                // Berechne Lieferkosten basierend auf Einstellung
+                const calculatedCost = this.roundDeliveryCost(
+                    this.distanceResult.distance * this.costPerKm
+                );
+
+                // Speichere beim Kunden
+                const index = this.customers.findIndex(c => c.id === this.selectedCustomer.id);
+                if (index !== -1) {
+                    const updatedCustomers = [...this.customers];
+                    updatedCustomers[index].deliveryCosts = calculatedCost;
+                    this.customers = updatedCustomers;
+                    
+                    console.log('Lieferkosten gespeichert:', calculatedCost, 'für', this.selectedCustomer.name);
+                    alert(`✓ Lieferkosten gespeichert: ${this.formatCurrency(calculatedCost)}`);
+                    
+                    // Modal schließen
+                    this.showDeliveryModal = false;
+                }
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert('❌ Fehler beim Speichern der Lieferkosten.');
+            }
+        },
+
         async geocodeAddress(address) {
             // Prüfen ob es Koordinaten sind - unterstützt mehrere Formate:
             // Format 1: 49.006930°, 8.58789° (Punkt als Dezimaltrenner)
@@ -583,6 +614,7 @@ createApp({
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
                     notes: (this.newCustomer.notes || '').trim(),
+                    deliveryCosts: 0,
                     createdAt: new Date().toISOString()
                 };
 
@@ -603,7 +635,8 @@ createApp({
                     address: '',
                     phone: '',
                     email: '',
-                    notes: ''
+                    notes: '',
+                    deliveryCosts: 0
                 };
 
                 // Modal schließen mit kleiner Verzögerung damit Alert zuerst kommt
@@ -648,6 +681,7 @@ createApp({
                         phone: (this.editingCustomer.phone || '').trim(),
                         email: (this.editingCustomer.email || '').trim(),
                         notes: (this.editingCustomer.notes || '').trim(),
+                        deliveryCosts: this.editingCustomer.deliveryCosts || 0,
                         updatedAt: new Date().toISOString()
                     };
 

@@ -860,6 +860,34 @@ body {
     box-shadow: 0 6px 20px rgba(139, 115, 85, 0.4);
 }
 
+.btn-save-costs {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--success-color), #27ae60);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+
+.btn-save-costs:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.delivery-costs-display {
+    background: rgba(46, 204, 113, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
 .user-info {
     background: var(--bg-light);
     padding: 14px;

@@ -239,6 +239,10 @@
                                 <span class="detail-label">✉️</span>
                                 <span class="detail-value">{{ customer.email || 'Keine E-Mail' }}</span>
                             </div>
+                            <div v-if="customer.deliveryCosts > 0" class="detail-item delivery-costs-display">
+                                <span class="detail-label">🚚</span>
+                                <span class="detail-value price">{{ formatCurrency(customer.deliveryCosts) }} Lieferkosten</span>
+                            </div>
                         </div>
                         <div class="customer-actions">
                             <button @click="editCustomer(customer)" class="btn-edit">Bearbeiten</button>
@@ -487,6 +491,12 @@
                         <textarea v-model="newCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
                     </div>
 
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="newCustomer.deliveryCosts" placeholder="0.00" min="0">
+                        <p class="field-hint">Kann später berechnet oder manuell angepasst werden</p>
+                    </div>
+
                     <button type="submit" class="btn-submit">Kunde speichern</button>
                 </form>
             </div>
@@ -523,6 +533,12 @@
                     <div class="form-group">
                         <label>Notizen</label>
                         <textarea v-model="editingCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="editingCustomer.deliveryCosts" placeholder="0.00" min="0">
+                        <p class="field-hint">Kann berechnet oder manuell angepasst werden</p>
                     </div>
 
                     <button type="submit" class="btn-submit">Änderungen speichern</button>
@@ -589,6 +605,9 @@
                         <a :href="distanceResult.mapsUrl" target="_blank" class="btn-maps">
                             🗺️ Route auf Google Maps
                         </a>
+                        <button @click="saveDeliveryCosts()" class="btn-save-costs">
+                            ✓ Lieferkosten übernehmen ({{ formatCurrency(deliveryCost) }})
+                        </button>
                     </div>
                 </div>
             </div>
