@@ -58,6 +58,12 @@ createApp({
             loadingDistance: false,
             distanceError: '',
             distanceResult: null,
+            
+            // Location Picker
+            activeMap: null,
+            selectedCoords: null,
+            currentPickerId: null,
+            currentFieldId: null,
             newCustomer: {
                 name: '',
                 address: '',
@@ -633,6 +639,132 @@ createApp({
                 console.error('Fehler beim Laden der Karte:', error);
                 previewDiv.innerHTML = `<p style="color:#dc3545;text-align:center;padding:20px;">❌ Karte konnte nicht geladen werden: ${error.message}</p>`;
             }
+        },
+
+        openLocationPicker(fieldId, pickerId) {
+            console.log('Öffne Location Picker:', fieldId, pickerId);
+            
+            this.currentFieldId = fieldId;
+            this.currentPickerId = pickerId;
+            this.selectedCoords = null;
+            
+            // Picker anzeigen
+            const pickerDiv = document.getElementById(pickerId);
+            if (!pickerDiv) {
+                console.error('Picker Div nicht gefunden:', pickerId);
+                return;
+            }
+            pickerDiv.style.display = 'block';
+            
+            // Update Koordinaten-Anzeige
+            document.getElementById('storageSelectedCoords').textContent = '-';
+            
+            // Warte kurz bis DOM ready ist
+            setTimeout(() => {
+                this.initMap(fieldId, pickerId);
+            }, 100);
+        },
+
+        initMap(fieldId, pickerId) {
+            // Vorherige Karte entfernen falls vorhanden
+            if (this.activeMap) {
+                this.activeMap.remove();
+                this.activeMap = null;
+            }
+
+            const mapContainer = document.getElementById(fieldId.replace('Location', '') + 'Map');
+            if (!mapContainer) {
+                console.error('Map Container nicht gefunden');
+                return;
+            }
+
+            // Standard-Zentrum (Deutschland)
+            let centerLat = 51.1657;
+            let centerLon = 10.4515;
+
+            // Prüfen ob bereits Koordinaten im Feld stehen
+            const currentValue = this[fieldId.replace('Location', '')];
+            if (currentValue) {
+                const coordMatch = currentValue.match(/(-?\d+\.?\d*)°?\s*,\s*(-?\d+\.?\d*)°?/);
+                if (coordMatch) {
+                    centerLat = parseFloat(coordMatch[1]);
+                    centerLon = parseFloat(coordMatch[2]);
+                }
+            }
+
+            // Leaflet Karte initialisieren
+            this.activeMap = L.map(mapContainer).setView([centerLat, centerLon], 6);
+
+            // OpenStreetMap Layer hinzufügen
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18
+            }).addTo(this.activeMap);
+
+            // Marker Variable
+            let marker = null;
+
+            // Klick auf Karte
+            this.activeMap.on('click', (e) => {
+                const { lat, lng } = e.latlng;
+                this.selectedCoords = { lat, lng };
+                
+                // Update Anzeige
+                const coordsText = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                document.getElementById('storageSelectedCoords').textContent = coordsText;
+                
+                // Marker setzen oder bewegen
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    marker = L.marker([lat, lng]).addTo(this.activeMap);
+                }
+            });
+
+            // Wenn bereits Koordinaten existieren, Marker setzen
+            if (currentValue && coordMatch) {
+                const existingLat = parseFloat(coordMatch[1]);
+                const existingLon = parseFloat(coordMatch[2]);
+                this.selectedCoords = { lat: existingLat, lng: existingLon };
+                document.getElementById('storageSelectedCoords').textContent = `${existingLat.toFixed(6)}, ${existingLon.toFixed(6)}`;
+                marker = L.marker([existingLat, existingLon]).addTo(this.activeMap);
+            }
+        },
+
+        closeLocationPicker(pickerId) {
+            const pickerDiv = document.getElementById(pickerId);
+            if (pickerDiv) {
+                pickerDiv.style.display = 'none';
+            }
+            
+            // Karte aufräumen
+            if (this.activeMap) {
+                this.activeMap.remove();
+                this.activeMap = null;
+            }
+            
+            this.selectedCoords = null;
+            this.currentPickerId = null;
+            this.currentFieldId = null;
+        },
+
+        applyLocation(fieldId, pickerId) {
+            if (!this.selectedCoords) {
+                alert('Bitte wählen Sie zuerst einen Standort auf der Karte aus.');
+                return;
+            }
+
+            // Koordinaten ins Textfeld übernehmen
+            const coordsText = `${this.selectedCoords.lat.toFixed(6)}, ${this.selectedCoords.lng.toFixed(6)}`;
+            this[fieldId.replace('Location', '')] = coordsText;
+            
+            // Settings speichern
+            this.saveCompanySettings();
+            
+            // Picker schließen
+            this.closeLocationPicker(pickerId);
+            
+            alert(`✓ Standort übernommen: ${coordsText}`);
         },
 
         // Settings Methoden

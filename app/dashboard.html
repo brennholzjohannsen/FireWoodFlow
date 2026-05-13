@@ -18,6 +18,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="css/dashboard.css">
+    
+    <!-- Leaflet CSS für interaktive Karten -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
     <div id="app">
@@ -323,6 +326,24 @@
                     <button type="button" @click="previewLocation('storageLocation', 'storageMapPreview')" class="btn-map-preview">🗺️ Vorschau anzeigen</button>
                     <div id="storageMapPreview" class="map-preview"></div>
                     <p class="field-hint">📍 Für Lieferung wird diese Adresse statt Firmenadresse verwendet</p>
+                    
+                    <!-- Interaktive Karte zum Standort setzen -->
+                    <button type="button" @click="openLocationPicker('storageLocation', 'storageLocationPicker')" class="btn-map-picker">📍 Standort auf Karte wählen</button>
+                    <div id="storageLocationPicker" class="location-picker" style="display:none;">
+                        <div class="location-picker-header">
+                            <h4>📍 Standort auswählen</h4>
+                            <button type="button" @click="closeLocationPicker('storageLocationPicker')" class="btn-close-picker">✕</button>
+                        </div>
+                        <p class="picker-hint">Klicke auf die Karte um die Koordinaten zu übernehmen</p>
+                        <div id="storageLocationMap" class="interactive-map"></div>
+                        <div class="selected-coords">
+                            <strong>Ausgewählt:</strong> <span id="storageSelectedCoords">-</span>
+                        </div>
+                        <div class="picker-actions">
+                            <button type="button" @click="applyLocation('storageLocation', 'storageLocationPicker')" class="btn-apply-location">✓ Übernehmen</button>
+                            <button type="button" @click="closeLocationPicker('storageLocationPicker')" class="btn-cancel-picker">Abbrechen</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -594,5 +615,8 @@
     </div>
 
     <script src="js/dashboard.js"></script>
+    
+    <!-- Leaflet JS für interaktive Karten -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>
