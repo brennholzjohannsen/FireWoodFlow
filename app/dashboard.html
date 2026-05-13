@@ -377,25 +377,28 @@
                     <h2>Inventar</h2>
                     
                     <div class="form-group">
-                        <label>Holzsorten (aktivieren/deaktivieren)</label>
-                        <div class="checkbox-grid">
-                            <label v-for="(active, woodType) in inventorySettings.woodTypes" :key="woodType" class="checkbox-label">
-                                <input type="checkbox" :checked="active" @change="toggleWoodType(woodType)">
-                                <span>{{ woodType }}</span>
-                            </label>
+                        <label>Holzsorten verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="wood in inventorySettings.woodTypes" :key="wood" class="tag">
+                                {{ wood }}
+                                <button @click="removeWoodType(wood)" class="btn-remove-tag">×</button>
+                            </span>
                         </div>
-                        <p class="field-hint">Nur aktivierte Holzsorten können bei neuen Produkten ausgewählt werden</p>
+                        <button @click="addWoodType()" class="btn-add-tag">+ Holzsorte hinzufügen</button>
+                        <p class="field-hint">Alle aufgelisteten Holzsorten können bei neuen Produkten ausgewählt werden</p>
                     </div>
 
                     <div class="form-group">
-                        <label>Trocknungsgrade (aktivieren/deaktivieren)</label>
-                        <div class="checkbox-grid">
-                            <label v-for="(active, level) in inventorySettings.drynessLevels" :key="level" class="checkbox-label">
-                                <input type="checkbox" :checked="active" @change="toggleDrynessLevel(level)">
-                                <span>{{ getDrynessLabel(level) }}</span>
-                            </label>
+                        <label>Trocknungsgrade verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="level in inventorySettings.drynessLevels" :key="level.key" class="tag">
+                                {{ level.label }}
+                                <button @click="editDrynessLevel(level.key)" class="btn-edit-tag" title="Bearbeiten">✎</button>
+                                <button @click="removeDrynessLevel(level.key)" class="btn-remove-tag">×</button>
+                            </span>
                         </div>
-                        <p class="field-hint">Nur aktivierte Trocknungsgrade können bei neuen Produkten ausgewählt werden</p>
+                        <button @click="addDrynessLevel()" class="btn-add-tag">+ Trocknungsgrad hinzufügen</button>
+                        <p class="field-hint">Trocknungsgrade können bearbeitet und entfernt werden</p>
                     </div>
 
                     <div class="form-group">
@@ -436,11 +439,12 @@
                         <div class="form-group">
                             <label>Menge</label>
                             <div class="input-group-inline">
-                                <input type="number" v-model.number="newProduct.quantity" required placeholder="0" style="flex: 1;">
+                                <input type="number" v-model.number="newProduct.quantity" required placeholder="Menge eingeben" style="flex: 1; min-width: 80px;">
                                 <select v-model="newProduct.unit" required class="unit-select">
                                     <option value="">Einheit</option>
                                     <option value="RM">RM</option>
                                     <option value="SRM">SRM</option>
+                                    <option value="FM">FM</option>
                                     <option value="kg">kg</option>
                                     <option value="Sack">Sack</option>
                                 </select>
@@ -488,6 +492,75 @@
                     </div>
 
                     <button type="submit" class="btn-submit">Produkt speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div class="modal-overlay" v-if="showEditProduct" @click="showEditProduct = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditProduct = false">&times;</button>
+                <h2>Produkt bearbeiten</h2>
+                
+                <form @submit.prevent="saveProduct">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Produktname</label>
+                            <input type="text" v-model="editingProduct.name" required placeholder="z.B. Buche Premium">
+                        </div>
+                        <div class="form-group">
+                            <label>Menge</label>
+                            <div class="input-group-inline">
+                                <input type="number" v-model.number="editingProduct.quantity" required placeholder="Menge eingeben" style="flex: 1; min-width: 80px;">
+                                <select v-model="editingProduct.unit" required class="unit-select">
+                                    <option value="">Einheit</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                    <option value="FM">FM</option>
+                                    <option value="kg">kg</option>
+                                    <option value="Sack">Sack</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Holzsorte</label>
+                            <select v-model="editingProduct.woodType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="wood in getActiveWoodTypes()" :key="wood" :value="wood">{{ wood }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Scheitlänge (cm)</label>
+                            <select v-model.number="editingProduct.logLength" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="length in inventorySettings.logLengths" :key="length" :value="length">{{ length }} cm</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trocknungsgrad</label>
+                            <select v-model="editingProduct.dryness" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="level in getActiveDrynessLevels()" :key="level.key" :value="level.key">{{ level.label }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Preis pro Einheit (€)</label>
+                            <input type="number" step="0.01" v-model.number="editingProduct.price" required placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bemerkung (optional)</label>
+                        <textarea v-model="editingProduct.notes" rows="2" placeholder="Zusätzliche Infos..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
                 </form>
             </div>
         </div>

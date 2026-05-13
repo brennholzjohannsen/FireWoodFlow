@@ -32,22 +32,13 @@ createApp({
             
             // Inventar-Einstellungen
             inventorySettings: {
-                woodTypes: {
-                    'Buche': true,
-                    'Eiche': true,
-                    'Birke': true,
-                    'Fichte': true,
-                    'Kiefer': true,
-                    'Esche': true,
-                    'Ahorn': true,
-                    'Gemischt': true
-                },
-                drynessLevels: {
-                    'frisch': true,
-                    'lufttrocken': true,
-                    'ofentrocken': true
-                },
-                logLengths: [25, 33, 50]
+                woodTypes: ['Buche', 'Eiche', 'Birke', 'Fichte', 'Kiefer', 'Esche', 'Ahorn', 'Gemischt'],
+                drynessLevels: [
+                    { key: 'frisch', label: 'Frisch (< 1 Jahr)' },
+                    { key: 'lufttrocken', label: 'Lufttrocken (1-2 Jahre)' },
+                    { key: 'ofentrocken', label: 'Ofentrocken' }
+                ],
+                logLengths: [25, 33, 50, 100]
             },
             
             // Inventar Daten
@@ -56,6 +47,8 @@ createApp({
             products: [],
             searchQuery: '',
             showAddProduct: false,
+            showEditProduct: false,
+            editingProduct: null,
             newProduct: {
                 name: '',
                 quantity: 0,
@@ -176,12 +169,78 @@ createApp({
         },
 
         toggleWoodType(woodType) {
-            this.inventorySettings.woodTypes[woodType] = !this.inventorySettings.woodTypes[woodType];
+            // Holzsorte aus Array entfernen oder hinzufügen
+            const index = this.inventorySettings.woodTypes.indexOf(woodType);
+            if (index > -1) {
+                this.inventorySettings.woodTypes.splice(index, 1);
+            } else {
+                this.inventorySettings.woodTypes.push(woodType);
+            }
             this.saveInventorySettings();
         },
 
-        toggleDrynessLevel(level) {
-            this.inventorySettings.drynessLevels[level] = !this.inventorySettings.drynessLevels[level];
+        addWoodType() {
+            const newType = prompt('Neue Holzsorte eingeben:', '');
+            if (newType && newType.trim()) {
+                const trimmed = newType.trim();
+                if (!this.inventorySettings.woodTypes.includes(trimmed)) {
+                    this.inventorySettings.woodTypes.push(trimmed);
+                    this.inventorySettings.woodTypes.sort();
+                    this.saveInventorySettings();
+                    alert('✓ Holzsorte "' + trimmed + '" hinzugefügt!');
+                } else {
+                    alert('Diese Holzsorte existiert bereits.');
+                }
+            }
+        },
+
+        removeWoodType(woodType) {
+            this.inventorySettings.woodTypes = this.inventorySettings.woodTypes.filter(w => w !== woodType);
+            this.saveInventorySettings();
+        },
+
+        toggleDrynessLevel(key) {
+            // Trocknungsgrad aktivieren/deaktivieren
+            const level = this.inventorySettings.drynessLevels.find(l => l.key === key);
+            if (level) {
+                level.active = !level.active;
+                this.saveInventorySettings();
+            }
+        },
+
+        addDrynessLevel() {
+            const label = prompt('Bezeichnung für neuen Trocknungsgrad eingeben:', 'Lufttrocken');
+            if (label && label.trim()) {
+                const trimmed = label.trim();
+                const key = trimmed.toLowerCase().replace(/\s+/g, '_');
+                if (!this.inventorySettings.drynessLevels.find(l => l.key === key)) {
+                    this.inventorySettings.drynessLevels.push({
+                        key: key,
+                        label: trimmed,
+                        active: true
+                    });
+                    this.saveInventorySettings();
+                    alert('✓ Trocknungsgrad "' + trimmed + '" hinzugefügt!');
+                } else {
+                    alert('Dieser Trocknungsgrad existiert bereits.');
+                }
+            }
+        },
+
+        editDrynessLevel(key) {
+            const level = this.inventorySettings.drynessLevels.find(l => l.key === key);
+            if (level) {
+                const newLabel = prompt('Bezeichnung bearbeiten:', level.label);
+                if (newLabel && newLabel.trim()) {
+                    level.label = newLabel.trim();
+                    this.saveInventorySettings();
+                    alert('✓ Trocknungsgrad aktualisiert!');
+                }
+            }
+        },
+
+        removeDrynessLevel(key) {
+            this.inventorySettings.drynessLevels = this.inventorySettings.drynessLevels.filter(l => l.key !== key);
             this.saveInventorySettings();
         },
 
@@ -212,20 +271,20 @@ createApp({
         },
 
         getActiveWoodTypes() {
-            return Object.keys(this.inventorySettings.woodTypes).filter(w => this.inventorySettings.woodTypes[w]);
+            return this.inventorySettings.woodTypes || [];
         },
 
         getActiveDrynessLevels() {
-            return Object.keys(this.inventorySettings.drynessLevels).filter(d => this.inventorySettings.drynessLevels[d]);
+            return (this.inventorySettings.drynessLevels || []).filter(d => d.active !== false);
         },
 
         getDrynessLabel(level) {
-            const labels = {
-                'frisch': 'Frisch (< 1 Jahr)',
-                'lufttrocken': 'Lufttrocken (1-2 Jahre)',
-                'ofentrocken': 'Ofentrocken'
-            };
-            return labels[level] || level;
+            // Kann entweder ein String (key) oder ein Object sein
+            if (typeof level === 'string') {
+                const found = (this.inventorySettings.drynessLevels || []).find(d => d.key === level);
+                return found ? found.label : level;
+            }
+            return level.label || level;
         },
 
         async handleLogoUpload(event) {
@@ -664,14 +723,68 @@ createApp({
         },
 
         editProduct(product) {
-            // TODO: Edit-Modal öffnen
-            alert('Bearbeiten: ' + product.name);
+            // Produkt zum Bearbeiten laden
+            this.editingProduct = { ...product };
+            this.showEditProduct = true;
+        },
+
+        async saveProduct() {
+            try {
+                // Validierung
+                if (!this.editingProduct.name || !this.editingProduct.name.trim()) {
+                    alert('Bitte geben Sie einen Produktnamen ein.');
+                    return;
+                }
+
+                console.log('Speichere Produkt-Änderungen:', this.editingProduct);
+
+                // Index des Produkts finden
+                const index = this.products.findIndex(p => p.id === this.editingProduct.id);
+                
+                if (index !== -1) {
+                    // Aktualisiertes Produkt speichern
+                    const updatedProduct = {
+                        ...this.editingProduct,
+                        name: this.editingProduct.name.trim(),
+                        quantity: parseFloat(this.editingProduct.quantity) || 0,
+                        price: parseFloat(this.editingProduct.price) || 0,
+                        logLength: parseInt(this.editingProduct.logLength) || 25,
+                        updatedAt: new Date().toISOString()
+                    };
+
+                    // Array kopieren um Reaktivität sicherzustellen
+                    const updatedProducts = [...this.products];
+                    updatedProducts[index] = updatedProduct;
+                    this.products = updatedProducts;
+                    
+                    // Stats aktualisieren
+                    this.inventoryCount = this.products.length;
+                    this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+
+                    console.log('Produkt aktualisiert:', updatedProduct);
+
+                    // Modal schließen
+                    setTimeout(() => {
+                        this.showEditProduct = false;
+                        this.editingProduct = null;
+                    }, 100);
+
+                    alert('✓ Produkt erfolgreich aktualisiert!');
+                } else {
+                    throw new Error('Produkt nicht gefunden');
+                }
+
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert('❌ Fehler beim Speichern: ' + error.message);
+            }
         },
 
         deleteProduct(product) {
             if (confirm('Möchtest du "' + product.name + '" wirklich löschen?')) {
                 this.products = this.products.filter(p => p.id !== product.id);
                 this.inventoryCount = this.products.length;
+                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
             }
         },
 

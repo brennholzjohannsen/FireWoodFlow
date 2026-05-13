@@ -969,6 +969,28 @@ body {
     color: #e74c3c;
 }
 
+.btn-edit-tag {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.btn-edit-tag:hover {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
 .btn-add-tag {
     margin-top: 12px;
     padding: 10px 20px;
