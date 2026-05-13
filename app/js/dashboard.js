@@ -57,7 +57,7 @@ createApp({
                 logLength: 25,
                 dryness: 'lufttrocken',
                 price: 0,
-                priceUnit: '',
+                priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
                 notes: ''
             },
             
@@ -402,6 +402,48 @@ createApp({
             if (confirm('Möchtest du das Logo wirklich entfernen?')) {
                 this.companyLogo = null;
                 this.saveCompanySettings();
+            }
+        },
+
+        // Preis-Tabellen Methoden für Scheitholz
+        getPriceForLength(length, unit) {
+            const prices = this.newProduct.priceLengths || {};
+            const lengthPrices = prices[length] || {};
+            
+            if (unit === 'SRM') {
+                return lengthPrices.srm || '';
+            } else if (unit === 'RM') {
+                // Wenn RM-Preis existiert, diesen verwenden
+                if (lengthPrices.rm && lengthPrices.rm !== '') {
+                    return lengthPrices.rm;
+                }
+                // Sonst automatisch aus SRM berechnen (× 1,42)
+                if (lengthPrices.srm && lengthPrices.srm !== '') {
+                    return (parseFloat(lengthPrices.srm) * 1.42).toFixed(2);
+                }
+                return '';
+            }
+            return '';
+        },
+
+        updatePriceForLength(length, unit, value) {
+            if (!this.newProduct.priceLengths) {
+                this.newProduct.priceLengths = {};
+            }
+            if (!this.newProduct.priceLengths[length]) {
+                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
+            }
+            
+            if (unit === 'SRM') {
+                this.newProduct.priceLengths[length].srm = value;
+                // RM automatisch berechnen wenn nicht manuell gesetzt
+                if (!this.newProduct.priceLengths[length].rm || this.newProduct.priceLengths[length].rm === '') {
+                    if (value && value !== '') {
+                        this.newProduct.priceLengths[length].rm = (parseFloat(value) * 1.42).toFixed(2);
+                    }
+                }
+            } else if (unit === 'RM') {
+                this.newProduct.priceLengths[length].rm = value;
             }
         },
 
@@ -755,7 +797,7 @@ createApp({
                     return;
                 }
 
-                // TODO: In Supabase speichern
+                // Produkt erstellen
                 const product = {
                     id: Date.now().toString(),
                     name: this.newProduct.name.trim(),
@@ -765,7 +807,7 @@ createApp({
                     logLength: parseInt(this.newProduct.logLength) || 25,
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
-                    priceUnit: this.newProduct.priceUnit || this.newProduct.unit,
+                    priceLengths: this.newProduct.priceLengths || {},
                     notes: (this.newProduct.notes || '').trim(),
                     createdAt: new Date().toISOString()
                 };
