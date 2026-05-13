@@ -296,6 +296,17 @@
                         <p class="upload-hint">Unterstützt: JPG, PNG, GIF (max. 2MB)</p>
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label for="companyAddress">Firmenadresse</label>
+                    <textarea 
+                        id="companyAddress" 
+                        v-model="companyAddress" 
+                        @change="saveCompanySettings"
+                        rows="3"
+                        placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Deutschland"
+                    ></textarea>
+                </div>
             </section>
 
                 <section class="settings-section">

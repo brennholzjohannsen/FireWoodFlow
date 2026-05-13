@@ -25,6 +25,7 @@ createApp({
             // Firmen-Daten
             companyName: 'FireWoodFlow',
             companyLogo: null,
+            companyAddress: '',
             
             // Inventar Daten
             inventoryCount: 0,
@@ -107,13 +108,15 @@ createApp({
                 const data = JSON.parse(saved);
                 this.companyName = data.name || 'FireWoodFlow';
                 this.companyLogo = data.logo || null;
+                this.companyAddress = data.address || '';
             }
         },
 
         saveCompanySettings() {
             const data = {
                 name: this.companyName,
-                logo: this.companyLogo
+                logo: this.companyLogo,
+                address: this.companyAddress
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
         },
