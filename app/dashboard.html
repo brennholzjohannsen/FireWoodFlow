@@ -305,8 +305,10 @@
                         v-model="companyAddress" 
                         @change="saveCompanySettings"
                         rows="3"
-                        placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Deutschland"
+                        placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Oder GPS-Koordinaten (z.B. 49.006930, 8.58789)"
                     ></textarea>
+                    <button type="button" @click="previewLocation('companyAddress', 'companyMapPreview')" class="btn-map-preview">🗺️ Vorschau anzeigen</button>
+                    <div id="companyMapPreview" class="map-preview"></div>
                 </div>
 
                 <div class="form-group">
@@ -316,8 +318,10 @@
                         v-model="storageLocation" 
                         @change="saveCompanySettings"
                         rows="2"
-                        placeholder="Adresse oder GPS-Koordinaten (z.B. 52.5200, 13.4050)&#10;Wenn leer, wird Firmenadresse verwendet"
+                        placeholder="Adresse oder GPS-Koordinaten (z.B. 49.006930, 8.58789)&#10;Wenn leer, wird Firmenadresse verwendet"
                     ></textarea>
+                    <button type="button" @click="previewLocation('storageLocation', 'storageMapPreview')" class="btn-map-preview">🗺️ Vorschau anzeigen</button>
+                    <div id="storageMapPreview" class="map-preview"></div>
                     <p class="field-hint">📍 Für Lieferung wird diese Adresse statt Firmenadresse verwendet</p>
                 </div>
 
@@ -569,16 +573,12 @@
                             <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
                         </div>
                         <div class="result-row highlight">
-                            <span class="result-label">Fahrtkosten pro km:</span>
+                            <span class="result-label">Lieferkosten pro km (einfach):</span>
                             <span class="result-value">{{ formatCurrency(costPerKm) }}</span>
                         </div>
                         <div class="result-row total">
                             <span class="result-label">Lieferkosten (einfach):</span>
                             <span class="result-value price">{{ formatCurrency(deliveryCost) }}</span>
-                        </div>
-                        <div class="result-row total">
-                            <span class="result-label">Lieferkosten (hin & zurück):</span>
-                            <span class="result-value price">{{ formatCurrency(deliveryCost * 2) }}</span>
                         </div>
                     </div>
 

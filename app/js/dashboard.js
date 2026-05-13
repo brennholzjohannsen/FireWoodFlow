@@ -343,7 +343,20 @@ createApp({
         },
 
         async geocodeAddress(address) {
-            // Nominatim API für Geocoding (OpenStreetMap)
+            // Prüfen ob es Koordinaten sind (mit oder ohne Grad-Symbol)
+            const coordMatch = address.match(/(-?\d+\.?\d*)°?\s*,\s*(-?\d+\.?\d*)°?/);
+            
+            if (coordMatch) {
+                // Bereits Koordinaten - direkt verwenden
+                console.log('Koordinaten erkannt:', coordMatch[1], coordMatch[2]);
+                return {
+                    lat: parseFloat(coordMatch[1]),
+                    lon: parseFloat(coordMatch[2])
+                };
+            }
+            
+            // Normale Adresse - Geocoding über Nominatim
+            console.log('Geocode Adresse:', address);
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`;
             
             const response = await fetch(url, {
@@ -550,6 +563,75 @@ createApp({
                 this.customers = this.customers.filter(c => c.id !== customer.id);
                 this.customerCount = this.customers.length;
                 alert('✓ Kunde gelöscht.');
+            }
+        },
+
+        async previewLocation(inputId, previewId) {
+            const address = this[inputId.replace('MapPreview', '')];
+            if (!address || !address.trim()) {
+                alert('Bitte geben Sie zuerst eine Adresse oder Koordinaten ein.');
+                return;
+            }
+
+            const previewDiv = document.getElementById(previewId);
+            if (!previewDiv) return;
+
+            // Lade-Indikator anzeigen
+            previewDiv.innerHTML = '<p style="text-align:center;padding:20px;">🗺️ Lade Karte...</p>';
+
+            try {
+                // Koordinaten ermitteln
+                let coords;
+                
+                // Prüfen ob es bereits Koordinaten sind
+                const coordMatch = address.match(/(-?\d+\.?\d*)°?\s*,\s*(-?\d+\.?\d*)°?/);
+                
+                if (coordMatch) {
+                    coords = {
+                        lat: parseFloat(coordMatch[1]),
+                        lon: parseFloat(coordMatch[2])
+                    };
+                } else {
+                    // Geocoding für normale Adresse
+                    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept-Language': 'de',
+                            'User-Agent': 'FireWoodFlow/1.0'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Geocoding fehlgeschlagen');
+                    
+                    const data = await response.json();
+                    if (data.length === 0) throw new Error('Adresse nicht gefunden');
+                    
+                    coords = {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon)
+                    };
+                }
+
+                // OpenStreetMap Static Map als Bild einbetten
+                // Verwende OpenStreetMap Export API für einen Kartenausschnitt
+                const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon - 0.01},${coords.lat - 0.01},${coords.lon + 0.01},${coords.lat + 0.01}&layer=mapnik&marker=${coords.lat},${coords.lon}`;
+                
+                previewDiv.innerHTML = `
+                    <iframe 
+                        src="${mapUrl}" 
+                        width="100%" 
+                        height="250" 
+                        style="border:1px solid #ccc;border-radius:8px;"
+                        loading="lazy"
+                    ></iframe>
+                    <p style="text-align:center;margin-top:10px;font-size:0.9em;color:#6B5D52;">
+                        📍 ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}
+                    </p>
+                `;
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Karte:', error);
+                previewDiv.innerHTML = `<p style="color:#dc3545;text-align:center;padding:20px;">❌ Karte konnte nicht geladen werden: ${error.message}</p>`;
             }
         },
 
