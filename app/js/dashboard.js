@@ -57,6 +57,7 @@ createApp({
                 logLength: 25,
                 dryness: 'lufttrocken',
                 price: 0,
+                priceUnit: '',
                 notes: ''
             },
             
@@ -694,9 +695,19 @@ createApp({
                 // TODO: In Supabase speichern
                 const product = {
                     id: Date.now().toString(),
-                    ...this.newProduct,
+                    name: this.newProduct.name.trim(),
+                    quantity: parseFloat(this.newProduct.quantity) || 0,
+                    unit: this.newProduct.unit,
+                    woodType: this.newProduct.woodType,
+                    logLength: parseInt(this.newProduct.logLength) || 25,
+                    dryness: this.newProduct.dryness,
+                    price: parseFloat(this.newProduct.price) || 0,
+                    priceUnit: this.newProduct.priceUnit || this.newProduct.unit,
+                    notes: (this.newProduct.notes || '').trim(),
                     createdAt: new Date().toISOString()
                 };
+                
+                console.log('Erstelle Produkt:', product);
                 
                 this.products.push(product);
                 this.inventoryCount = this.products.length;
@@ -712,13 +723,14 @@ createApp({
                     logLength: 25,
                     dryness: 'lufttrocken',
                     price: 0,
+                    priceUnit: '',
                     notes: ''
                 };
                 
-                alert('Produkt erfolgreich gespeichert!');
+                alert('✓ Produkt erfolgreich gespeichert!');
             } catch (error) {
                 console.error('Fehler beim Speichern:', error);
-                alert('Fehler beim Speichern des Produkts.');
+                alert('❌ Fehler beim Speichern des Produkts.');
             }
         },
 
@@ -749,6 +761,7 @@ createApp({
                         quantity: parseFloat(this.editingProduct.quantity) || 0,
                         price: parseFloat(this.editingProduct.price) || 0,
                         logLength: parseInt(this.editingProduct.logLength) || 25,
+                        priceUnit: this.editingProduct.priceUnit || this.editingProduct.unit,
                         updatedAt: new Date().toISOString()
                     };
 
