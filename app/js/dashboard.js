@@ -406,20 +406,38 @@ createApp({
         },
 
         async loadData() {
-            // TODO: Echte Daten aus Supabase laden
-            // Für jetzt Mock-Daten für Demo-Zwecke
-            
-            // Produkte laden (Mock)
-            this.products = [];
+            // Produkte aus localStorage laden
+            const savedProducts = localStorage.getItem('firewoodflow_products');
+            if (savedProducts) {
+                this.products = JSON.parse(savedProducts);
+            } else {
+                this.products = [];
+            }
             this.inventoryCount = this.products.length;
             this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
             
-            // Kunden laden (Mock)
-            this.customers = [];
+            // Kunden aus localStorage laden
+            const savedCustomers = localStorage.getItem('firewoodflow_customers');
+            if (savedCustomers) {
+                this.customers = JSON.parse(savedCustomers);
+            } else {
+                this.customers = [];
+            }
             this.customerCount = this.customers.length;
             
-            // Heute Bestellungen (Mock)
-            this.todayOrders = 0;
+            // Bestellungen aus localStorage laden
+            const savedOrders = localStorage.getItem('firewoodflow_orders');
+            if (savedOrders) {
+                this.orders = JSON.parse(savedOrders);
+                this.ordersCount = this.orders.length;
+            } else {
+                this.orders = [];
+                this.ordersCount = 0;
+            }
+            
+            // Heute Bestellungen berechnen
+            const today = new Date().toDateString();
+            this.todayOrders = this.orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
         },
 
         formatCurrency(value) {
@@ -758,6 +776,9 @@ createApp({
                 this.inventoryCount = this.products.length;
                 this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
                 
+                // In localStorage speichern
+                this.saveProducts();
+                
                 // Formular zurücksetzen
                 this.showAddProduct = false;
                 this.newProduct = {
@@ -766,7 +787,7 @@ createApp({
                     unit: 'RM',
                     woodType: '',
                     logLength: 25,
-                    dryness: 'frisch',
+                    dryness: 'lufttrocken',
                     price: 0,
                     priceUnit: '',
                     notes: ''
@@ -825,6 +846,9 @@ createApp({
                     this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
 
                     console.log('Produkt aktualisiert:', updatedProduct);
+                    
+                    // In localStorage speichern
+                    this.saveProducts();
 
                     // Modal schließen
                     setTimeout(() => {
@@ -848,7 +872,12 @@ createApp({
                 this.products = this.products.filter(p => p.id !== product.id);
                 this.inventoryCount = this.products.length;
                 this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                this.saveProducts();
             }
+        },
+        
+        saveProducts() {
+            localStorage.setItem('firewoodflow_products', JSON.stringify(this.products));
         },
 
         // Kunden Methoden
@@ -884,6 +913,9 @@ createApp({
                 
                 console.log('Kunden nachher:', this.customers.length);
                 console.log('Alle Kunden:', this.customers);
+                
+                // In localStorage speichern
+                this.saveCustomers();
 
                 // Formular zurücksetzen
                 this.newCustomer = {
@@ -947,6 +979,9 @@ createApp({
                     this.customers = updatedCustomers;
 
                     console.log('Kunde aktualisiert:', updatedCustomer);
+                    
+                    // In localStorage speichern
+                    this.saveCustomers();
 
                     // Modal schließen
                     setTimeout(() => {
@@ -969,8 +1004,13 @@ createApp({
             if (confirm('Möchtest du "' + customer.name + '" wirklich löschen?')) {
                 this.customers = this.customers.filter(c => c.id !== customer.id);
                 this.customerCount = this.customers.length;
+                this.saveCustomers();
                 alert('✓ Kunde gelöscht.');
             }
+        },
+        
+        saveCustomers() {
+            localStorage.setItem('firewoodflow_customers', JSON.stringify(this.customers));
         },
 
         // Bestell-Methoden
@@ -1282,7 +1322,14 @@ createApp({
                         // Bestellmenge in Produkteinheit umrechnen
                         const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
                         // Auf 1 Nachkommastelle runden und abziehen
-                        this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity - quantityInProductUnit) * 10) / 10;
+                        const newQuantity = Math.round((this.products[productIndex].quantity - quantityInProductUnit) * 10) / 10;
+                        
+                        // Array kopieren für Vue-Reaktivität
+                        const updatedProducts = [...this.products];
+                        updatedProducts[productIndex].quantity = newQuantity;
+                        this.products = updatedProducts;
+                        
+                        console.log(`Bestand aktualisiert: ${item.productName}, alt: ${this.products[productIndex].quantity + quantityInProductUnit}, neu: ${newQuantity}`);
                     }
                 }
                 
@@ -1291,6 +1338,10 @@ createApp({
                 this.ordersCount = this.orders.length;
                 this.inventoryCount = this.products.length;
                 this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                
+                // Daten in localStorage speichern
+                this.saveProducts();
+                this.saveOrders();
                 
                 // Formular zurücksetzen
                 this.showAddOrder = false;
@@ -1385,6 +1436,10 @@ createApp({
                     this.inventoryCount = this.products.length;
                     this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
                     
+                    // In localStorage speichern
+                    this.saveProducts();
+                    this.saveOrders();
+                    
                     setTimeout(() => {
                         this.showEditOrder = false;
                         this.editingOrder = null;
@@ -1422,8 +1477,16 @@ createApp({
                 this.inventoryCount = this.products.length;
                 this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
                 
+                // In localStorage speichern
+                this.saveProducts();
+                this.saveOrders();
+                
                 alert('✓ Bestellung gelöscht.');
             }
+        },
+        
+        saveOrders() {
+            localStorage.setItem('firewoodflow_orders', JSON.stringify(this.orders));
         },
 
         updateOrderStatus(order, newStatus) {
