@@ -7,8 +7,8 @@ const { createClient } = supabase;
 // SUPABASE KONFIGURATION
 // Diese Werte musst du nach dem Supabase-Setup eintragen!
 // ============================================
-const SUPABASE_URL = 'DEINE_SUPABASE_URL_HIER';
-const SUPABASE_ANON_KEY = 'DEIN_SUPABASE_ANON_KEY_HIER';
+const SUPABASE_URL = 'https://qnwxbityxokrjoxsrnym.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__beIdCQrh5dV6puh6nDNpA_bfsMONDC';
 
 // Supabase Client initialisieren
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
