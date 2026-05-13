@@ -366,10 +366,20 @@ createApp({
             
             console.log('Geocode Address Input:', address);
             
-            // Regex für Koordinaten mit optionaler Himmelsrichtung
-            const coordMatch = address.match(
-                /(-?\d+[,.]?\d*)°?\s*[NS]?\s*,\s*(-?\d+[,.]?\d*)°?\s*[OW]?\s*/i
+            // WICHTIG: Koordinaten müssen mind. 4 Nachkommastellen haben oder Grad-Symbol
+            // Sonst halten wir PLZ+Hausnummer (z.B. "76689,2") fälschlich für Koordinaten!
+            
+            // Regex für Koordinaten MIT Grad-Symbol (beliebig viele Nachkommastellen)
+            const coordMatchWithDegree = address.match(
+                /(\d+[,.]?\d*)°\s*[NS]?\s*,\s*(\d+[,.]?\d*)°\s*[OW]?\s*/i
             );
+            
+            // Regex für Koordinaten OHNE Grad-Symbol (aber mind. 4 Nachkommastellen für echten Koordinaten)
+            const coordMatchDecimal = address.match(
+                /^(\d{2}\.\d{4,})\s*,\s*(\d{1,2}\.\d{4,})$/i
+            );
+            
+            const coordMatch = coordMatchWithDegree || coordMatchDecimal;
             
             if (coordMatch) {
                 console.log('Koordinaten Match:', coordMatch);
