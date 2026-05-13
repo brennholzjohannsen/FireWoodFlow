@@ -408,19 +408,29 @@ createApp({
         // Preis-Tabellen Methoden für Scheitholz
         getPriceForLength(length, unit) {
             const prices = this.newProduct.priceLengths || {};
-            const lengthPrices = prices[length] || {};
+            const lengthPrices = prices[length];
+            
+            // Wenn keine Preise für diese Länge existieren, leeren String zurück
+            if (!lengthPrices) {
+                return '';
+            }
             
             if (unit === 'SRM') {
-                return lengthPrices.srm !== undefined && lengthPrices.srm !== '' ? lengthPrices.srm : '';
+                const srm = lengthPrices.srm;
+                // Nur zurückgeben wenn explizit gesetzt und nicht leer
+                return (srm !== undefined && srm !== null && srm !== '') ? srm : '';
             } else if (unit === 'RM') {
-                // Wenn RM-Preis explizit gesetzt ist, diesen verwenden
-                if (lengthPrices.rm !== undefined && lengthPrices.rm !== '') {
-                    return lengthPrices.rm;
+                // Zuerst prüfen ob RM-Preis explizit gesetzt ist
+                const rm = lengthPrices.rm;
+                if (rm !== undefined && rm !== null && rm !== '') {
+                    return rm;
                 }
-                // Sonst automatisch aus SRM berechnen (× 1,42)
-                if (lengthPrices.srm !== undefined && lengthPrices.srm !== '' && !isNaN(parseFloat(lengthPrices.srm))) {
-                    const calculated = (parseFloat(lengthPrices.srm) * 1.42).toFixed(2);
-                    console.log(`Berechne RM-Preis für ${length}cm: SRM=${lengthPrices.srm} × 1.42 = ${calculated}`);
+                
+                // Sonst aus SRM berechnen
+                const srm = lengthPrices.srm;
+                if (srm !== undefined && srm !== null && srm !== '' && !isNaN(parseFloat(srm))) {
+                    const calculated = (parseFloat(srm) * 1.42).toFixed(2);
+                    console.log(`✓ Berechne RM-Preis für ${length}cm: ${srm} × 1.42 = ${calculated}`);
                     return calculated;
                 }
                 return '';
@@ -429,34 +439,44 @@ createApp({
         },
 
         updatePriceForLength(length, unit, value) {
-            console.log(`Update Preis: Länge=${length}, Einheit=${unit}, Wert=${value}`);
+            console.log(`Update gestartet: Länge=${length}, Einheit=${unit}, Wert="${value}"`);
             
+            // priceLengths initialisieren wenn nötig
             if (!this.newProduct.priceLengths) {
-                this.newProduct.priceLengths = {};
+                this.$set(this.newProduct, 'priceLengths', {});
             }
+            
+            // Eintrag für diese Länge initialisieren
             if (!this.newProduct.priceLengths[length]) {
-                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
+                this.$set(this.newProduct.priceLengths, length, { srm: '', rm: '' });
             }
             
             if (unit === 'SRM') {
-                this.newProduct.priceLengths[length].srm = value;
-                // RM automatisch berechnen wenn nicht manuell gesetzt
-                if (!this.newProduct.priceLengths[length].rm || this.newProduct.priceLengths[length].rm === '') {
-                    if (value && value !== '' && !isNaN(parseFloat(value))) {
-                        const rmPrice = (parseFloat(value) * 1.42).toFixed(2);
-                        this.newProduct.priceLengths[length].rm = rmPrice;
-                        console.log(`RM automatisch berechnet: ${rmPrice}`);
-                    } else {
-                        this.newProduct.priceLengths[length].rm = '';
-                    }
+                // SRM-Wert setzen
+                this.$set(this.newProduct.priceLengths[length], 'srm', value);
+                
+                // RM automatisch berechnen WENN noch kein manueller RM-Wert existiert
+                const currentRM = this.newProduct.priceLengths[length].rm;
+                const hasManualRM = (currentRM !== undefined && currentRM !== null && currentRM !== '' && currentRM !== (parseFloat(value) * 1.42).toFixed(2));
+                
+                if (!hasManualRM && value && value !== '' && !isNaN(parseFloat(value))) {
+                    const rmPrice = (parseFloat(value) * 1.42).toFixed(2);
+                    this.$set(this.newProduct.priceLengths[length], 'rm', rmPrice);
+                    console.log(`✓ RM automatisch berechnet und gesetzt: ${rmPrice}`);
+                } else if (!value || value === '') {
+                    // Wenn SRM geleert wird, auch RM leeren
+                    this.$set(this.newProduct.priceLengths[length], 'rm', '');
                 }
             } else if (unit === 'RM') {
-                this.newProduct.priceLengths[length].rm = value;
-                console.log(`RM manuell gesetzt: ${value}`);
+                // RM-Wert manuell setzen
+                this.$set(this.newProduct.priceLengths[length], 'rm', value);
+                console.log(`✓ RM manuell gesetzt: ${value}`);
             }
             
-            // Force Vue reactivity durch neues Objekt
-            this.newProduct = { ...this.newProduct };
+            // Force reactivity - komplettes Objekt neu zuweisen
+            this.newProduct = Object.assign({}, this.newProduct);
+            
+            console.log(`Aktueller priceLengths Stand:`, JSON.stringify(this.newProduct.priceLengths[length]));
         },
 
         async loadData() {

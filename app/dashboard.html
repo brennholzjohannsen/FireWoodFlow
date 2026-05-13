@@ -603,6 +603,7 @@
                                     <td>{{ length }} cm</td>
                                     <td>
                                         <input type="number" step="0.01" 
+                                               :key="'srm-' + length + '-' + (newProduct.priceLengths[length] ? newProduct.priceLengths[length].srm : '')"
                                                :value="getPriceForLength(length, 'SRM')" 
                                                @input="updatePriceForLength(length, 'SRM', $event.target.value)"
                                                placeholder="0.00"
@@ -610,6 +611,7 @@
                                     </td>
                                     <td>
                                         <input type="number" step="0.01" 
+                                               :key="'rm-' + length + '-' + getPriceForLength(length, 'RM')"
                                                :value="getPriceForLength(length, 'RM')" 
                                                @input="updatePriceForLength(length, 'RM', $event.target.value)"
                                                placeholder="0.00"
