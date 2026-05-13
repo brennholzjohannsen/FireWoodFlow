@@ -426,16 +426,31 @@ createApp({
         // Kunden Methoden
         async addCustomer() {
             try {
-                // TODO: In Supabase speichern
+                // Validierung
+                if (!this.newCustomer.name || !this.newCustomer.name.trim()) {
+                    alert('Bitte geben Sie einen Namen ein.');
+                    return;
+                }
+
+                console.log('Speichere Kunde:', this.newCustomer);
+
                 const customer = {
                     id: Date.now().toString(),
-                    ...this.newCustomer,
+                    name: this.newCustomer.name,
+                    address: this.newCustomer.address || '',
+                    phone: this.newCustomer.phone || '',
+                    email: this.newCustomer.email || '',
+                    notes: this.newCustomer.notes || '',
                     createdAt: new Date().toISOString()
                 };
+
+                console.log('Neuer Kunde:', customer);
                 
                 this.customers.push(customer);
                 this.customerCount = this.customers.length;
                 
+                console.log('Kunden nach Speichern:', this.customers);
+
                 // Formular zurücksetzen
                 this.showAddCustomer = false;
                 this.newCustomer = {
@@ -446,10 +461,10 @@ createApp({
                     notes: ''
                 };
                 
-                alert('Kunde erfolgreich gespeichert!');
+                alert('✓ Kunde erfolgreich gespeichert!');
             } catch (error) {
                 console.error('Fehler beim Speichern:', error);
-                alert('Fehler beim Speichern des Kunden.');
+                alert('❌ Fehler beim Speichern des Kunden: ' + error.message);
             }
         },
 
