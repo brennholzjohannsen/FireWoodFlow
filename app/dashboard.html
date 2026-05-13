@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <title>FireWoodFlow - Dashboard</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="apple-touch-icon" href="../assets/icon-192.png">
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation Bar (Mobile Bottom, Desktop Top) -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="brand-emoji">🔥</span>
+                <span class="brand-name">{{ companyName }}</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="#" 
+                   :class="{ active: currentView === 'dashboard' }" 
+                   @click.prevent="currentView = 'dashboard'">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Übersicht</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'inventory' }" 
+                   @click.prevent="currentView = 'inventory'">
+                    <span class="nav-icon">🪵</span>
+                    <span class="nav-text">Inventar</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'customers' }" 
+                   @click.prevent="currentView = 'customers'">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Kunden</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'settings' }" 
+                   @click.prevent="currentView = 'settings'">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Einstellungen</span>
+                </a>
+            </div>
+
+            <div class="nav-user">
+                <button @click="handleLogout" class="btn-logout" title="Abmelden">
+                    <span>🚪</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- DASHBOARD VIEW -->
+            <div v-if="currentView === 'dashboard'" class="view-dashboard">
+                <header class="page-header">
+                    <h1>Willkommen zurück!</h1>
+                    <p class="subtitle">Hier ist dein Überblick für heute</p>
+                </header>
+
+                <!-- Quick Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🪵</div>
+                        <div class="stat-info">
+                            <div class="stat-value">{{ inventoryCount }}</div>
+                            <div class="stat-label">Produkte im Lager</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value">{{ customerCount }}</div>
+                            <div class="stat-label">Kunden</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <div class="stat-value">{{ formatCurrency(totalValue) }}</div>
+                            <div class="stat-label">Lagerwert</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <div class="stat-value">{{ todayOrders }}</div>
+                            <div class="stat-label">Aufträge heute</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <section class="quick-actions">
+                    <h2>Schnellaktionen</h2>
+                    <div class="action-buttons">
+                        <button @click="currentView = 'inventory'; action = 'add'" class="btn-action">
+                            <span class="action-icon">➕</span>
+                            <span>Neues Produkt</span>
+                        </button>
+                        <button @click="currentView = 'customers'; action = 'add'" class="btn-action">
+                            <span class="action-icon">👤</span>
+                            <span>Neuer Kunde</span>
+                        </button>
+                        <button class="btn-action">
+                            <span class="action-icon">📦</span>
+                            <span>Bestellung</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Recent Activity Placeholder -->
+                <section class="recent-activity">
+                    <h2>Letzte Aktivitäten</h2>
+                    <div class="empty-state">
+                        <p>Noch keine Aktivitäten vorhanden.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- INVENTORY VIEW -->
+            <div v-if="currentView === 'inventory'" class="view-inventory">
+                <header class="page-header">
+                    <h1>Inventar</h1>
+                    <p class="subtitle">Verwalte deine Holzprodukte</p>
+                </header>
+
+                <div class="toolbar">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery" 
+                        placeholder="Suchen..." 
+                        class="search-input"
+                    >
+                    <button @click="showAddProduct = true" class="btn-add">
+                        <span>➕</span> Neues Produkt
+                    </button>
+                </div>
+
+                <!-- Product List -->
+                <div class="product-list">
+                    <div v-if="filteredProducts.length === 0" class="empty-state">
+                        <p>Noch keine Produkte vorhanden.</p>
+                        <button @click="showAddProduct = true" class="btn-add-empty">
+                            Erstes Produkt anlegen
+                        </button>
+                    </div>
+
+                    <div v-for="product in filteredProducts" :key="product.id" class="product-card">
+                        <div class="product-header">
+                            <h3>{{ product.name }}</h3>
+                            <span class="product-stock" :class="{ low: product.quantity < 10 }">
+                                {{ product.quantity }} {{ product.unit }}
+                            </span>
+                        </div>
+                        <div class="product-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Holzsorte:</span>
+                                <span class="detail-value">{{ product.woodType }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Scheitlänge:</span>
+                                <span class="detail-value">{{ product.logLength }} cm</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Trocknungsgrad:</span>
+                                <span class="detail-value">{{ product.dryness }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Preis:</span>
+                                <span class="detail-value price">{{ formatCurrency(product.price) }} / {{ product.unit }}</span>
+                            </div>
+                        </div>
+                        <div class="product-actions">
+                            <button @click="editProduct(product)" class="btn-edit">Bearbeiten</button>
+                            <button @click="deleteProduct(product)" class="btn-delete">Löschen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CUSTOMERS VIEW -->
+            <div v-if="currentView === 'customers'" class="view-customers">
+                <header class="page-header">
+                    <h1>Kunden</h1>
+                    <p class="subtitle">Deine Kundenübersicht</p>
+                </header>
+
+                <div class="toolbar">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery" 
+                        placeholder="Kunde suchen..." 
+                        class="search-input"
+                    >
+                    <button @click="showAddCustomer = true" class="btn-add">
+                        <span>➕</span> Neuer Kunde
+                    </button>
+                </div>
+
+                <!-- Customer List -->
+                <div class="customer-list">
+                    <div v-if="filteredCustomers.length === 0" class="empty-state">
+                        <p>Noch keine Kunden vorhanden.</p>
+                        <button @click="showAddCustomer = true" class="btn-add-empty">
+                            Ersten Kunden anlegen
+                        </button>
+                    </div>
+
+                    <div v-for="customer in filteredCustomers" :key="customer.id" class="customer-card">
+                        <div class="customer-header">
+                            <h3>{{ customer.name }}</h3>
+                            <span class="customer-since">Seit {{ formatDate(customer.createdAt) }}</span>
+                        </div>
+                        <div class="customer-details">
+                            <div class="detail-item">
+                                <span class="detail-label">📍</span>
+                                <span class="detail-value">{{ customer.address || 'Keine Adresse' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📞</span>
+                                <span class="detail-value">{{ customer.phone || 'Kein Telefon' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">✉️</span>
+                                <span class="detail-value">{{ customer.email || 'Keine E-Mail' }}</span>
+                            </div>
+                        </div>
+                        <div class="customer-actions">
+                            <button @click="editCustomer(customer)" class="btn-edit">Bearbeiten</button>
+                            <button @click="deleteCustomer(customer)" class="btn-delete">Löschen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS VIEW -->
+            <div v-if="currentView === 'settings'" class="view-settings">
+                <header class="page-header">
+                    <h1>Einstellungen</h1>
+                    <p class="subtitle">Passe die App an deine Bedürfnisse an</p>
+                </header>
+
+                <section class="settings-section">
+                    <h2>Firma</h2>
+                    <div class="form-group">
+                        <label for="companyName">Firmenname</label>
+                        <input 
+                            type="text" 
+                            id="companyName" 
+                            v-model="companyName" 
+                            @change="saveCompanySettings"
+                            placeholder="Dein Firmenname"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="companyLogo">Logo URL (optional)</label>
+                        <input 
+                            type="url" 
+                            id="companyLogo" 
+                            v-model="companyLogo" 
+                            @change="saveCompanySettings"
+                            placeholder="https://example.com/logo.png"
+                        >
+                    </div>
+                </section>
+
+                <section class="settings-section">
+                    <h2>Benutzerkonto</h2>
+                    <div class="user-info">
+                        <p><strong>E-Mail:</strong> {{ userEmail }}</p>
+                    </div>
+                    <button @click="handleChangePassword" class="btn-secondary">
+                        Passwort ändern
+                    </button>
+                </section>
+
+                <section class="settings-section danger-zone">
+                    <h2>Gefahrenzone</h2>
+                    <button @click="handleDeleteAccount" class="btn-danger">
+                        Konto löschen
+                    </button>
+                </section>
+            </div>
+
+        </main>
+
+        <!-- Add Product Modal -->
+        <div class="modal-overlay" v-if="showAddProduct" @click="showAddProduct = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddProduct = false">&times;</button>
+                <h2>Neues Produkt</h2>
+                
+                <form @submit.prevent="addProduct">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Produktname</label>
+                            <input type="text" v-model="newProduct.name" required placeholder="z.B. Buche Premium">
+                        </div>
+                        <div class="form-group">
+                            <label>Menge</label>
+                            <input type="number" v-model.number="newProduct.quantity" required placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Holzsorte</label>
+                            <select v-model="newProduct.woodType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option value="Buche">Buche</option>
+                                <option value="Eiche">Eiche</option>
+                                <option value="Birke">Birke</option>
+                                <option value="Fichte">Fichte</option>
+                                <option value="Kiefer">Kiefer</option>
+                                <option value="Esche">Esche</option>
+                                <option value="Ahorn">Ahorn</option>
+                                <option value="Gemischt">Gemischt</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Scheitlänge (cm)</label>
+                            <input type="number" v-model.number="newProduct.logLength" required placeholder="25, 33, 50...">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trocknungsgrad</label>
+                            <select v-model="newProduct.dryness" required>
+                                <option value="">Bitte wählen...</option>
+                                <option value="frisch">Frisch (&lt; 1 Jahr)</option>
+                                <option value="lufttrocken">Lufttrocken (1-2 Jahre)</option>
+                                <option value="ofentrocken">Ofentrocken</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Einheit</label>
+                            <select v-model="newProduct.unit" required>
+                                <option value="RM">Raummeter (RM)</option>
+                                <option value="SRM">Schüttraummeter (SRM)</option>
+                                <option value="kg">Kilogramm (kg)</option>
+                                <option value="Sack">Sack</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Preis pro Einheit (€)</label>
+                        <input type="number" step="0.01" v-model.number="newProduct.price" required placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bemerkung (optional)</label>
+                        <textarea v-model="newProduct.notes" rows="2" placeholder="Zusätzliche Infos..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Produkt speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Customer Modal -->
+        <div class="modal-overlay" v-if="showAddCustomer" @click="showAddCustomer = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddCustomer = false">&times;</button>
+                <h2>Neuer Kunde</h2>
+                
+                <form @submit.prevent="addCustomer">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" v-model="newCustomer.name" required placeholder="Vorname Nachname oder Firmenname">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse</label>
+                        <textarea v-model="newCustomer.address" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" v-model="newCustomer.phone" placeholder="+49 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>E-Mail</label>
+                            <input type="email" v-model="newCustomer.email" placeholder="email@beispiel.de">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="newCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Kunde speichern</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

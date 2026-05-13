@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FireWoodFlow - Login</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="apple-touch-icon" href="../assets/icon-192.png">
+    
+    <!-- Vue.js 3 (CDN für einfache Nutzung ohne Build) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+    <div id="app" class="login-container">
+        <!-- Logo Platzhalter -->
+        <div class="logo-section">
+            <div class="logo-placeholder" v-if="!companyLogo">
+                <span class="logo-emoji">🔥</span>
+                <h1>{{ companyName || 'FireWoodFlow' }}</h1>
+            </div>
+            <div class="logo-image" v-else>
+                <img :src="companyLogo" alt="Firmenlogo">
+            </div>
+        </div>
+
+        <!-- Login Formular -->
+        <div class="login-card">
+            <h2>Anmelden</h2>
+            <p class="subtitle">Willkommen zurück!</p>
+
+            <form @submit.prevent="handleLogin">
+                <div class="form-group">
+                    <label for="email">E-Mail-Adresse</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        v-model="email" 
+                        placeholder="deine@email.de"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Passwort</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        v-model="password" 
+                        placeholder="••••••••"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" v-model="rememberMe">
+                        <span>Angemeldet bleiben</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-login" :disabled="loading">
+                    <span v-if="!loading">Anmelden</span>
+                    <span v-else>Lade...</span>
+                </button>
+            </form>
+
+            <div class="error-message" v-if="error">
+                {{ error }}
+            </div>
+
+            <div class="register-link">
+                Noch kein Konto? 
+                <a href="#" @click.prevent="showRegister = true">Jetzt registrieren</a>
+            </div>
+        </div>
+
+        <!-- Registrierungs-Modal -->
+        <div class="modal-overlay" v-if="showRegister" @click="showRegister = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showRegister = false">&times;</button>
+                <h2>Registrieren</h2>
+                <p class="subtitle">Erstelle dein kostenloses Konto</p>
+
+                <form @submit.prevent="handleRegister">
+                    <div class="form-group">
+                        <label for="reg-email">E-Mail-Adresse</label>
+                        <input 
+                            type="email" 
+                            id="reg-email" 
+                            v-model="regEmail" 
+                            placeholder="deine@email.de"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-password">Passwort</label>
+                        <input 
+                            type="password" 
+                            id="reg-password" 
+                            v-model="regPassword" 
+                            placeholder="Mindestens 6 Zeichen"
+                            minlength="6"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-confirm">Passwort bestätigen</label>
+                        <input 
+                            type="password" 
+                            id="reg-confirm" 
+                            v-model="regConfirm" 
+                            placeholder="Passwort wiederholen"
+                            required
+                        >
+                    </div>
+
+                    <div class="error-message" v-if="registerError">
+                        {{ registerError }}
+                    </div>
+
+                    <button type="submit" class="btn-register" :disabled="registerLoading">
+                        <span v-if="!registerLoading">Konto erstellen</span>
+                        <span v-else>Erstelle...</span>
+                    </button>
+                </form>
+
+                <div class="success-message" v-if="registerSuccess">
+                    ✓ Registrierungs-E-Mail wurde gesendet!<br>
+                    Bitte prüfe dein Postfach und bestätige dein Konto.
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="login-footer">
+            <p>&copy; {{ new Date().getFullYear() }} FireWoodFlow</p>
+        </footer>
+    </div>
+
+    <script src="js/login.js"></script>
+</body>
+</html>
