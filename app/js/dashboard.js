@@ -338,10 +338,13 @@ createApp({
                 // Route berechnen mit OSRM
                 const route = await this.calculateRoute(fromCoords, customerCoords);
                 
+                // Google Maps URL mit KOORDINATEN statt Adress-Strings
+                const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${fromCoords.lat},${fromCoords.lon}&destination=${customerCoords.lat},${customerCoords.lon}&travelmode=driving`;
+                
                 this.distanceResult = {
                     distance: route.distance, // in km
                     duration: route.duration, // in Sekunden
-                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`,
+                    mapsUrl: googleMapsUrl,
                     isFallback: route.isFallback || false
                 };
 
@@ -359,6 +362,9 @@ createApp({
             // Format 2: 49,006930°, 8,58789° (Komma als Dezimaltrenner)
             // Format 3: 49.006930° N, 8.58789° O (mit Himmelsrichtung)
             // Format 4: 49,006930° N, 8,58789° O (Komma + Himmelsrichtung)
+            // Format 5: 49.069348057006046, 8.587855863985201 (ohne Grad-Symbol)
+            
+            console.log('Geocode Address Input:', address);
             
             // Regex für Koordinaten mit optionaler Himmelsrichtung
             const coordMatch = address.match(
@@ -366,6 +372,8 @@ createApp({
             );
             
             if (coordMatch) {
+                console.log('Koordinaten Match:', coordMatch);
+                
                 let lat = parseFloat(coordMatch[1].replace(',', '.'));
                 let lon = parseFloat(coordMatch[2].replace(',', '.'));
                 
@@ -385,6 +393,12 @@ createApp({
                     lon = Math.abs(lon); // Ost ist positiv
                 }
                 
+                // Validierung: Deutschland liegt bei ca. 47-55°N, 5-16°E
+                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                    console.error('Ungültige Koordinaten:', lat, lon);
+                    return null;
+                }
+                
                 console.log('Koordinaten erkannt:', lat, lon);
                 return {
                     lat: lat,
@@ -392,8 +406,8 @@ createApp({
                 };
             }
             
+            console.log('Keine Koordinaten erkannt, versuche Geocoding...');
             // Normale Adresse - Geocoding über Nominatim
-            console.log('Geocode Adresse:', address);
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`;
             
             const response = await fetch(url, {
@@ -406,6 +420,8 @@ createApp({
             if (!response.ok) return null;
             
             const data = await response.json();
+            console.log('Geocoding Result:', data);
+            
             if (data.length === 0) return null;
             
             return {
