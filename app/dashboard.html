@@ -242,6 +242,7 @@
                         </div>
                         <div class="customer-actions">
                             <button @click="editCustomer(customer)" class="btn-edit">Bearbeiten</button>
+                            <button @click="showDeliveryCost(customer)" class="btn-action-cost">🚚 Kosten</button>
                             <button @click="deleteCustomer(customer)" class="btn-delete">Löschen</button>
                         </div>
                     </div>
@@ -306,6 +307,23 @@
                         rows="3"
                         placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Deutschland"
                     ></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="costPerKm">Fahrtkosten pro km (einfach)</label>
+                    <div class="input-with-prefix">
+                        <span class="currency-prefix">€</span>
+                        <input 
+                            type="number" 
+                            id="costPerKm" 
+                            v-model.number="costPerKm" 
+                            @change="saveCompanySettings"
+                            step="0.01"
+                            min="0"
+                            placeholder="1.50"
+                        >
+                    </div>
+                    <p class="field-hint">Wird für die Berechnung der Lieferkosten verwendet</p>
                 </div>
             </section>
 
@@ -439,6 +457,71 @@
 
                     <button type="submit" class="btn-submit">Kunde speichern</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Delivery Cost Modal -->
+        <div class="modal-overlay" v-if="showDeliveryModal" @click="showDeliveryModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showDeliveryModal = false">&times;</button>
+                <h2>🚚 Lieferkosten berechnen</h2>
+                
+                <div v-if="selectedCustomer" class="delivery-info">
+                    <div class="customer-header-small">
+                        <h3>{{ selectedCustomer.name }}</h3>
+                    </div>
+                    
+                    <div class="address-box">
+                        <div class="address-item">
+                            <strong>📍 Von:</strong>
+                            <p>{{ companyAddress || 'Firmenadresse nicht eingetragen' }}</p>
+                        </div>
+                        <div class="address-arrow">↓</div>
+                        <div class="address-item">
+                            <strong>📍 Nach:</strong>
+                            <p>{{ selectedCustomer.address || 'Kundenadresse nicht eingetragen' }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="loadingDistance" class="loading-state">
+                        <span class="loading-spinner">⏳</span>
+                        <p>Berechne Entfernung...</p>
+                    </div>
+
+                    <div v-else-if="distanceError" class="error-state">
+                        <span class="error-icon">⚠️</span>
+                        <p>{{ distanceError }}</p>
+                    </div>
+
+                    <div v-else-if="distanceResult" class="result-box">
+                        <div class="result-row">
+                            <span class="result-label">Entfernung (einfach):</span>
+                            <span class="result-value">{{ distanceResult.distance.toFixed(1) }} km</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Fahrzeit (ca.):</span>
+                            <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
+                        </div>
+                        <div class="result-row highlight">
+                            <span class="result-label">Fahrtkosten pro km:</span>
+                            <span class="result-value">{{ formatCurrency(costPerKm) }}</span>
+                        </div>
+                        <div class="result-row total">
+                            <span class="result-label">Lieferkosten (einfach):</span>
+                            <span class="result-value price">{{ formatCurrency(deliveryCost) }}</span>
+                        </div>
+                        <div class="result-row total">
+                            <span class="result-label">Lieferkosten (hin & zurück):</span>
+                            <span class="result-value price">{{ formatCurrency(deliveryCost * 2) }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="!loadingDistance && !distanceError && distanceResult" class="delivery-actions">
+                        <a :href="distanceResult.mapsUrl" target="_blank" class="btn-maps">
+                            🗺️ Route auf Google Maps
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 

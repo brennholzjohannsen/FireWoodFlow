@@ -26,6 +26,7 @@ createApp({
             companyName: 'FireWoodFlow',
             companyLogo: null,
             companyAddress: '',
+            costPerKm: 0,
             
             // Inventar Daten
             inventoryCount: 0,
@@ -48,6 +49,11 @@ createApp({
             customerCount: 0,
             customers: [],
             showAddCustomer: false,
+            showDeliveryModal: false,
+            selectedCustomer: null,
+            loadingDistance: false,
+            distanceError: '',
+            distanceResult: null,
             newCustomer: {
                 name: '',
                 address: '',
@@ -78,6 +84,11 @@ createApp({
                 c.name.toLowerCase().includes(query) ||
                 (c.email && c.email.toLowerCase().includes(query))
             );
+        },
+
+        deliveryCost() {
+            if (!this.distanceResult) return 0;
+            return this.distanceResult.distance * this.costPerKm;
         }
     },
 
@@ -109,6 +120,7 @@ createApp({
                 this.companyName = data.name || 'FireWoodFlow';
                 this.companyLogo = data.logo || null;
                 this.companyAddress = data.address || '';
+                this.costPerKm = parseFloat(data.costPerKm) || 0;
             }
         },
 
@@ -116,7 +128,8 @@ createApp({
             const data = {
                 name: this.companyName,
                 logo: this.companyLogo,
-                address: this.companyAddress
+                address: this.companyAddress,
+                costPerKm: this.costPerKm
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
         },
@@ -228,13 +241,108 @@ createApp({
             }).format(value);
         },
 
-        formatDate(dateString) {
-            if (!dateString) return '-';
-            return new Date(dateString).toLocaleDateString('de-DE', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
+        formatDuration(seconds) {
+            if (!seconds) return '-';
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            if (hours > 0) {
+                return `${hours}h ${mins}min`;
+            }
+            return `${mins} min`;
+        },
+
+        async showDeliveryCost(customer) {
+            this.selectedCustomer = customer;
+            this.showDeliveryModal = true;
+            this.loadingDistance = true;
+            this.distanceError = '';
+            this.distanceResult = null;
+
+            // Prüfen ob beide Adressen vorhanden sind
+            if (!this.companyAddress || !customer.address) {
+                this.distanceError = 'Bitte tragen Sie sowohl Firmenadresse als auch Kundenadresse ein.';
+                this.loadingDistance = false;
+                return;
+            }
+
+            try {
+                // Geocoding: Firmenadresse zu Koordinaten
+                const companyCoords = await this.geocodeAddress(this.companyAddress);
+                if (!companyCoords) {
+                    this.distanceError = 'Firmenadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
+                    this.loadingDistance = false;
+                    return;
+                }
+
+                // Geocoding: Kundenadresse zu Koordinaten
+                const customerCoords = await this.geocodeAddress(customer.address);
+                if (!customerCoords) {
+                    this.distanceError = 'Kundenadresse konnte nicht gefunden werden. Bitte Adresse überprüfen.';
+                    this.loadingDistance = false;
+                    return;
+                }
+
+                // Route berechnen mit OSRM
+                const route = await this.calculateRoute(companyCoords, customerCoords);
+                
+                this.distanceResult = {
+                    distance: route.distance, // in km
+                    duration: route.duration, // in Sekunden
+                    mapsUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(this.companyAddress)}&destination=${encodeURIComponent(customer.address)}&travelmode=driving`
+                };
+
+            } catch (error) {
+                console.error('Fehler bei Entfernungsberechnung:', error);
+                this.distanceError = 'Entfernung konnte nicht berechnet werden. Bitte versuchen Sie es später erneut.';
+            } finally {
+                this.loadingDistance = false;
+            }
+        },
+
+        async geocodeAddress(address) {
+            // Nominatim API für Geocoding (OpenStreetMap)
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Accept-Language': 'de',
+                    'User-Agent': 'FireWoodFlow/1.0'
+                }
             });
+            
+            if (!response.ok) return null;
+            
+            const data = await response.json();
+            if (data.length === 0) return null;
+            
+            return {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon)
+            };
+        },
+
+        async calculateRoute(from, to) {
+            // OSRM Routing API (kostenlos, OpenStreetMap)
+            const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error('OSRM API Fehler');
+            }
+            
+            const data = await response.json();
+            
+            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                throw new Error('Keine Route gefunden');
+            }
+            
+            const route = data.routes[0];
+            
+            return {
+                distance: route.distance / 1000, // Meter → km
+                duration: route.duration // Sekunden
+            };
         },
 
         // Produkt Methoden

@@ -453,6 +453,23 @@ body {
     color: var(--white);
 }
 
+.btn-action-cost {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-action-cost:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 115, 85, 0.3);
+}
+
 /* Settings View */
 .settings-section {
     background: var(--white);
@@ -594,6 +611,186 @@ body {
     margin-top: 12px;
     font-size: 0.8em;
     color: var(--text-light);
+}
+
+/* Input with currency prefix */
+.input-with-prefix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-prefix {
+    position: absolute;
+    left: 14px;
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 1em;
+    pointer-events: none;
+}
+
+.input-with-prefix input {
+    padding-left: 35px !important;
+}
+
+.field-hint {
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: var(--text-light);
+}
+
+/* Delivery Cost Modal Styles */
+.delivery-info {
+    padding: 10px 0;
+}
+
+.customer-header-small h3 {
+    color: var(--text-dark);
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--bg-light);
+}
+
+.address-box {
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.address-item {
+    margin-bottom: 10px;
+}
+
+.address-item:last-child {
+    margin-bottom: 0;
+}
+
+.address-item p {
+    color: var(--text-dark);
+    font-size: 0.95em;
+    line-height: 1.5;
+    margin-top: 4px;
+}
+
+.address-arrow {
+    text-align: center;
+    font-size: 1.5em;
+    color: var(--primary-color);
+    margin: 8px 0;
+}
+
+.loading-state,
+.error-state {
+    text-align: center;
+    padding: 30px 20px;
+    background: var(--bg-light);
+    border-radius: 12px;
+}
+
+.loading-spinner {
+    font-size: 2.5em;
+    display: block;
+    margin-bottom: 10px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+.error-icon {
+    font-size: 2.5em;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.loading-state p,
+.error-state p {
+    color: var(--text-light);
+    font-size: 0.95em;
+}
+
+.result-box {
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.result-row:last-child {
+    border-bottom: none;
+}
+
+.result-label {
+    color: var(--text-light);
+    font-size: 0.9em;
+}
+
+.result-value {
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.result-value.price {
+    color: var(--success-color);
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.result-row.highlight {
+    background: rgba(139, 115, 85, 0.05);
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.result-row.total {
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 2px solid var(--border-color);
+    border-bottom: none;
+}
+
+.result-row.total .result-value {
+    font-size: 1.3em;
+}
+
+.delivery-actions {
+    text-align: center;
+    padding-top: 15px;
+    border-top: 2px solid var(--bg-light);
+}
+
+.btn-maps {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--white);
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-maps:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 115, 85, 0.4);
 }
 
 .user-info {
