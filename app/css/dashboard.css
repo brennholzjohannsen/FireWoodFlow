@@ -1176,6 +1176,346 @@ body {
     box-shadow: 0 6px 20px rgba(139, 115, 85, 0.4);
 }
 
+/* Order Styles */
+.view-orders {
+    padding-bottom: 20px;
+}
+
+.filter-select {
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--text-dark);
+    font-size: 0.9em;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.order-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+}
+
+.order-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-number-date h3 {
+    font-size: 1.1em;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.order-date {
+    font-size: 0.85em;
+    color: var(--text-light);
+}
+
+.order-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-neu {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-bestaetigt {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.status-in_lieferung {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.status-abgeschlossen {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-storniert {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.order-customer {
+    margin-bottom: 14px;
+}
+
+.order-customer strong {
+    display: block;
+    font-size: 1em;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+}
+
+.order-customer p {
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+.order-items {
+    background: var(--bg-light);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-quantity {
+    font-weight: 600;
+    color: var(--primary-color);
+    min-width: 70px;
+}
+
+.item-name {
+    flex: 1;
+    color: var(--text-dark);
+    padding: 0 10px;
+}
+
+.item-price {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.order-totals {
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.95em;
+}
+
+.total-row.grand-total {
+    border-top: 2px solid var(--border-color);
+    margin-top: 8px;
+    padding-top: 10px;
+    font-weight: 700;
+    font-size: 1.1em;
+    color: var(--text-dark);
+}
+
+.order-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 10px;
+}
+
+.order-payment,
+.order-delivery {
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+.order-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+}
+
+.status-select {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--text-dark);
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+/* Modal Large für Bestellungen */
+.modal-large .modal-content {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.product-selector {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.product-selector select {
+    flex: 1;
+}
+
+.btn-add-mini {
+    padding: 10px 16px;
+    background: var(--success-color);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.btn-add-mini:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.order-items-editor {
+    background: var(--bg-light);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-item-row:last-child {
+    border-bottom: none;
+}
+
+.item-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-quantity-input {
+    width: 70px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.item-price-display {
+    font-weight: 600;
+    color: var(--text-dark);
+    min-width: 80px;
+    text-align: right;
+}
+
+.btn-remove-item {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-remove-item:hover {
+    background: rgba(231, 76, 60, 0.2);
+    transform: scale(1.1);
+}
+
+.btn-calc-delivery {
+    padding: 10px 16px;
+    background: var(--secondary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.btn-calc-delivery:hover {
+    background: var(--primary-dark);
+}
+
+.order-summary-box {
+    background: var(--cream);
+    border: 2px solid var(--accent-color);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.95em;
+}
+
+.summary-row.grand-total {
+    border-top: 2px solid var(--accent-color);
+    margin-top: 10px;
+    padding-top: 12px;
+    font-weight: 700;
+    font-size: 1.2em;
+    color: var(--primary-dark);
+}
+
+.date-input {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95em;
+    background: var(--white);
+    color: var(--text-dark);
+}
+
 /* Desktop Styles */
 @media (min-width: 768px) {
     body {

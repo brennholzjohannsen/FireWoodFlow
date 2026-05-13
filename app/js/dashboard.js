@@ -81,7 +81,31 @@ createApp({
             },
             
             // Stats
-            todayOrders: 0
+            todayOrders: 0,
+            
+            // Bestellungen
+            orders: [],
+            ordersCount: 0,
+            showAddOrder: false,
+            showEditOrder: false,
+            editingOrder: null,
+            newOrder: {
+                customerId: '',
+                customerName: '',
+                customerAddress: '',
+                deliveryAddress: '',
+                items: [],
+                subtotal: 0,
+                deliveryCosts: 0,
+                total: 0,
+                paymentMethod: 'bar',
+                paymentStatus: 'offen',
+                deliveryDate: '',
+                deliveryTime: '',
+                status: 'neu',
+                notes: ''
+            },
+            orderStatusFilter: 'alle'
         };
     },
 
@@ -113,6 +137,11 @@ createApp({
             if (!this.distanceResult) return 0;
             const rawCost = this.distanceResult.distance * this.costPerKm;
             return this.roundDeliveryCost(rawCost);
+        },
+
+        filteredOrders() {
+            if (this.orderStatusFilter === 'alle') return this.orders;
+            return this.orders.filter(o => o.status === this.orderStatusFilter);
         }
     },
 
@@ -692,6 +721,17 @@ createApp({
         // Produkt Methoden
         async addProduct() {
             try {
+                // Validierung
+                if (!this.newProduct.name || !this.newProduct.name.trim()) {
+                    alert('Bitte geben Sie einen Produktnamen ein.');
+                    return;
+                }
+
+                if (this.newProduct.quantity < 0) {
+                    alert('Die Menge darf nicht negativ sein.');
+                    return;
+                }
+
                 // TODO: In Supabase speichern
                 const product = {
                     id: Date.now().toString(),
@@ -721,7 +761,7 @@ createApp({
                     unit: 'RM',
                     woodType: '',
                     logLength: 25,
-                    dryness: 'lufttrocken',
+                    dryness: 'frisch',
                     price: 0,
                     priceUnit: '',
                     notes: ''
@@ -745,6 +785,11 @@ createApp({
                 // Validierung
                 if (!this.editingProduct.name || !this.editingProduct.name.trim()) {
                     alert('Bitte geben Sie einen Produktnamen ein.');
+                    return;
+                }
+
+                if (this.editingProduct.quantity < 0) {
+                    alert('Die Menge darf nicht negativ sein.');
                     return;
                 }
 
@@ -923,6 +968,303 @@ createApp({
             }
         },
 
+        // Bestell-Methoden
+        selectCustomerForOrder(customer) {
+            // Kunde für Bestellung auswählen
+            this.newOrder.customerId = customer.id;
+            this.newOrder.customerName = customer.name;
+            this.newOrder.customerAddress = customer.address || '';
+            this.newOrder.deliveryAddress = customer.address || '';
+            
+            // Lieferkosten vom Kunden übernehmen wenn vorhanden
+            if (customer.deliveryCosts && customer.deliveryCosts > 0) {
+                this.newOrder.deliveryCosts = customer.deliveryCosts;
+            } else {
+                this.newOrder.deliveryCosts = 0;
+            }
+            
+            console.log('Kunde ausgewählt:', customer.name);
+        },
+
+        addProductToOrder(product) {
+            // Produkt zur Bestellung hinzufügen
+            const existingItem = this.newOrder.items.find(item => item.productId === product.id);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                this.newOrder.items.push({
+                    productId: product.id,
+                    productName: product.name,
+                    quantity: 1,
+                    unit: product.unit,
+                    pricePerUnit: product.price,
+                    priceUnit: product.priceUnit || product.unit,
+                    total: product.price
+                });
+            }
+            
+            this.calculateOrderTotals();
+            console.log('Produkt hinzugefügt:', product.name);
+        },
+
+        removeProductFromOrder(itemId) {
+            this.newOrder.items = this.newOrder.items.filter(item => item.id !== itemId && item.productId !== itemId);
+            this.calculateOrderTotals();
+        },
+
+        updateItemQuantity(itemId, newQuantity) {
+            const item = this.newOrder.items.find(item => item.productId === itemId);
+            if (item) {
+                if (newQuantity <= 0) {
+                    this.removeProductFromOrder(itemId);
+                } else {
+                    item.quantity = newQuantity;
+                    item.total = item.quantity * item.pricePerUnit;
+                    this.calculateOrderTotals();
+                }
+            }
+        },
+
+        calculateOrderTotals() {
+            // Zwischensumme berechnen
+            const subtotal = this.newOrder.items.reduce((sum, item) => {
+                return sum + (item.quantity * item.pricePerUnit);
+            }, 0);
+            
+            this.newOrder.subtotal = subtotal;
+            this.newOrder.total = subtotal + this.newOrder.deliveryCosts;
+        },
+
+        async calculateDeliveryCostsForOrder() {
+            if (!this.newOrder.deliveryAddress || !this.storageLocation) {
+                alert('Bitte gib eine Lieferadresse und Holzlagerplatz an.');
+                return;
+            }
+            
+            this.loadingDistance = true;
+            this.distanceError = '';
+            
+            try {
+                const fromCoords = await this.geocodeAddress(this.storageLocation);
+                const toCoords = await this.geocodeAddress(this.newOrder.deliveryAddress);
+                
+                if (!fromCoords || !toCoords) {
+                    throw new Error('Konnte Koordinaten nicht ermitteln');
+                }
+                
+                const route = await this.calculateRoute(fromCoords, toCoords);
+                
+                const rawCost = route.distance * this.costPerKm;
+                const roundedCost = this.roundDeliveryCost(rawCost);
+                
+                this.newOrder.deliveryCosts = roundedCost;
+                this.calculateOrderTotals();
+                
+                alert(`✓ Lieferkosten berechnet: €${roundedCost.toFixed(2)} (${route.distance.toFixed(1)} km)`);
+            } catch (error) {
+                this.distanceError = error.message;
+                alert('❌ Fehler bei Berechnung: ' + error.message);
+            } finally {
+                this.loadingDistance = false;
+            }
+        },
+
+        async addOrder() {
+            try {
+                // Validierung
+                if (!this.newOrder.customerId) {
+                    alert('Bitte wähle einen Kunden aus.');
+                    return;
+                }
+                
+                if (this.newOrder.items.length === 0) {
+                    alert('Bitte füge mindestens ein Produkt hinzu.');
+                    return;
+                }
+                
+                if (!this.newOrder.deliveryAddress || !this.newOrder.deliveryAddress.trim()) {
+                    alert('Bitte gib eine Lieferadresse an.');
+                    return;
+                }
+                
+                // Lagerbestand prüfen und reduzieren
+                for (const item of this.newOrder.items) {
+                    const product = this.products.find(p => p.id === item.productId);
+                    if (!product) {
+                        throw new Error(`Produkt "${item.productName}" nicht gefunden`);
+                    }
+                    
+                    if (product.quantity < item.quantity) {
+                        alert(`❌ Nicht genügend Lagerbestand für "${product.name}":\nVerfügbar: ${product.quantity} ${product.unit}\nBestellt: ${item.quantity} ${item.unit}`);
+                        return;
+                    }
+                }
+                
+                // Bestellung erstellen
+                const order = {
+                    id: Date.now().toString(),
+                    orderNumber: 'ORD-' + Date.now().toString().slice(-6),
+                    customerId: this.newOrder.customerId,
+                    customerName: this.newOrder.customerName,
+                    customerAddress: this.newOrder.customerAddress,
+                    deliveryAddress: this.newOrder.deliveryAddress,
+                    items: [...this.newOrder.items],
+                    subtotal: this.newOrder.subtotal,
+                    deliveryCosts: this.newOrder.deliveryCosts,
+                    total: this.newOrder.total,
+                    paymentMethod: this.newOrder.paymentMethod,
+                    paymentStatus: this.newOrder.paymentStatus,
+                    deliveryDate: this.newOrder.deliveryDate,
+                    deliveryTime: this.newOrder.deliveryTime,
+                    status: this.newOrder.status,
+                    notes: (this.newOrder.notes || '').trim(),
+                    createdAt: new Date().toISOString()
+                };
+                
+                console.log('Erstelle Bestellung:', order);
+                
+                // Lagerbestand reduzieren
+                for (const item of order.items) {
+                    const productIndex = this.products.findIndex(p => p.id === item.productId);
+                    if (productIndex !== -1) {
+                        this.products[productIndex].quantity -= item.quantity;
+                    }
+                }
+                
+                // Stats aktualisieren
+                this.orders.push(order);
+                this.ordersCount = this.orders.length;
+                this.inventoryCount = this.products.length;
+                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                
+                // Formular zurücksetzen
+                this.showAddOrder = false;
+                this.newOrder = {
+                    customerId: '',
+                    customerName: '',
+                    customerAddress: '',
+                    deliveryAddress: '',
+                    items: [],
+                    subtotal: 0,
+                    deliveryCosts: 0,
+                    total: 0,
+                    paymentMethod: 'bar',
+                    paymentStatus: 'offen',
+                    deliveryDate: '',
+                    deliveryTime: '',
+                    status: 'neu',
+                    notes: ''
+                };
+                
+                alert('✓ Bestellung erfolgreich erstellt!');
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert('❌ Fehler beim Speichern der Bestellung: ' + error.message);
+            }
+        },
+
+        editOrder(order) {
+            this.editingOrder = { ...order, items: [...order.items] };
+            this.showEditOrder = true;
+        },
+
+        async saveOrder() {
+            try {
+                // Validierung
+                if (!this.editingOrder.customerId) {
+                    alert('Bitte wähle einen Kunden aus.');
+                    return;
+                }
+                
+                if (this.editingOrder.items.length === 0) {
+                    alert('Bitte füge mindestens ein Produkt hinzu.');
+                    return;
+                }
+                
+                // Index finden
+                const index = this.orders.findIndex(o => o.id === this.editingOrder.id);
+                
+                if (index !== -1) {
+                    // Bestand anpassen (Differenz berechnen)
+                    const oldOrder = this.orders[index];
+                    
+                    // Alten Bestand wiederherstellen
+                    for (const item of oldOrder.items) {
+                        const productIndex = this.products.findIndex(p => p.id === item.productId);
+                        if (productIndex !== -1) {
+                            this.products[productIndex].quantity += item.quantity;
+                        }
+                    }
+                    
+                    // Neuen Bestand abziehen
+                    for (const item of this.editingOrder.items) {
+                        const productIndex = this.products.findIndex(p => p.id === item.productId);
+                        if (productIndex !== -1) {
+                            if (this.products[productIndex].quantity < item.quantity) {
+                                alert(`❌ Nicht genügend Lagerbestand für "${this.products[productIndex].name}"`);
+                                return;
+                            }
+                            this.products[productIndex].quantity -= item.quantity;
+                        }
+                    }
+                    
+                    // Bestellung aktualisieren
+                    const updatedOrder = {
+                        ...this.editingOrder,
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    const updatedOrders = [...this.orders];
+                    updatedOrders[index] = updatedOrder;
+                    this.orders = updatedOrders;
+                    
+                    // Stats aktualisieren
+                    this.inventoryCount = this.products.length;
+                    this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                    
+                    setTimeout(() => {
+                        this.showEditOrder = false;
+                        this.editingOrder = null;
+                    }, 100);
+                    
+                    alert('✓ Bestellung erfolgreich aktualisiert!');
+                } else {
+                    throw new Error('Bestellung nicht gefunden');
+                }
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                alert('❌ Fehler beim Speichern: ' + error.message);
+            }
+        },
+
+        deleteOrder(order) {
+            if (confirm('Möchtest du die Bestellung "' + order.orderNumber + '" wirklich löschen?')) {
+                // Bestand wiederherstellen
+                for (const item of order.items) {
+                    const productIndex = this.products.findIndex(p => p.id === item.productId);
+                    if (productIndex !== -1) {
+                        this.products[productIndex].quantity += item.quantity;
+                    }
+                }
+                
+                this.orders = this.orders.filter(o => o.id !== order.id);
+                this.ordersCount = this.orders.length;
+                this.inventoryCount = this.products.length;
+                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                
+                alert('✓ Bestellung gelöscht.');
+            }
+        },
+
+        updateOrderStatus(order, newStatus) {
+            const index = this.orders.findIndex(o => o.id === order.id);
+            if (index !== -1) {
+                this.orders[index].status = newStatus;
+                alert('✓ Status aktualisiert: ' + newStatus);
+            }
+        },
+
         async previewLocation(inputId, previewId) {
             const address = this[inputId.replace('MapPreview', '')];
             if (!address || !address.trim()) {
@@ -1023,6 +1365,49 @@ createApp({
                 await supabaseClient.auth.signOut();
                 window.location.href = 'index.html';
             }
+        },
+
+        // Helper Methoden für Bestellungen
+        getStatusLabel(status) {
+            const labels = {
+                'neu': '🆕 Neu',
+                'bestaetigt': '✓ Bestätigt',
+                'in_lieferung': '🚚 In Lieferung',
+                'abgeschlossen': '✅ Abgeschlossen',
+                'storniert': '❌ Storniert'
+            };
+            return labels[status] || status;
+        },
+
+        getPaymentMethodLabel(method) {
+            const labels = {
+                'bar': '💵 Bar',
+                'ueberweisung': '🏦 Überweisung',
+                'paypal': '📱 PayPal'
+            };
+            return labels[method] || method;
+        },
+
+        getPaymentStatusLabel(status) {
+            const labels = {
+                'offen': '⏳ Offen',
+                'bezahlt': '✓ Bezahlt',
+                'teilweise': '◐ Teilweise'
+            };
+            return labels[status] || status;
+        },
+
+        formatDeliveryDate(date, time) {
+            if (!date) return 'Kein Datum';
+            const d = new Date(date);
+            const dateStr = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            if (!time) return dateStr;
+            const timeLabels = {
+                'vormittag': 'Vormittags (8-12)',
+                'nachmittag': 'Nachmittags (13-17)',
+                'ganztags': 'Ganztags (8-17)'
+            };
+            return `${dateStr} • ${timeLabels[time] || time}`;
         }
     }
 }).mount('#app');

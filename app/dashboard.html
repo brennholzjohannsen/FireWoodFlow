@@ -48,6 +48,12 @@
                     <span class="nav-text">Kunden</span>
                 </a>
                 <a href="#" 
+                   :class="{ active: currentView === 'orders' }" 
+                   @click.prevent="currentView = 'orders'">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Bestellungen</span>
+                </a>
+                <a href="#" 
                    :class="{ active: currentView === 'settings' }" 
                    @click.prevent="currentView = 'settings'">
                     <span class="nav-icon">⚙️</span>
@@ -252,6 +258,100 @@
                     </div>
                 </div>
             </div>
+
+        <!-- ORDERS VIEW -->
+        <div v-if="currentView === 'orders'" class="view-orders">
+            <header class="page-header">
+                <h1>Bestellungen</h1>
+                <p class="subtitle">Verwalte deine Aufträge</p>
+            </header>
+
+            <div class="toolbar">
+                <select v-model="orderStatusFilter" class="filter-select">
+                    <option value="alle">Alle Status</option>
+                    <option value="neu">🆕 Neu</option>
+                    <option value="bestaetigt">✓ Bestätigt</option>
+                    <option value="in_lieferung">🚚 In Lieferung</option>
+                    <option value="abgeschlossen">✅ Abgeschlossen</option>
+                    <option value="storniert">❌ Storniert</option>
+                </select>
+                <button @click="showAddOrder = true; calculateOrderTotals()" class="btn-add">
+                    <span>➕</span> Neue Bestellung
+                </button>
+            </div>
+
+            <!-- Order List -->
+            <div class="order-list">
+                <div v-if="filteredOrders.length === 0" class="empty-state">
+                    <p>Noch keine Bestellungen vorhanden.</p>
+                    <button @click="showAddOrder = true" class="btn-add-empty">
+                        Erste Bestellung anlegen
+                    </button>
+                </div>
+
+                <div v-for="order in filteredOrders" :key="order.id" class="order-card">
+                    <div class="order-header">
+                        <div class="order-number-date">
+                            <h3>{{ order.orderNumber }}</h3>
+                            <span class="order-date">{{ formatDate(order.createdAt) }}</span>
+                        </div>
+                        <span class="order-status status-{{ order.status }}">
+                            {{ getStatusLabel(order.status) }}
+                        </span>
+                    </div>
+                    
+                    <div class="order-customer">
+                        <strong>👤 {{ order.customerName }}</strong>
+                        <p>📍 {{ order.deliveryAddress }}</p>
+                    </div>
+
+                    <div class="order-items">
+                        <div v-for="item in order.items" :key="item.productId" class="order-item">
+                            <span class="item-quantity">{{ item.quantity }} {{ item.unit }}</span>
+                            <span class="item-name">{{ item.productName }}</span>
+                            <span class="item-price">{{ formatCurrency(item.total) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-totals">
+                        <div class="total-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(order.subtotal) }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(order.deliveryCosts) }}</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Gesamt:</span>
+                            <span>{{ formatCurrency(order.total) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-footer">
+                        <div class="order-payment">
+                            <span>💳 {{ getPaymentMethodLabel(order.paymentMethod) }} • {{ getPaymentStatusLabel(order.paymentStatus) }}</span>
+                        </div>
+                        <div class="order-delivery">
+                            <span>📅 {{ formatDeliveryDate(order.deliveryDate, order.deliveryTime) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-actions">
+                        <button @click="editOrder(order)" class="btn-edit">Bearbeiten</button>
+                        <select @change="updateOrderStatus(order, $event.target.value)" class="status-select">
+                            <option value="">Status ändern...</option>
+                            <option value="neu">🆕 Neu</option>
+                            <option value="bestaetigt">✓ Bestätigt</option>
+                            <option value="in_lieferung">🚚 In Lieferung</option>
+                            <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            <option value="storniert">❌ Storniert</option>
+                        </select>
+                        <button @click="deleteOrder(order)" class="btn-delete">Löschen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Settings View -->
         <div v-if="currentView === 'settings'" class="view-settings">
@@ -582,6 +682,269 @@
                     <div class="form-group">
                         <label>Bemerkung (optional)</label>
                         <textarea v-model="editingProduct.notes" rows="2" placeholder="Zusätzliche Infos..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Order Modal -->
+        <div class="modal-overlay modal-large" v-if="showAddOrder" @click="showAddOrder = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddOrder = false">&times;</button>
+                <h2>Neue Bestellung</h2>
+                
+                <form @submit.prevent="addOrder">
+                    <!-- Kunde auswählen -->
+                    <div class="form-group">
+                        <label>Kunde *</label>
+                        <select v-model="newOrder.customerId" required @change="selectCustomerForOrder(customers.find(c => c.id === newOrder.customerId))" class="select-input">
+                            <option value="">Kunde wählen...</option>
+                            <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                        <p class="field-hint" v-if="!newOrder.customerId">⚠️ Bitte wähle einen Kunden aus</p>
+                    </div>
+
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="newOrder.deliveryAddress" required rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                        <p class="field-hint">Wird vom Kunden übernommen, kann aber angepasst werden</p>
+                    </div>
+
+                    <!-- Produkte hinzufügen -->
+                    <div class="form-group">
+                        <label>Produkte hinzufügen</label>
+                        <div class="product-selector">
+                            <select id="orderProductSelect" class="select-input">
+                                <option value="">Produkt wählen...</option>
+                                <option v-for="p in products" :key="p.id" :value="p.id">
+                                    {{ p.name }} ({{ p.quantity }} {{ p.unit }} verfügbar) - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }}
+                                </option>
+                            </select>
+                            <button type="button" @click="addProductToOrder(products.find(p => p.id === document.getElementById('orderProductSelect').value)); document.getElementById('orderProductSelect').value=''" class="btn-add-mini">➕ Hinzufügen</button>
+                        </div>
+                    </div>
+
+                    <!-- Bestellpositionen -->
+                    <div class="form-group" v-if="newOrder.items.length > 0">
+                        <label>Bestellpositionen</label>
+                        <div class="order-items-editor">
+                            <div v-for="item in newOrder.items" :key="item.productId" class="order-item-row">
+                                <span class="item-name">{{ item.productName }}</span>
+                                <div class="item-controls">
+                                    <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <span>{{ item.unit }}</span>
+                                    <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
+                                    <button type="button" @click="removeProductFromOrder(item.productId)" class="btn-remove-item">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lieferkosten -->
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <div class="input-group-inline">
+                            <input type="number" step="0.01" v-model.number="newOrder.deliveryCosts" @change="calculateOrderTotals()" placeholder="0.00" min="0" style="flex: 1;">
+                            <button type="button" @click="calculateDeliveryCostsForOrder" class="btn-calc-delivery">🚚 Berechnen</button>
+                        </div>
+                        <p class="field-hint">Automatisch berechnen oder manuell eingeben</p>
+                    </div>
+
+                    <!-- Zahlungsart & Status -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zahlungsart</label>
+                            <select v-model="newOrder.paymentMethod" class="select-input">
+                                <option value="bar">Bar</option>
+                                <option value="ueberweisung">Überweisung</option>
+                                <option value="paypal">PayPal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select v-model="newOrder.status" class="select-input">
+                                <option value="neu">🆕 Neu</option>
+                                <option value="bestaetigt">✓ Bestätigt</option>
+                                <option value="in_lieferung">🚚 In Lieferung</option>
+                                <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum</label>
+                            <input type="date" v-model="newOrder.deliveryDate" class="date-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit</label>
+                            <select v-model="newOrder.deliveryTime" class="select-input">
+                                <option value="">Beliebig</option>
+                                <option value="vormittag">Vormittags (8-12 Uhr)</option>
+                                <option value="nachmittag">Nachmittags (13-17 Uhr)</option>
+                                <option value="ganztags">Ganztags (8-17 Uhr)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen / Sonderwünsche</label>
+                        <textarea v-model="newOrder.notes" rows="2" placeholder="z.B. Klingeln nicht möglich, bitte anrufen..."></textarea>
+                    </div>
+
+                    <!-- Summen -->
+                    <div class="order-summary-box">
+                        <div class="summary-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(newOrder.subtotal) }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(newOrder.deliveryCosts) }}</span>
+                        </div>
+                        <div class="summary-row grand-total">
+                            <span>Gesamtsumme:</span>
+                            <span>{{ formatCurrency(newOrder.total) }}</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Bestellung speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Order Modal -->
+        <div class="modal-overlay modal-large" v-if="showEditOrder" @click="showEditOrder = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditOrder = false">&times;</button>
+                <h2>Bestellung bearbeiten</h2>
+                
+                <form @submit.prevent="saveOrder">
+                    <!-- Kunde -->
+                    <div class="form-group">
+                        <label>Kunde *</label>
+                        <select v-model="editingOrder.customerId" required class="select-input">
+                            <option value="">Kunde wählen...</option>
+                            <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="editingOrder.deliveryAddress" required rows="2"></textarea>
+                    </div>
+
+                    <!-- Produkte -->
+                    <div class="form-group">
+                        <label>Produkte hinzufügen</label>
+                        <div class="product-selector">
+                            <select id="editOrderProductSelect" class="select-input">
+                                <option value="">Produkt wählen...</option>
+                                <option v-for="p in products" :key="p.id" :value="p.id">
+                                    {{ p.name }} ({{ p.quantity }} {{ p.unit }} verfügbar)
+                                </option>
+                            </select>
+                            <button type="button" @click="addProductToOrder(products.find(p => p.id === document.getElementById('editOrderProductSelect').value)); document.getElementById('editOrderProductSelect').value=''" class="btn-add-mini">➕ Hinzufügen</button>
+                        </div>
+                    </div>
+
+                    <!-- Positionen -->
+                    <div class="form-group" v-if="editingOrder.items && editingOrder.items.length > 0">
+                        <label>Bestellpositionen</label>
+                        <div class="order-items-editor">
+                            <div v-for="item in editingOrder.items" :key="item.productId" class="order-item-row">
+                                <span class="item-name">{{ item.productName }}</span>
+                                <div class="item-controls">
+                                    <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <span>{{ item.unit }}</span>
+                                    <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
+                                    <button type="button" @click="removeProductFromOrder(item.productId)" class="btn-remove-item">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lieferkosten -->
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="editingOrder.deliveryCosts" @change="calculateOrderTotals()" min="0">
+                    </div>
+
+                    <!-- Zahlungsart & Status -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zahlungsart</label>
+                            <select v-model="editingOrder.paymentMethod" class="select-input">
+                                <option value="bar">Bar</option>
+                                <option value="ueberweisung">Überweisung</option>
+                                <option value="paypal">PayPal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Bezahlstatus</label>
+                            <select v-model="editingOrder.paymentStatus" class="select-input">
+                                <option value="offen">Offen</option>
+                                <option value="bezahlt">Bezahlt</option>
+                                <option value="teilweise">Teilweise bezahlt</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum</label>
+                            <input type="date" v-model="editingOrder.deliveryDate" class="date-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit</label>
+                            <select v-model="editingOrder.deliveryTime" class="select-input">
+                                <option value="">Beliebig</option>
+                                <option value="vormittag">Vormittags (8-12 Uhr)</option>
+                                <option value="nachmittag">Nachmittags (13-17 Uhr)</option>
+                                <option value="ganztags">Ganztags (8-17 Uhr)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select v-model="editingOrder.status" class="select-input">
+                            <option value="neu">🆕 Neu</option>
+                            <option value="bestaetigt">✓ Bestätigt</option>
+                            <option value="in_lieferung">🚚 In Lieferung</option>
+                            <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            <option value="storniert">❌ Storniert</option>
+                        </select>
+                    </div>
+
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="editingOrder.notes" rows="2"></textarea>
+                    </div>
+
+                    <!-- Summen -->
+                    <div class="order-summary-box">
+                        <div class="summary-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(editingOrder.subtotal) }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(editingOrder.deliveryCosts) }}</span>
+                        </div>
+                        <div class="summary-row grand-total">
+                            <span>Gesamtsumme:</span>
+                            <span>{{ formatCurrency(editingOrder.total) }}</span>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn-submit">Änderungen speichern</button>
