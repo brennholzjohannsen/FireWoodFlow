@@ -308,7 +308,7 @@
                     <div class="order-items">
                         <div v-for="item in order.items" :key="item.productId" class="order-item">
                             <span class="item-quantity">{{ item.quantity }} {{ item.unit }}</span>
-                            <span class="item-name">{{ item.productName }}</span>
+                            <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
                             <span class="item-price">{{ formatCurrency(item.total) }}</span>
                         </div>
                     </div>
@@ -720,7 +720,7 @@
                             <select id="orderProductSelect" class="select-input">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
+                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
                                 </option>
                             </select>
                             <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
@@ -734,14 +734,24 @@
                         <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
                     </div>
 
+                    <!-- Scheitlänge für Bestellung -->
+                    <div class="form-group" v-if="newOrder.items.length > 0">
+                        <label>Scheitlänge für alle Produkte (cm)</label>
+                        <select v-model="newOrder.logLength" class="select-input">
+                            <option value="" disabled>Bitte wählen...</option>
+                            <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
+                        </select>
+                        <p class="field-hint">Diese Scheitlänge wird für alle Produkte der Bestellung verwendet</p>
+                    </div>
+
                     <!-- Bestellpositionen -->
                     <div class="form-group" v-if="newOrder.items.length > 0">
                         <label>Bestellpositionen</label>
                         <div class="order-items-editor">
                             <div v-for="item in newOrder.items" :key="item.productId" class="order-item-row">
-                                <span class="item-name">{{ item.productName }}</span>
+                                <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
                                 <div class="item-controls">
-                                    <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input">
                                     <span>{{ item.unit }}</span>
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
                                     <button type="button" @click="removeProductFromOrder(item.productId, false)" class="btn-remove-item">×</button>
@@ -849,7 +859,7 @@
                             <select id="editOrderProductSelect" class="select-input">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
+                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
                                 </option>
                             </select>
                             <input type="number" id="editOrderProductQuantity" v-model.number="editOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
@@ -863,14 +873,24 @@
                         <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
                     </div>
 
+                    <!-- Scheitlänge für Bestellung -->
+                    <div class="form-group" v-if="editingOrder.items && editingOrder.items.length > 0">
+                        <label>Scheitlänge für alle Produkte (cm)</label>
+                        <select v-model="editingOrder.logLength" class="select-input">
+                            <option value="" disabled>Bitte wählen...</option>
+                            <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
+                        </select>
+                        <p class="field-hint">Diese Scheitlänge wird für alle Produkte der Bestellung verwendet</p>
+                    </div>
+
                     <!-- Positionen -->
                     <div class="form-group" v-if="editingOrder.items && editingOrder.items.length > 0">
                         <label>Bestellpositionen</label>
                         <div class="order-items-editor">
                             <div v-for="item in editingOrder.items" :key="item.productId" class="order-item-row">
-                                <span class="item-name">{{ item.productName }}</span>
+                                <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
                                 <div class="item-controls">
-                                    <input type="number" v-model.number="item.quantity" min="1" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input">
                                     <span>{{ item.unit }}</span>
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
                                     <button type="button" @click="removeProductFromOrder(item.productId, true)" class="btn-remove-item">×</button>

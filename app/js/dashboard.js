@@ -107,7 +107,8 @@ createApp({
                 deliveryDate: '',
                 deliveryTime: '',
                 status: 'neu',
-                notes: ''
+                notes: '',
+                logLength: ''
             },
             orderStatusFilter: 'alle'
         };
@@ -1113,6 +1114,8 @@ createApp({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
                 productName: product.name,
+                woodType: product.woodType || '',
+                logLength: product.logLength || 25,
                 quantity: quantity,
                 unit: orderUnit,
                 pricePerUnit: pricePerUnit,
@@ -1260,6 +1263,7 @@ createApp({
                     deliveryTime: this.newOrder.deliveryTime,
                     status: this.newOrder.status,
                     notes: (this.newOrder.notes || '').trim(),
+                    logLength: this.newOrder.logLength || null,
                     createdAt: new Date().toISOString()
                 };
                 
