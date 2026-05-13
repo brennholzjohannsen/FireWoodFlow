@@ -425,6 +425,9 @@ createApp({
 
         // Kunden Methoden
         async addCustomer() {
+            console.log('=== addCustomer aufgerufen ===');
+            console.log('newCustomer:', this.newCustomer);
+            
             try {
                 // Validierung
                 if (!this.newCustomer.name || !this.newCustomer.name.trim()) {
@@ -432,27 +435,28 @@ createApp({
                     return;
                 }
 
-                console.log('Speichere Kunde:', this.newCustomer);
-
                 const customer = {
                     id: Date.now().toString(),
-                    name: this.newCustomer.name,
-                    address: this.newCustomer.address || '',
-                    phone: this.newCustomer.phone || '',
-                    email: this.newCustomer.email || '',
-                    notes: this.newCustomer.notes || '',
+                    name: this.newCustomer.name.trim(),
+                    address: (this.newCustomer.address || '').trim(),
+                    phone: (this.newCustomer.phone || '').trim(),
+                    email: (this.newCustomer.email || '').trim(),
+                    notes: (this.newCustomer.notes || '').trim(),
                     createdAt: new Date().toISOString()
                 };
 
-                console.log('Neuer Kunde:', customer);
+                console.log('Erstelle Kunde:', customer);
+                console.log('Kunden vorher:', this.customers.length);
                 
-                this.customers.push(customer);
+                // Array kopieren um Reaktivität sicherzustellen
+                const updatedCustomers = [...this.customers, customer];
+                this.customers = updatedCustomers;
                 this.customerCount = this.customers.length;
                 
-                console.log('Kunden nach Speichern:', this.customers);
+                console.log('Kunden nachher:', this.customers.length);
+                console.log('Alle Kunden:', this.customers);
 
                 // Formular zurücksetzen
-                this.showAddCustomer = false;
                 this.newCustomer = {
                     name: '',
                     address: '',
@@ -460,10 +464,17 @@ createApp({
                     email: '',
                     notes: ''
                 };
+
+                // Modal schließen mit kleiner Verzögerung damit Alert zuerst kommt
+                setTimeout(() => {
+                    this.showAddCustomer = false;
+                }, 100);
                 
                 alert('✓ Kunde erfolgreich gespeichert!');
+                
             } catch (error) {
                 console.error('Fehler beim Speichern:', error);
+                console.error('Error Stack:', error.stack);
                 alert('❌ Fehler beim Speichern des Kunden: ' + error.message);
             }
         },
