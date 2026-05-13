@@ -418,19 +418,19 @@ createApp({
             if (unit === 'SRM') {
                 const srm = lengthPrices.srm;
                 // Nur zurückgeben wenn explizit gesetzt und nicht leer
-                return (srm !== undefined && srm !== null && srm !== '') ? srm : '';
+                return (srm !== undefined && srm !== null && srm !== '') ? String(srm) : '';
             } else if (unit === 'RM') {
                 // Zuerst prüfen ob RM-Preis explizit gesetzt ist
                 const rm = lengthPrices.rm;
                 if (rm !== undefined && rm !== null && rm !== '') {
-                    return rm;
+                    return String(rm);
                 }
                 
                 // Sonst aus SRM berechnen
                 const srm = lengthPrices.srm;
                 if (srm !== undefined && srm !== null && srm !== '' && !isNaN(parseFloat(srm))) {
                     const calculated = (parseFloat(srm) * 1.42).toFixed(2);
-                    console.log(`✓ Berechne RM-Preis für ${length}cm: ${srm} × 1.42 = ${calculated}`);
+                    console.log('✓ Berechne RM-Preis für ' + length + 'cm: ' + srm + ' × 1.42 = ' + calculated);
                     return calculated;
                 }
                 return '';
@@ -439,44 +439,52 @@ createApp({
         },
 
         updatePriceForLength(length, unit, value) {
-            console.log(`Update gestartet: Länge=${length}, Einheit=${unit}, Wert="${value}"`);
+            console.log('Update gestartet: Länge=' + length + ', Einheit=' + unit + ', Wert="' + value + '"');
             
             // priceLengths initialisieren wenn nötig
             if (!this.newProduct.priceLengths) {
-                this.$set(this.newProduct, 'priceLengths', {});
+                this.newProduct.priceLengths = {};
             }
             
             // Eintrag für diese Länge initialisieren
             if (!this.newProduct.priceLengths[length]) {
-                this.$set(this.newProduct.priceLengths, length, { srm: '', rm: '' });
+                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
             }
             
             if (unit === 'SRM') {
                 // SRM-Wert setzen
-                this.$set(this.newProduct.priceLengths[length], 'srm', value);
+                this.newProduct.priceLengths[length].srm = value;
                 
                 // RM automatisch berechnen WENN noch kein manueller RM-Wert existiert
                 const currentRM = this.newProduct.priceLengths[length].rm;
-                const hasManualRM = (currentRM !== undefined && currentRM !== null && currentRM !== '' && currentRM !== (parseFloat(value) * 1.42).toFixed(2));
+                const calculatedRM = value && value !== '' && !isNaN(parseFloat(value)) 
+                    ? (parseFloat(value) * 1.42).toFixed(2) 
+                    : '';
                 
-                if (!hasManualRM && value && value !== '' && !isNaN(parseFloat(value))) {
-                    const rmPrice = (parseFloat(value) * 1.42).toFixed(2);
-                    this.$set(this.newProduct.priceLengths[length], 'rm', rmPrice);
-                    console.log(`✓ RM automatisch berechnet und gesetzt: ${rmPrice}`);
+                // Prüfen ob RM bereits manuell gesetzt wurde (unterschiedlich vom berechneten Wert)
+                const hasManualRM = currentRM && currentRM !== '' && currentRM !== calculatedRM;
+                
+                if (!hasManualRM) {
+                    this.newProduct.priceLengths[length].rm = calculatedRM;
+                    if (calculatedRM) {
+                        console.log('✓ RM automatisch berechnet und gesetzt: ' + calculatedRM);
+                    }
                 } else if (!value || value === '') {
-                    // Wenn SRM geleert wird, auch RM leeren
-                    this.$set(this.newProduct.priceLengths[length], 'rm', '');
+                    // Wenn SRM geleert wird, auch RM leeren (außer es war manuell)
+                    if (!hasManualRM) {
+                        this.newProduct.priceLengths[length].rm = '';
+                    }
                 }
             } else if (unit === 'RM') {
                 // RM-Wert manuell setzen
-                this.$set(this.newProduct.priceLengths[length], 'rm', value);
-                console.log(`✓ RM manuell gesetzt: ${value}`);
+                this.newProduct.priceLengths[length].rm = value;
+                console.log('✓ RM manuell gesetzt: ' + value);
             }
             
-            // Force reactivity - komplettes Objekt neu zuweisen
-            this.newProduct = Object.assign({}, this.newProduct);
+            // Force reactivity - komplettes Objekt neu zuweisen (Vue 3)
+            this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
             
-            console.log(`Aktueller priceLengths Stand:`, JSON.stringify(this.newProduct.priceLengths[length]));
+            console.log('Aktueller priceLengths Stand:', JSON.stringify(this.newProduct.priceLengths[length]));
         },
 
         async loadData() {
