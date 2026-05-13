@@ -720,7 +720,7 @@
                             <select id="orderProductSelect" class="select-input">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} ({{ p.quantity }} {{ p.unit }} verfügbar) - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }}
+                                    {{ p.name }} - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity }} {{ p.unit }})
                                 </option>
                             </select>
                             <button type="button" @click="addProductToOrder(products.find(p => p.id === document.getElementById('orderProductSelect').value)); document.getElementById('orderProductSelect').value=''" class="btn-add-mini">➕ Hinzufügen</button>
@@ -750,7 +750,7 @@
                             <input type="number" step="0.01" v-model.number="newOrder.deliveryCosts" @change="calculateOrderTotals()" placeholder="0.00" min="0" style="flex: 1;">
                             <button type="button" @click="calculateDeliveryCostsForOrder" class="btn-calc-delivery">🚚 Berechnen</button>
                         </div>
-                        <p class="field-hint">Automatisch berechnen oder manuell eingeben</p>
+                        <p class="field-hint">Automatisch berechnen oder manuell eingeben (wird auf 2 Dezimalstellen gerundet)</p>
                     </div>
 
                     <!-- Zahlungsart & Status -->
@@ -781,13 +781,8 @@
                             <input type="date" v-model="newOrder.deliveryDate" class="date-input">
                         </div>
                         <div class="form-group">
-                            <label>Lieferzeit</label>
-                            <select v-model="newOrder.deliveryTime" class="select-input">
-                                <option value="">Beliebig</option>
-                                <option value="vormittag">Vormittags (8-12 Uhr)</option>
-                                <option value="nachmittag">Nachmittags (13-17 Uhr)</option>
-                                <option value="ganztags">Ganztags (8-17 Uhr)</option>
-                            </select>
+                            <label>Lieferzeit (Uhrzeit)</label>
+                            <input type="time" v-model="newOrder.deliveryTime" class="date-input">
                         </div>
                     </div>
 
@@ -903,13 +898,8 @@
                             <input type="date" v-model="editingOrder.deliveryDate" class="date-input">
                         </div>
                         <div class="form-group">
-                            <label>Lieferzeit</label>
-                            <select v-model="editingOrder.deliveryTime" class="select-input">
-                                <option value="">Beliebig</option>
-                                <option value="vormittag">Vormittags (8-12 Uhr)</option>
-                                <option value="nachmittag">Nachmittags (13-17 Uhr)</option>
-                                <option value="ganztags">Ganztags (8-17 Uhr)</option>
-                            </select>
+                            <label>Lieferzeit (Uhrzeit)</label>
+                            <input type="time" v-model="editingOrder.deliveryTime" class="date-input">
                         </div>
                     </div>
 

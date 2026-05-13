@@ -1056,7 +1056,7 @@ createApp({
                 const route = await this.calculateRoute(fromCoords, toCoords);
                 
                 const rawCost = route.distance * this.costPerKm;
-                const roundedCost = this.roundDeliveryCost(rawCost);
+                const roundedCost = Math.round(rawCost * 100) / 100; // Auf 2 Dezimalstellen runden
                 
                 this.newOrder.deliveryCosts = roundedCost;
                 this.calculateOrderTotals();
@@ -1401,13 +1401,9 @@ createApp({
             if (!date) return 'Kein Datum';
             const d = new Date(date);
             const dateStr = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-            if (!time) return dateStr;
-            const timeLabels = {
-                'vormittag': 'Vormittags (8-12)',
-                'nachmittag': 'Nachmittags (13-17)',
-                'ganztags': 'Ganztags (8-17)'
-            };
-            return `${dateStr} • ${timeLabels[time] || time}`;
+            if (!time || time === '') return dateStr;
+            // Zeit im Format HH:MM anzeigen
+            return `${dateStr} • ${time} Uhr`;
         }
     }
 }).mount('#app');
