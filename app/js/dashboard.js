@@ -30,6 +30,26 @@ createApp({
             costPerKm: 0,
             roundingMode: 'exact',
             
+            // Inventar-Einstellungen
+            inventorySettings: {
+                woodTypes: {
+                    'Buche': true,
+                    'Eiche': true,
+                    'Birke': true,
+                    'Fichte': true,
+                    'Kiefer': true,
+                    'Esche': true,
+                    'Ahorn': true,
+                    'Gemischt': true
+                },
+                drynessLevels: {
+                    'frisch': true,
+                    'lufttrocken': true,
+                    'ofentrocken': true
+                },
+                logLengths: [25, 33, 50]
+            },
+            
             // Inventar Daten
             inventoryCount: 0,
             totalValue: 0,
@@ -134,6 +154,49 @@ createApp({
                 this.costPerKm = parseFloat(data.costPerKm) || 0;
                 this.roundingMode = data.roundingMode || 'exact';
             }
+            
+            // Inventar-Einstellungen laden
+            this.loadInventorySettings();
+        },
+
+        loadInventorySettings() {
+            const saved = localStorage.getItem('firewoodflow_inventory_settings');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.inventorySettings = {
+                    woodTypes: data.woodTypes || this.inventorySettings.woodTypes,
+                    drynessLevels: data.drynessLevels || this.inventorySettings.drynessLevels,
+                    logLengths: data.logLengths || this.inventorySettings.logLengths
+                };
+            }
+        },
+
+        saveInventorySettings() {
+            localStorage.setItem('firewoodflow_inventory_settings', JSON.stringify(this.inventorySettings));
+        },
+
+        toggleWoodType(woodType) {
+            this.inventorySettings.woodTypes[woodType] = !this.inventorySettings.woodTypes[woodType];
+            this.saveInventorySettings();
+        },
+
+        toggleDrynessLevel(level) {
+            this.inventorySettings.drynessLevels[level] = !this.inventorySettings.drynessLevels[level];
+            this.saveInventorySettings();
+        },
+
+        addLogLength() {
+            const newLength = parseInt(prompt('Scheitlänge in cm eingeben:', '25'));
+            if (newLength && !this.inventorySettings.logLengths.includes(newLength)) {
+                this.inventorySettings.logLengths.push(newLength);
+                this.inventorySettings.logLengths.sort((a, b) => a - b);
+                this.saveInventorySettings();
+            }
+        },
+
+        removeLogLength(length) {
+            this.inventorySettings.logLengths = this.inventorySettings.logLengths.filter(l => l !== length);
+            this.saveInventorySettings();
         },
 
         saveCompanySettings() {
@@ -146,6 +209,23 @@ createApp({
                 roundingMode: this.roundingMode
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
+        },
+
+        getActiveWoodTypes() {
+            return Object.keys(this.inventorySettings.woodTypes).filter(w => this.inventorySettings.woodTypes[w]);
+        },
+
+        getActiveDrynessLevels() {
+            return Object.keys(this.inventorySettings.drynessLevels).filter(d => this.inventorySettings.drynessLevels[d]);
+        },
+
+        getDrynessLabel(level) {
+            const labels = {
+                'frisch': 'Frisch (< 1 Jahr)',
+                'lufttrocken': 'Lufttrocken (1-2 Jahre)',
+                'ofentrocken': 'Ofentrocken'
+            };
+            return labels[level] || level;
         },
 
         async handleLogoUpload(event) {
