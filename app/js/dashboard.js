@@ -1269,11 +1269,20 @@ createApp({
                 
                 console.log('Erstelle Bestellung:', order);
                 
-                // Lagerbestand reduzieren
+                // Lagerbestand reduzieren (mit Umrechnung auf Produkteinheit)
+                const toRM = {
+                    'FM': 1.42,
+                    'RM': 1,
+                    'SRM': 1 / 1.42
+                };
+                
                 for (const item of order.items) {
                     const productIndex = this.products.findIndex(p => p.id === item.productId);
                     if (productIndex !== -1) {
-                        this.products[productIndex].quantity -= item.quantity;
+                        // Bestellmenge in Produkteinheit umrechnen
+                        const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
+                        // Auf 1 Nachkommastelle runden und abziehen
+                        this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity - quantityInProductUnit) * 10) / 10;
                     }
                 }
                 
@@ -1334,23 +1343,31 @@ createApp({
                     // Bestand anpassen (Differenz berechnen)
                     const oldOrder = this.orders[index];
                     
-                    // Alten Bestand wiederherstellen
+                    // Alten Bestand wiederherstellen (mit Umrechnung auf Produkteinheit)
+                    const toRM = {
+                        'FM': 1.42,
+                        'RM': 1,
+                        'SRM': 1 / 1.42
+                    };
+                    
                     for (const item of oldOrder.items) {
                         const productIndex = this.products.findIndex(p => p.id === item.productId);
                         if (productIndex !== -1) {
-                            this.products[productIndex].quantity += item.quantity;
+                            const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
+                            this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity + quantityInProductUnit) * 10) / 10;
                         }
                     }
                     
-                    // Neuen Bestand abziehen
+                    // Neuen Bestand abziehen (mit Umrechnung auf Produkteinheit)
                     for (const item of this.editingOrder.items) {
                         const productIndex = this.products.findIndex(p => p.id === item.productId);
                         if (productIndex !== -1) {
-                            if (this.products[productIndex].quantity < item.quantity) {
+                            const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
+                            if (this.products[productIndex].quantity < quantityInProductUnit) {
                                 alert(`❌ Nicht genügend Lagerbestand für "${this.products[productIndex].name}"`);
                                 return;
                             }
-                            this.products[productIndex].quantity -= item.quantity;
+                            this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity - quantityInProductUnit) * 10) / 10;
                         }
                     }
                     
@@ -1385,11 +1402,18 @@ createApp({
 
         deleteOrder(order) {
             if (confirm('Möchtest du die Bestellung "' + order.orderNumber + '" wirklich löschen?')) {
-                // Bestand wiederherstellen
+                // Bestand wiederherstellen (mit Umrechnung auf Produkteinheit)
+                const toRM = {
+                    'FM': 1.42,
+                    'RM': 1,
+                    'SRM': 1 / 1.42
+                };
+                
                 for (const item of order.items) {
                     const productIndex = this.products.findIndex(p => p.id === item.productId);
                     if (productIndex !== -1) {
-                        this.products[productIndex].quantity += item.quantity;
+                        const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
+                        this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity + quantityInProductUnit) * 10) / 10;
                     }
                 }
                 
