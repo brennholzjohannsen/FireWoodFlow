@@ -322,6 +322,9 @@ createApp({
                 roundingMode: this.roundingMode
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
+            
+            // Auch in Supabase speichern
+            this.saveCompanySettingsToSupabase();
         },
 
         getActiveWoodTypes() {
@@ -505,38 +508,219 @@ createApp({
         },
 
         async loadData() {
-            // Produkte aus localStorage laden
-            const savedProducts = localStorage.getItem('firewoodflow_products');
-            if (savedProducts) {
-                this.products = JSON.parse(savedProducts);
-            } else {
-                this.products = [];
+            // Zuerst versuchen, Daten von Supabase zu laden
+            await this.loadFromSupabase();
+            
+            // Falls keine Daten in Supabase, localStorage verwenden (Offline-Support)
+            if (this.products.length === 0) {
+                const savedProducts = localStorage.getItem('firewoodflow_products');
+                if (savedProducts) {
+                    this.products = JSON.parse(savedProducts);
+                }
             }
             this.inventoryCount = this.products.length;
-            this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+            this.totalValue = this.calculateTotalValue();
             
-            // Kunden aus localStorage laden
-            const savedCustomers = localStorage.getItem('firewoodflow_customers');
-            if (savedCustomers) {
-                this.customers = JSON.parse(savedCustomers);
-            } else {
-                this.customers = [];
+            if (this.customers.length === 0) {
+                const savedCustomers = localStorage.getItem('firewoodflow_customers');
+                if (savedCustomers) {
+                    this.customers = JSON.parse(savedCustomers);
+                }
             }
             this.customerCount = this.customers.length;
             
-            // Bestellungen aus localStorage laden
-            const savedOrders = localStorage.getItem('firewoodflow_orders');
-            if (savedOrders) {
-                this.orders = JSON.parse(savedOrders);
-                this.ordersCount = this.orders.length;
-            } else {
-                this.orders = [];
-                this.ordersCount = 0;
+            if (this.orders.length === 0) {
+                const savedOrders = localStorage.getItem('firewoodflow_orders');
+                if (savedOrders) {
+                    this.orders = JSON.parse(savedOrders);
+                }
             }
+            this.ordersCount = this.orders.length;
             
             // Heute Bestellungen berechnen
             const today = new Date().toDateString();
             this.todayOrders = this.orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
+        },
+
+        calculateTotalValue() {
+            // Berechnet den Gesamtwert des Lagers basierend auf Einkaufspreisen
+            return this.products.reduce((sum, p) => {
+                const price = parseFloat(p.price) || 0;
+                const quantity = parseFloat(p.quantity) || 0;
+                return sum + (price * quantity);
+            }, 0);
+        },
+
+        async loadFromSupabase() {
+            try {
+                console.log('=== Lade Daten von Supabase ===');
+                
+                // Produkte laden
+                const { data: productsData, error: productsError } = await supabaseClient
+                    .from('products')
+                    .select('*')
+                    .order('name');
+                
+                if (productsError) {
+                    console.warn('Produkte konnten nicht geladen werden:', productsError.message);
+                } else {
+                    this.products = productsData || [];
+                    console.log('✓ Produkte geladen:', this.products.length);
+                }
+                
+                // Kunden laden
+                const { data: customersData, error: customersError } = await supabaseClient
+                    .from('customers')
+                    .select('*')
+                    .order('name');
+                
+                if (customersError) {
+                    console.warn('Kunden konnten nicht geladen werden:', customersError.message);
+                } else {
+                    this.customers = customersData || [];
+                    console.log('✓ Kunden geladen:', this.customers.length);
+                }
+                
+                // Bestellungen laden
+                const { data: ordersData, error: ordersError } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .order('delivery_date, delivery_time');
+                
+                if (ordersError) {
+                    console.warn('Bestellungen konnten nicht geladen werden:', ordersError.message);
+                } else {
+                    this.orders = ordersData || [];
+                    console.log('✓ Bestellungen geladen:', this.orders.length);
+                }
+                
+                // Firmeneinstellungen laden
+                const { data: settingsData, error: settingsError } = await supabaseClient
+                    .from('company_settings')
+                    .select('*')
+                    .single();
+                
+                if (settingsError && settingsError.code !== 'PGRST116') {
+                    console.warn('Einstellungen konnten nicht geladen werden:', settingsError.message);
+                } else if (settingsData) {
+                    this.companyName = settingsData.company_name || 'FireWoodFlow';
+                    this.companyLogo = settingsData.company_logo || null;
+                    this.companyAddress = settingsData.company_address || '';
+                    this.storageLocation = settingsData.storage_location || '';
+                    this.costPerKm = parseFloat(settingsData.cost_per_km) || 0;
+                    this.roundingMode = settingsData.rounding_mode || 'exact';
+                    
+                    if (settingsData.inventory_settings) {
+                        this.inventorySettings = {
+                            woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
+                            drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
+                            logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
+                        };
+                    }
+                    console.log('✓ Firmeneinstellungen geladen');
+                }
+                
+            } catch (error) {
+                console.error('Fehler beim Laden von Supabase:', error);
+            }
+        },
+
+        async saveToSupabase(table, data, userId) {
+            try {
+                const record = { ...data, user_id: userId, updated_at: new Date().toISOString() };
+                
+                if (data.id) {
+                    // Update existing record
+                    const { error } = await supabaseClient
+                        .from(table)
+                        .update(record)
+                        .eq('id', data.id)
+                        .eq('user_id', userId);
+                    
+                    if (error) throw error;
+                } else {
+                    // Insert new record
+                    record.id = crypto.randomUUID();
+                    record.created_at = new Date().toISOString();
+                    
+                    const { error } = await supabaseClient
+                        .from(table)
+                        .insert([record]);
+                    
+                    if (error) throw error;
+                    
+                    return record.id;
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Fehler beim Speichern in Supabase:', error);
+                throw error;
+            }
+        },
+
+        async deleteFromSupabase(table, id, userId) {
+            try {
+                const { error } = await supabaseClient
+                    .from(table)
+                    .delete()
+                    .eq('id', id)
+                    .eq('user_id', userId);
+                
+                if (error) throw error;
+                
+                return true;
+            } catch (error) {
+                console.error('Fehler beim Löschen aus Supabase:', error);
+                throw error;
+            }
+        },
+
+        async saveCompanySettingsToSupabase() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
+                
+                const settings = {
+                    company_name: this.companyName,
+                    company_logo: this.companyLogo,
+                    company_address: this.companyAddress,
+                    storage_location: this.storageLocation,
+                    cost_per_km: this.costPerKm,
+                    rounding_mode: this.roundingMode,
+                    inventory_settings: this.inventorySettings
+                };
+                
+                // Prüfen ob bereits Einstellungen existieren
+                const { data: existing } = await supabaseClient
+                    .from('company_settings')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .single();
+                
+                if (existing) {
+                    // Update
+                    await supabaseClient
+                        .from('company_settings')
+                        .update({ ...settings, updated_at: new Date().toISOString() })
+                        .eq('id', existing.id);
+                } else {
+                    // Insert
+                    await supabaseClient
+                        .from('company_settings')
+                        .insert([{
+                            id: crypto.randomUUID(),
+                            user_id: user.id,
+                            ...settings,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }]);
+                }
+                
+                console.log('✓ Firmeneinstellungen in Supabase gespeichert');
+            } catch (error) {
+                console.error('Fehler beim Speichern der Einstellungen:', error);
+            }
         },
 
         formatCurrency(value) {
@@ -883,26 +1067,40 @@ createApp({
 
                 // Produkt erstellen
                 const product = {
-                    id: Date.now().toString(),
                     name: this.newProduct.name.trim(),
                     quantity: parseFloat(this.newProduct.quantity) || 0,
                     unit: this.newProduct.unit,
-                    woodType: this.newProduct.woodType,
-                    logLength: parseInt(this.newProduct.logLength) || 25,
+                    wood_type: this.newProduct.woodType,
+                    log_length: parseInt(this.newProduct.logLength) || 25,
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
-                    priceLengths: this.newProduct.priceLengths || {},
-                    notes: (this.newProduct.notes || '').trim(),
-                    createdAt: new Date().toISOString()
+                    price_lengths: this.newProduct.priceLengths || {},
+                    notes: (this.newProduct.notes || '').trim()
                 };
                 
                 console.log('Erstelle Produkt:', product);
                 
-                this.products.push(product);
-                this.inventoryCount = this.products.length;
-                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                // In Supabase speichern
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const productId = await this.saveToSupabase('products', product, user.id);
+                    product.id = productId;
+                    product.user_id = user.id;
+                    product.created_at = new Date().toISOString();
+                    product.updated_at = product.created_at;
+                    this.products.push(product);
+                    console.log('✓ Produkt in Supabase gespeichert');
+                } else {
+                    // Fallback: localStorage
+                    product.id = Date.now().toString();
+                    product.createdAt = new Date().toISOString();
+                    this.products.push(product);
+                }
                 
-                // In localStorage speichern
+                this.inventoryCount = this.products.length;
+                this.totalValue = this.calculateTotalValue();
+                
+                // Auch in localStorage speichern (für Offline-Support)
                 this.saveProducts();
                 
                 // Formular zurücksetzen
@@ -915,7 +1113,7 @@ createApp({
                     logLength: 25,
                     dryness: 'lufttrocken',
                     price: 0,
-                    priceUnit: '',
+                    priceLengths: {},
                     notes: ''
                 };
                 
@@ -928,7 +1126,12 @@ createApp({
 
         editProduct(product) {
             // Produkt zum Bearbeiten laden
-            this.editingProduct = { ...product };
+            this.editingProduct = { 
+                ...product,
+                woodType: product.wood_type,
+                logLength: product.log_length,
+                priceLengths: product.price_lengths || {}
+            };
             this.showEditProduct = true;
         },
 
@@ -951,14 +1154,31 @@ createApp({
                 const index = this.products.findIndex(p => p.id === this.editingProduct.id);
                 
                 if (index !== -1) {
-                    // Aktualisiertes Produkt speichern
-                    const updatedProduct = {
-                        ...this.editingProduct,
+                    // Aktualisiertes Produkt vorbereiten
+                    const updatedProductData = {
                         name: this.editingProduct.name.trim(),
                         quantity: parseFloat(this.editingProduct.quantity) || 0,
+                        unit: this.editingProduct.unit,
+                        wood_type: this.editingProduct.woodType,
+                        log_length: parseInt(this.editingProduct.logLength) || 25,
+                        dryness: this.editingProduct.dryness,
                         price: parseFloat(this.editingProduct.price) || 0,
-                        logLength: parseInt(this.editingProduct.logLength) || 25,
-                        priceUnit: this.editingProduct.priceUnit || this.editingProduct.unit,
+                        price_lengths: this.editingProduct.priceLengths || {},
+                        notes: (this.editingProduct.notes || '').trim()
+                    };
+
+                    // In Supabase speichern wenn User eingeloggt ist
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (user && this.editingProduct.id && !this.editingProduct.id.includes('.')) {
+                        // Echte UUID = Supabase Produkt
+                        await this.saveToSupabase('products', { id: this.editingProduct.id, ...updatedProductData }, user.id);
+                        console.log('✓ Produkt in Supabase aktualisiert');
+                    }
+                    
+                    // Lokal aktualisieren
+                    const updatedProduct = {
+                        ...this.products[index],
+                        ...updatedProductData,
                         updatedAt: new Date().toISOString()
                     };
 
@@ -969,7 +1189,7 @@ createApp({
                     
                     // Stats aktualisieren
                     this.inventoryCount = this.products.length;
-                    this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                    this.totalValue = this.calculateTotalValue();
 
                     console.log('Produkt aktualisiert:', updatedProduct);
                     
@@ -993,11 +1213,23 @@ createApp({
             }
         },
 
-        deleteProduct(product) {
+        async deleteProduct(product) {
             if (confirm('Möchtest du "' + product.name + '" wirklich löschen?')) {
+                // Aus Supabase löschen wenn möglich
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user && product.id && !product.id.includes('.')) {
+                    try {
+                        await this.deleteFromSupabase('products', product.id, user.id);
+                        console.log('✓ Produkt aus Supabase gelöscht');
+                    } catch (error) {
+                        console.error('Fehler beim Löschen aus Supabase:', error);
+                    }
+                }
+                
+                // Lokal löschen
                 this.products = this.products.filter(p => p.id !== product.id);
                 this.inventoryCount = this.products.length;
-                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                this.totalValue = this.calculateTotalValue();
                 this.saveProducts();
             }
         },
@@ -1019,28 +1251,37 @@ createApp({
                 }
 
                 const customer = {
-                    id: Date.now().toString(),
                     name: this.newCustomer.name.trim(),
                     address: (this.newCustomer.address || '').trim(),
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
-                    notes: (this.newCustomer.notes || '').trim(),
-                    deliveryCosts: 0,
-                    createdAt: new Date().toISOString()
+                    notes: (this.newCustomer.notes || '').trim()
                 };
 
                 console.log('Erstelle Kunde:', customer);
-                console.log('Kunden vorher:', this.customers.length);
                 
-                // Array kopieren um Reaktivität sicherzustellen
-                const updatedCustomers = [...this.customers, customer];
-                this.customers = updatedCustomers;
+                // In Supabase speichern
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const customerId = await this.saveToSupabase('customers', customer, user.id);
+                    customer.id = customerId;
+                    customer.user_id = user.id;
+                    customer.created_at = new Date().toISOString();
+                    customer.updated_at = customer.created_at;
+                    customer.deliveryCosts = 0;
+                    this.customers.push(customer);
+                    console.log('✓ Kunde in Supabase gespeichert');
+                } else {
+                    // Fallback: localStorage
+                    customer.id = Date.now().toString();
+                    customer.createdAt = new Date().toISOString();
+                    customer.deliveryCosts = 0;
+                    this.customers.push(customer);
+                }
+                
                 this.customerCount = this.customers.length;
                 
-                console.log('Kunden nachher:', this.customers.length);
-                console.log('Alle Kunden:', this.customers);
-                
-                // In localStorage speichern
+                // Auch in localStorage speichern (für Offline-Support)
                 this.saveCustomers();
 
                 // Formular zurücksetzen
@@ -1087,14 +1328,28 @@ createApp({
                 const index = this.customers.findIndex(c => c.id === this.editingCustomer.id);
                 
                 if (index !== -1) {
-                    // Aktualisierten Kunden speichern
-                    const updatedCustomer = {
-                        ...this.editingCustomer,
+                    // Aktualisierten Kunden vorbereiten
+                    const updatedCustomerData = {
                         name: this.editingCustomer.name.trim(),
                         address: (this.editingCustomer.address || '').trim(),
                         phone: (this.editingCustomer.phone || '').trim(),
                         email: (this.editingCustomer.email || '').trim(),
                         notes: (this.editingCustomer.notes || '').trim(),
+                        delivery_costs: this.editingCustomer.deliveryCosts || 0
+                    };
+
+                    // In Supabase speichern wenn User eingeloggt ist
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (user && this.editingCustomer.id && !this.editingCustomer.id.includes('.')) {
+                        // Echte UUID = Supabase Kunde
+                        await this.saveToSupabase('customers', { id: this.editingCustomer.id, ...updatedCustomerData }, user.id);
+                        console.log('✓ Kunde in Supabase aktualisiert');
+                    }
+                    
+                    // Lokal aktualisieren
+                    const updatedCustomer = {
+                        ...this.customers[index],
+                        ...updatedCustomerData,
                         deliveryCosts: this.editingCustomer.deliveryCosts || 0,
                         updatedAt: new Date().toISOString()
                     };
@@ -1126,8 +1381,20 @@ createApp({
             }
         },
 
-        deleteCustomer(customer) {
+        async deleteCustomer(customer) {
             if (confirm('Möchtest du "' + customer.name + '" wirklich löschen?')) {
+                // Aus Supabase löschen wenn möglich
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user && customer.id && !customer.id.includes('.')) {
+                    try {
+                        await this.deleteFromSupabase('customers', customer.id, user.id);
+                        console.log('✓ Kunde aus Supabase gelöscht');
+                    } catch (error) {
+                        console.error('Fehler beim Löschen aus Supabase:', error);
+                    }
+                }
+                
+                // Lokal löschen
                 this.customers = this.customers.filter(c => c.id !== customer.id);
                 this.customerCount = this.customers.length;
                 this.saveCustomers();
@@ -1413,27 +1680,41 @@ createApp({
                 
                 // Bestellung erstellen
                 const order = {
-                    id: Date.now().toString(),
-                    orderNumber: 'ORD-' + Date.now().toString().slice(-6),
-                    customerId: this.newOrder.customerId,
-                    customerName: this.newOrder.customerName,
-                    customerAddress: this.newOrder.customerAddress,
-                    deliveryAddress: this.newOrder.deliveryAddress,
+                    customer_id: this.newOrder.customerId,
+                    customer_name: this.newOrder.customerName,
+                    customer_address: this.newOrder.customerAddress,
+                    delivery_address: this.newOrder.deliveryAddress,
                     items: [...this.newOrder.items],
                     subtotal: this.newOrder.subtotal,
-                    deliveryCosts: this.newOrder.deliveryCosts,
+                    delivery_costs: this.newOrder.deliveryCosts,
                     total: this.newOrder.total,
-                    paymentMethod: this.newOrder.paymentMethod,
-                    paymentStatus: this.newOrder.paymentStatus,
-                    deliveryDate: this.newOrder.deliveryDate,
-                    deliveryTime: this.newOrder.deliveryTime,
+                    payment_method: this.newOrder.paymentMethod,
+                    payment_status: this.newOrder.paymentStatus,
+                    delivery_date: this.newOrder.deliveryDate || null,
+                    delivery_time: this.newOrder.deliveryTime || null,
                     status: this.newOrder.status,
-                    notes: (this.newOrder.notes || '').trim(),
-                    logLength: this.newOrder.logLength || null,
-                    createdAt: new Date().toISOString()
+                    notes: (this.newOrder.notes || '').trim()
                 };
                 
                 console.log('Erstelle Bestellung:', order);
+                
+                // In Supabase speichern
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                let orderId = null;
+                if (user) {
+                    orderId = await this.saveToSupabase('orders', order, user.id);
+                    order.id = orderId;
+                    order.user_id = user.id;
+                    order.created_at = new Date().toISOString();
+                    order.updated_at = order.created_at;
+                    order.orderNumber = 'ORD-' + orderId.slice(0, 8).toUpperCase();
+                    console.log('✓ Bestellung in Supabase gespeichert');
+                } else {
+                    // Fallback: localStorage
+                    order.id = Date.now().toString();
+                    order.orderNumber = 'ORD-' + order.id.slice(-6);
+                    order.createdAt = new Date().toISOString();
+                }
                 
                 // Lagerbestand reduzieren (mit Umrechnung auf Produkteinheit)
                 const toRM = {
@@ -1456,6 +1737,18 @@ createApp({
                         this.products = updatedProducts;
                         
                         console.log(`Bestand aktualisiert: ${item.productName}, alt: ${this.products[productIndex].quantity + quantityInProductUnit}, neu: ${newQuantity}`);
+                        
+                        // Produkt auch in Supabase aktualisieren wenn möglich
+                        if (user && updatedProducts[productIndex].id && !updatedProducts[productIndex].id.includes('.')) {
+                            try {
+                                await this.saveToSupabase('products', {
+                                    id: updatedProducts[productIndex].id,
+                                    quantity: newQuantity
+                                }, user.id);
+                            } catch (err) {
+                                console.error('Fehler beim Aktualisieren des Lagerbestands:', err);
+                            }
+                        }
                     }
                 }
                 
@@ -1463,7 +1756,7 @@ createApp({
                 this.orders.push(order);
                 this.ordersCount = this.orders.length;
                 this.inventoryCount = this.products.length;
-                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                this.totalValue = this.calculateTotalValue();
                 
                 // Daten in localStorage speichern
                 this.saveProducts();
@@ -1549,8 +1842,35 @@ createApp({
                     }
                     
                     // Bestellung aktualisieren
+                    const updatedOrderData = {
+                        customer_id: this.editingOrder.customerId,
+                        customer_name: this.editingOrder.customerName,
+                        customer_address: this.editingOrder.customerAddress,
+                        delivery_address: this.editingOrder.deliveryAddress,
+                        items: [...this.editingOrder.items],
+                        subtotal: this.editingOrder.subtotal,
+                        delivery_costs: this.editingOrder.deliveryCosts,
+                        total: this.editingOrder.total,
+                        payment_method: this.editingOrder.paymentMethod,
+                        payment_status: this.editingOrder.paymentStatus,
+                        delivery_date: this.editingOrder.deliveryDate || null,
+                        delivery_time: this.editingOrder.deliveryTime || null,
+                        status: this.editingOrder.status,
+                        notes: (this.editingOrder.notes || '').trim()
+                    };
+                    
+                    // In Supabase speichern wenn User eingeloggt ist
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (user && this.editingOrder.id && !this.editingOrder.id.includes('.')) {
+                        // Echte UUID = Supabase Bestellung
+                        await this.saveToSupabase('orders', { id: this.editingOrder.id, ...updatedOrderData }, user.id);
+                        console.log('✓ Bestellung in Supabase aktualisiert');
+                    }
+                    
+                    // Lokal aktualisieren
                     const updatedOrder = {
-                        ...this.editingOrder,
+                        ...this.orders[index],
+                        ...updatedOrderData,
                         updatedAt: new Date().toISOString()
                     };
                     
@@ -1560,7 +1880,7 @@ createApp({
                     
                     // Stats aktualisieren
                     this.inventoryCount = this.products.length;
-                    this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                    this.totalValue = this.calculateTotalValue();
                     
                     // In localStorage speichern
                     this.saveProducts();
@@ -1581,8 +1901,19 @@ createApp({
             }
         },
 
-        deleteOrder(order) {
+        async deleteOrder(order) {
             if (confirm('Möchtest du die Bestellung "' + order.orderNumber + '" wirklich löschen?')) {
+                // Aus Supabase löschen wenn möglich
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user && order.id && !order.id.includes('.')) {
+                    try {
+                        await this.deleteFromSupabase('orders', order.id, user.id);
+                        console.log('✓ Bestellung aus Supabase gelöscht');
+                    } catch (error) {
+                        console.error('Fehler beim Löschen aus Supabase:', error);
+                    }
+                }
+                
                 // Bestand wiederherstellen (mit Umrechnung auf Produkteinheit)
                 const toRM = {
                     'FM': 1.42,
@@ -1595,13 +1926,25 @@ createApp({
                     if (productIndex !== -1) {
                         const quantityInProductUnit = item.quantity * toRM[item.unit] / toRM[this.products[productIndex].unit];
                         this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity + quantityInProductUnit) * 10) / 10;
+                        
+                        // Produkt auch in Supabase aktualisieren wenn möglich
+                        if (user && this.products[productIndex].id && !this.products[productIndex].id.includes('.')) {
+                            try {
+                                await this.saveToSupabase('products', {
+                                    id: this.products[productIndex].id,
+                                    quantity: this.products[productIndex].quantity
+                                }, user.id);
+                            } catch (err) {
+                                console.error('Fehler beim Aktualisieren des Lagerbestands:', err);
+                            }
+                        }
                     }
                 }
                 
                 this.orders = this.orders.filter(o => o.id !== order.id);
                 this.ordersCount = this.orders.length;
                 this.inventoryCount = this.products.length;
-                this.totalValue = this.products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+                this.totalValue = this.calculateTotalValue();
                 
                 // In localStorage speichern
                 this.saveProducts();
