@@ -307,6 +307,49 @@ body {
     font-size: 1.8em;
 }
 
+/* Inventory Summary (Lagerwert Card) */
+.inventory-summary {
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-lg);
+    color: var(--white);
+}
+
+.summary-icon {
+    font-size: 2.5em;
+    line-height: 1;
+}
+
+.summary-info {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 0.85em;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.summary-value {
+    font-size: 1.8em;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.summary-sub {
+    font-size: 0.8em;
+    opacity: 0.85;
+    margin-top: 4px;
+}
+
 /* Recent Activity */
 .recent-activity h2 {
     color: var(--text-dark);

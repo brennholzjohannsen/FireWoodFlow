@@ -94,13 +94,6 @@
                             <div class="stat-label">Kunden</div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-info">
-                            <div class="stat-value">{{ formatCurrency(totalValue) }}</div>
-                            <div class="stat-label">Lagerwert</div>
-                        </div>
-                    </div>
                     <div class="stat-card stat-card-wide next-order-card">
                         <div class="stat-icon">📦</div>
                         <div class="stat-info">
@@ -139,7 +132,7 @@
                             <span class="action-icon">👤</span>
                             <span>Neuer Kunde</span>
                         </button>
-                        <button class="btn-action">
+                        <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
                             <span class="action-icon">📦</span>
                             <span>Bestellung</span>
                         </button>
@@ -161,6 +154,18 @@
                     <h1>Inventar</h1>
                     <p class="subtitle">Verwalte deine Holzprodukte</p>
                 </header>
+
+                <!-- Lagerwert Card -->
+                <div class="inventory-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon">💰</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Gesamter Lagerwert</div>
+                            <div class="summary-value">{{ formatCurrency(totalValue) }}</div>
+                            <div class="summary-sub">{{ inventoryCount }} Produkte im Lager</div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="toolbar">
                     <input 
