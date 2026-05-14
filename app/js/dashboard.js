@@ -147,6 +147,25 @@ createApp({
         filteredOrders() {
             if (this.orderStatusFilter === 'alle') return this.orders;
             return this.orders.filter(o => o.status === this.orderStatusFilter);
+        },
+
+        nextOrder() {
+            // Finde den nächsten ausstehenden Auftrag basierend auf Lieferdatum und -zeit
+            const pendingOrders = this.orders.filter(o => {
+                const status = o.status || '';
+                return status !== 'erledigt' && status !== 'storniert' && o.deliveryDate;
+            });
+
+            if (pendingOrders.length === 0) return null;
+
+            // Sortiere nach Datum und Zeit
+            pendingOrders.sort((a, b) => {
+                const dateA = new Date(a.deliveryDate + 'T' + (a.deliveryTime || '00:00'));
+                const dateB = new Date(b.deliveryDate + 'T' + (b.deliveryTime || '00:00'));
+                return dateA - dateB;
+            });
+
+            return pendingOrders[0];
         }
     },
 
@@ -534,6 +553,33 @@ createApp({
                 month: '2-digit',
                 year: 'numeric'
             });
+        },
+
+        formatDateGerman(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // Heute oder morgen?
+            if (date.toDateString() === today.toDateString()) {
+                return 'Heute';
+            } else if (date.toDateString() === tomorrow.toDateString()) {
+                return 'Morgen';
+            }
+
+            // Sonst deutsches Datum
+            return date.toLocaleDateString('de-DE', {
+                weekday: 'short',
+                day: '2-digit',
+                month: '2-digit'
+            });
+        },
+
+        formatTime(timeString) {
+            if (!timeString) return '';
+            return timeString;
         },
 
         formatDuration(seconds) {

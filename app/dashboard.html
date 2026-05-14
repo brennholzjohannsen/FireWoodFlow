@@ -101,11 +101,28 @@
                             <div class="stat-label">Lagerwert</div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📅</div>
+                    <div class="stat-card stat-card-wide next-order-card">
+                        <div class="stat-icon">📦</div>
                         <div class="stat-info">
-                            <div class="stat-value">{{ todayOrders }}</div>
-                            <div class="stat-label">Aufträge heute</div>
+                            <div v-if="nextOrder" class="next-order-details">
+                                <div class="next-order-title">Nächster Auftrag</div>
+                                <div class="next-order-meta">
+                                    <span>{{ formatDateGerman(nextOrder.deliveryDate) }}</span>
+                                    <span>•</span>
+                                    <span>{{ formatTime(nextOrder.deliveryTime) }}</span>
+                                </div>
+                                <div class="next-order-items">
+                                    <span v-for="(item, idx) in nextOrder.items" :key="idx">
+                                        {{ item.quantity }} {{ item.unit }} ({{ item.logLength }}cm)
+                                        <span v-if="nextOrder.items.length > 1 && idx < nextOrder.items.length - 1">, </span>
+                                    </span>
+                                </div>
+                                <div class="next-order-customer">{{ nextOrder.customerName }}</div>
+                            </div>
+                            <div v-else class="no-orders">
+                                <div class="no-orders-title">Keine ausstehenden Aufträge</div>
+                                <div class="no-orders-subtitle">Alle Bestellungen erledigt</div>
+                            </div>
                         </div>
                     </div>
                 </div>
