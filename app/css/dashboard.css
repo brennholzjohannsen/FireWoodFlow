@@ -1127,6 +1127,27 @@ body {
     border-bottom-color: #FAD5CF;
 }
 
+.danger-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-reset {
+    background: linear-gradient(135deg, #D97B5A, #C96A4A);
+}
+
+.btn-reset:hover {
+    background: linear-gradient(135deg, #C96A4A, #B85A3A);
+}
+
+.danger-hint {
+    margin-top: 12px;
+    font-size: 0.8em;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
 .btn-danger {
     background: var(--error-color);
     color: var(--white);

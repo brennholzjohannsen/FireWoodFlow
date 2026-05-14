@@ -533,9 +533,18 @@
 
                 <section class="settings-section danger-zone">
                     <h2>Gefahrenzone</h2>
-                    <button @click="handleDeleteAccount" class="btn-danger">
-                        Konto löschen
-                    </button>
+                    <div class="danger-actions">
+                        <button @click="handleResetApp" class="btn-danger btn-reset">
+                            ⚠️ App auf Werkseinstellungen zurücksetzen
+                        </button>
+                        <button @click="handleDeleteAccount" class="btn-danger">
+                            Konto löschen
+                        </button>
+                    </div>
+                    <p class="field-hint danger-hint">
+                        Beim Zurücksetzen werden ALLE lokalen Daten gelöscht (Produkte, Kunden, Bestellungen). 
+                        Firmeneinstellungen bleiben erhalten. Diese Aktion kann nicht rückgängig gemacht werden!
+                    </p>
                 </section>
             </div>
 

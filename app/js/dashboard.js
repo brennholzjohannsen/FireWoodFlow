@@ -1712,6 +1712,19 @@ createApp({
             alert('Passwort ändern wird noch implementiert.');
         },
 
+        handleResetApp() {
+            if (confirm('ACHTUNG: Dies löscht ALLE lokalen Daten!\n\n• Alle Produkte\n• Alle Kunden\n• Alle Bestellungen\n\nFirmeneinstellungen bleiben erhalten.\n\nBist du sicher? Dies kann nicht rückgängig gemacht werden.')) {
+                // localStorage keys für Daten löschen
+                localStorage.removeItem('firewoodflow_products');
+                localStorage.removeItem('firewoodflow_customers');
+                localStorage.removeItem('firewoodflow_orders');
+                
+                // App neu laden um leere Daten zu laden
+                alert('✓ App wurde auf Werkseinstellungen zurückgesetzt.\n\nDie Seite wird jetzt neu geladen.');
+                window.location.reload();
+            }
+        },
+
         handleDeleteAccount() {
             if (confirm('Bist du sicher? Dies kann nicht rückgängig gemacht werden.')) {
                 alert('Konto löschen wird noch implementiert.');
