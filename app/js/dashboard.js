@@ -1088,7 +1088,6 @@ createApp({
                     log_length: parseInt(this.newProduct.logLength) || 25,
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
-                    price_lengths: this.newProduct.priceLengths || {},
                     notes: (this.newProduct.notes || '').trim()
                 };
                 
@@ -1177,7 +1176,6 @@ createApp({
                         log_length: parseInt(this.editingProduct.logLength) || 25,
                         dryness: this.editingProduct.dryness,
                         price: parseFloat(this.editingProduct.price) || 0,
-                        price_lengths: this.editingProduct.priceLengths || {},
                         notes: (this.editingProduct.notes || '').trim()
                     };
 
