@@ -590,7 +590,19 @@ createApp({
                 if (ordersError) {
                     console.warn('Bestellungen konnten nicht geladen werden:', ordersError.message);
                 } else {
-                    this.orders = ordersData || [];
+                    // snake_case zu camelCase konvertieren für Vue Templates
+                    this.orders = (ordersData || []).map(order => ({
+                        ...order,
+                        customerId: order.customer_id,
+                        customerName: order.customer_name,
+                        customerAddress: order.customer_address,
+                        deliveryAddress: order.delivery_address,
+                        deliveryCosts: order.delivery_costs,
+                        paymentMethod: order.payment_method,
+                        paymentStatus: order.payment_status,
+                        deliveryDate: order.delivery_date,
+                        deliveryTime: order.delivery_time
+                    }));
                     console.log('✓ Bestellungen geladen:', this.orders.length);
                 }
                 
@@ -1716,6 +1728,19 @@ createApp({
                     order.createdAt = new Date().toISOString();
                 }
                 
+                // WICHTIG: camelCase Felder für lokale Nutzung hinzufügen (für Vue Templates)
+                order.customerId = order.customer_id;
+                order.customerName = order.customer_name;
+                order.customerAddress = order.customer_address;
+                order.deliveryAddress = order.delivery_address;
+                order.deliveryCosts = order.delivery_costs;
+                order.paymentMethod = order.payment_method;
+                order.paymentStatus = order.payment_status;
+                order.deliveryDate = order.delivery_date;
+                order.deliveryTime = order.delivery_time;
+                
+                console.log('Bestellung komplett:', order);
+                
                 // Lagerbestand reduzieren (mit Umrechnung auf Produkteinheit)
                 const toRM = {
                     'FM': 1.42,
@@ -1873,6 +1898,17 @@ createApp({
                         ...updatedOrderData,
                         updatedAt: new Date().toISOString()
                     };
+                    
+                    // WICHTIG: camelCase Felder für lokale Nutzung hinzufügen (für Vue Templates)
+                    updatedOrder.customerId = updatedOrder.customer_id;
+                    updatedOrder.customerName = updatedOrder.customer_name;
+                    updatedOrder.customerAddress = updatedOrder.customer_address;
+                    updatedOrder.deliveryAddress = updatedOrder.delivery_address;
+                    updatedOrder.deliveryCosts = updatedOrder.delivery_costs;
+                    updatedOrder.paymentMethod = updatedOrder.payment_method;
+                    updatedOrder.paymentStatus = updatedOrder.payment_status;
+                    updatedOrder.deliveryDate = updatedOrder.delivery_date;
+                    updatedOrder.deliveryTime = updatedOrder.delivery_time;
                     
                     const updatedOrders = [...this.orders];
                     updatedOrders[index] = updatedOrder;
