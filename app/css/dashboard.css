@@ -1535,6 +1535,32 @@ body {
     min-width: 0;
 }
 
+/* Kunde auswählen mit "Neuer Kunde" Button */
+.customer-select-with-add {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+.btn-add-customer-inline {
+    padding: 11px 14px;
+    background: var(--secondary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.btn-add-customer-inline:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
 .btn-add-mini {
     padding: 10px 16px;
     background: var(--success-color);

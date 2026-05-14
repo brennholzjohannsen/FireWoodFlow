@@ -65,6 +65,7 @@ createApp({
             customerCount: 0,
             customers: [],
             showAddCustomer: false,
+            showAddCustomerFromOrder: false,
             showEditCustomer: false,
             editingCustomer: null,
             showDeliveryModal: false,
@@ -77,7 +78,8 @@ createApp({
                 address: '',
                 phone: '',
                 email: '',
-                notes: ''
+                notes: '',
+                deliveryCosts: 0
             },
             
             // Stats
@@ -1267,7 +1269,8 @@ createApp({
                     address: (this.newCustomer.address || '').trim(),
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
-                    notes: (this.newCustomer.notes || '').trim()
+                    notes: (this.newCustomer.notes || '').trim(),
+                    deliveryCosts: this.newCustomer.deliveryCosts || 0
                 };
 
                 console.log('Erstelle Kunde:', customer);
@@ -1280,14 +1283,12 @@ createApp({
                     customer.user_id = user.id;
                     customer.created_at = new Date().toISOString();
                     customer.updated_at = customer.created_at;
-                    customer.deliveryCosts = 0;
                     this.customers.push(customer);
                     console.log('✓ Kunde in Supabase gespeichert');
                 } else {
                     // Fallback: localStorage
                     customer.id = Date.now().toString();
                     customer.createdAt = new Date().toISOString();
-                    customer.deliveryCosts = 0;
                     this.customers.push(customer);
                 }
                 
@@ -1318,6 +1319,93 @@ createApp({
                 console.error('Error Stack:', error.stack);
                 alert('❌ Fehler beim Speichern des Kunden: ' + error.message);
             }
+        },
+
+        // Neuer Kunde aus Bestellung heraus anlegen
+        async addCustomerFromOrder() {
+            console.log('=== addCustomerFromOrder aufgerufen ===');
+            
+            try {
+                // Validierung
+                if (!this.newCustomer.name || !this.newCustomer.name.trim()) {
+                    alert('Bitte geben Sie einen Namen ein.');
+                    return;
+                }
+                if (!this.newCustomer.address || !this.newCustomer.address.trim()) {
+                    alert('Bitte geben Sie eine Adresse ein.');
+                    return;
+                }
+
+                const customer = {
+                    name: this.newCustomer.name.trim(),
+                    address: (this.newCustomer.address || '').trim(),
+                    phone: (this.newCustomer.phone || '').trim(),
+                    email: (this.newCustomer.email || '').trim(),
+                    notes: (this.newCustomer.notes || '').trim(),
+                    deliveryCosts: this.newCustomer.deliveryCosts || 0
+                };
+
+                console.log('Erstelle Kunde für Bestellung:', customer);
+                
+                // In Supabase speichern
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const customerId = await this.saveToSupabase('customers', customer, user.id);
+                    customer.id = customerId;
+                    customer.user_id = user.id;
+                    customer.created_at = new Date().toISOString();
+                    customer.updated_at = customer.created_at;
+                    this.customers.push(customer);
+                    console.log('✓ Kunde in Supabase gespeichert');
+                } else {
+                    // Fallback: localStorage
+                    customer.id = Date.now().toString();
+                    customer.createdAt = new Date().toISOString();
+                    this.customers.push(customer);
+                }
+                
+                this.customerCount = this.customers.length;
+                
+                // Auch in localStorage speichern
+                this.saveCustomers();
+
+                // Kunde automatisch für die Bestellung auswählen
+                this.newOrder.customerId = customer.id;
+                this.selectCustomerForOrder(customer);
+
+                // Formular zurücksetzen
+                this.newCustomer = {
+                    name: '',
+                    address: '',
+                    phone: '',
+                    email: '',
+                    notes: '',
+                    deliveryCosts: 0
+                };
+
+                // Modal schließen
+                this.showAddCustomerFromOrder = false;
+                
+                alert('✓ Kunde erstellt und für Bestellung ausgewählt!');
+                
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                console.error('Error Stack:', error.stack);
+                alert('❌ Fehler beim Speichern des Kunden: ' + error.message);
+            }
+        },
+
+        closeAddCustomerFromOrder() {
+            // Formular zurücksetzen ohne zu speichern
+            this.newCustomer = {
+                name: '',
+                address: '',
+                phone: '',
+                email: '',
+                notes: '',
+                deliveryCosts: 0
+            };
+            this.showAddCustomerFromOrder = false;
         },
 
         editCustomer(customer) {
