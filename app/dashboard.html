@@ -793,20 +793,22 @@
                     <!-- Produkte hinzufügen -->
                     <div class="form-group">
                         <label>Produkte hinzufügen</label>
-                        <div class="product-selector">
-                            <select id="orderProductSelect" class="select-input">
+                        <div class="product-selector-vertical">
+                            <select id="orderProductSelect" class="select-input" style="width: 100%;">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
                                     {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
-                            <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
-                            <select v-model="newOrderItemUnit" class="select-input" style="width: 90px;">
-                                <option value="FM">FM</option>
-                                <option value="RM">RM</option>
-                                <option value="SRM">SRM</option>
-                            </select>
-                            <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-mini">➕ Hinzufügen</button>
+                            <div class="quantity-unit-row">
+                                <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="flex: 1;">
+                                <select v-model="newOrderItemUnit" class="select-input" style="flex: 1;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-mini">➕ Hinzufügen</button>
+                            </div>
                         </div>
                         <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
                     </div>
@@ -932,20 +934,22 @@
                     <!-- Produkte -->
                     <div class="form-group">
                         <label>Produkte hinzufügen</label>
-                        <div class="product-selector">
-                            <select id="editOrderProductSelect" class="select-input">
+                        <div class="product-selector-vertical">
+                            <select id="editOrderProductSelect" class="select-input" style="width: 100%;">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
                                     {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
-                            <input type="number" id="editOrderProductQuantity" v-model.number="editOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="width: 80px;">
-                            <select v-model="editOrderItemUnit" class="select-input" style="width: 90px;">
-                                <option value="FM">FM</option>
-                                <option value="RM">RM</option>
-                                <option value="SRM">SRM</option>
-                            </select>
-                            <button type="button" @click="addProductToOrderWithQuantity(true)" class="btn-add-mini">➕ Hinzufügen</button>
+                            <div class="quantity-unit-row">
+                                <input type="number" id="editOrderProductQuantity" v-model.number="editOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="flex: 1;">
+                                <select v-model="editOrderItemUnit" class="select-input" style="flex: 1;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <button type="button" @click="addProductToOrderWithQuantity(true)" class="btn-add-mini">➕ Hinzufügen</button>
+                            </div>
                         </div>
                         <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
                     </div>
