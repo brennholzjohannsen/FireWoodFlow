@@ -1096,13 +1096,23 @@ createApp({
                 // In Supabase speichern
                 const { data: { user } } = await supabaseClient.auth.getUser();
                 if (user) {
-                    const productId = await this.saveToSupabase('products', product, user.id);
-                    product.id = productId;
-                    product.user_id = user.id;
-                    product.created_at = new Date().toISOString();
-                    product.updated_at = product.created_at;
-                    this.products.push(product);
-                    console.log('✓ Produkt in Supabase gespeichert');
+                    console.log('User eingeloggt, speichere in Supabase...');
+                    console.log('Produkt-Daten vor saveToSupabase:', product);
+                    console.log('User ID:', user.id);
+                    
+                    try {
+                        const productId = await this.saveToSupabase('products', product, user.id);
+                        product.id = productId;
+                        product.user_id = user.id;
+                        product.created_at = new Date().toISOString();
+                        product.updated_at = product.created_at;
+                        this.products.push(product);
+                        console.log('✓ Produkt in Supabase gespeichert');
+                    } catch (saveError) {
+                        console.error('Speichern in Supabase fehlgeschlagen:', saveError);
+                        console.error('Fehlerdetails:', JSON.stringify(saveError, null, 2));
+                        throw saveError;
+                    }
                 } else {
                     // Fallback: localStorage
                     product.id = Date.now().toString();
@@ -1133,7 +1143,8 @@ createApp({
                 alert('✓ Produkt erfolgreich gespeichert!');
             } catch (error) {
                 console.error('Fehler beim Speichern:', error);
-                alert('❌ Fehler beim Speichern des Produkts.');
+                console.error('Error details:', error.message, error.details, error.hint);
+                alert('❌ Fehler beim Speichern des Produkts: ' + error.message + (error.details ? '\n' + JSON.stringify(error.details) : ''));
             }
         },
 
