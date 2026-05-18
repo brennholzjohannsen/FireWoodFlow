@@ -904,12 +904,31 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Lieferdatum</label>
-                            <input type="date" v-model="newOrder.deliveryDate" class="date-input">
+                            <div class="input-with-calendar">
+                                <input type="date" v-model="newOrder.deliveryDate" class="date-input" style="flex: 1;">
+                                <button type="button" @click="openInCalendar('date')" class="btn-calendar" title="In Kalender öffnen">
+                                    📅 Kalender
+                                </button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Lieferzeit (Uhrzeit)</label>
                             <input type="time" v-model="newOrder.deliveryTime" class="date-input">
                         </div>
+                    </div>
+                    
+                    <!-- Kalender Integration Hinweis -->
+                    <div class="calendar-integration-hint" v-if="newOrder.deliveryDate">
+                        <p>📅 <strong>Google Calendar wird geöffnet:</strong></p>
+                        <p v-if="newOrder.deliveryTime">
+                            {{ formatDateForCalendar(newOrder.deliveryDate) }} um {{ newOrder.deliveryTime }} Uhr
+                        </p>
+                        <p v-else>
+                            {{ formatDateForCalendar(newOrder.deliveryDate) }} (ganztägig)
+                        </p>
+                        <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
+                            🗓️ In Google Calendar eintragen
+                        </button>
                     </div>
 
                     <!-- Notizen -->
@@ -1044,12 +1063,31 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Lieferdatum</label>
-                            <input type="date" v-model="editingOrder.deliveryDate" class="date-input">
+                            <div class="input-with-calendar">
+                                <input type="date" v-model="editingOrder.deliveryDate" class="date-input" style="flex: 1;">
+                                <button type="button" @click="openInCalendar('date')" class="btn-calendar" title="In Kalender öffnen">
+                                    📅 Kalender
+                                </button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Lieferzeit (Uhrzeit)</label>
                             <input type="time" v-model="editingOrder.deliveryTime" class="date-input">
                         </div>
+                    </div>
+                    
+                    <!-- Kalender Integration Hinweis -->
+                    <div class="calendar-integration-hint" v-if="editingOrder.deliveryDate">
+                        <p>📅 <strong>Google Calendar wird geöffnet:</strong></p>
+                        <p v-if="editingOrder.deliveryTime">
+                            {{ formatDateForCalendar(editingOrder.deliveryDate) }} um {{ editingOrder.deliveryTime }} Uhr
+                        </p>
+                        <p v-else>
+                            {{ formatDateForCalendar(editingOrder.deliveryDate) }} (ganztägig)
+                        </p>
+                        <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
+                            🗓️ In Google Calendar eintragen
+                        </button>
                     </div>
 
                     <!-- Status -->

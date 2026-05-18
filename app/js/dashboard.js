@@ -896,6 +896,85 @@ createApp({
             return timeString;
         },
 
+        formatDateForCalendar(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        },
+
+        openInCalendar(mode) {
+            // Google Calendar URL öffnen - funktioniert für neue und bearbeitete Bestellungen
+            const order = this.showEditOrder ? this.editingOrder : this.newOrder;
+            
+            if (!order.deliveryDate) {
+                alert('Bitte wähle zuerst ein Lieferdatum.');
+                return;
+            }
+
+            // Basis-Parameter für Google Calendar
+            const baseUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+            
+            // Titel der Veranstaltung
+            let title = encodeURIComponent('🚚 Lieferung - FireWoodFlow');
+            if (order.customerName || (this.customers && this.customers.find(c => c.id === order.customerId))) {
+                const customerName = order.customerName || this.customers.find(c => c.id === order.customerId).name;
+                title = encodeURIComponent(`🚚 Lieferung an ${customerName}`);
+            }
+
+            // Datum formatieren (YYYYMMDD oder YYYYMMDDTHHMMSSZ)
+            const datePart = order.deliveryDate.replace(/-/g, '');
+            
+            let datesParam;
+            if (order.deliveryTime) {
+                // Mit Uhrzeit: 1 Stunde Dauer
+                const startDateTime = `${datePart}T${order.deliveryTime.replace(':', '')}00`;
+                // Endzeit = Start + 1 Stunde
+                const [hours, mins] = order.deliveryTime.split(':');
+                const endHours = String(Math.min(parseInt(hours) + 1, 23)).padStart(2, '0');
+                const endDateTime = `${datePart}T${endHours}${mins}00`;
+                datesParam = `dates=${startDateTime}/${endDateTime}`;
+            } else {
+                // Ganztägig
+                datesParam = `dates=${datePart}/${datePart}`;
+            }
+
+            // Beschreibung mit Bestelldetails
+            let description = encodeURIComponent('FireWoodFlow Bestellung\n');
+            if (order.customerName || (this.customers && this.customers.find(c => c.id === order.customerId))) {
+                const customerName = order.customerName || this.customers.find(c => c.id === order.customerId).name;
+                description += encodeURIComponent(`Kunde: ${customerName}\n`);
+            }
+            if (order.deliveryAddress) {
+                description += encodeURIComponent(`Lieferadresse: ${order.deliveryAddress}\n`);
+            }
+            if (order.items && order.items.length > 0) {
+                description += encodeURIComponent('\nBestellung:\n');
+                for (const item of order.items) {
+                    description += encodeURIComponent(`${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)\n`);
+                }
+            }
+            if (order.total) {
+                description += encodeURIComponent(`\nGesamtsumme: €${order.total.toFixed(2)}`);
+            }
+
+            // Standort (Lieferadresse)
+            let location = '';
+            if (order.deliveryAddress) {
+                location = `&location=${encodeURIComponent(order.deliveryAddress)}`;
+            }
+
+            // URL zusammenbauen
+            let calendarUrl = `${baseUrl}&text=${title}&${datesParam}&details=${description}${location}`;
+
+            // In neuem Tab öffnen
+            window.open(calendarUrl, '_blank');
+        },
+
         formatDuration(seconds) {
             if (!seconds) return '-';
             const hours = Math.floor(seconds / 3600);

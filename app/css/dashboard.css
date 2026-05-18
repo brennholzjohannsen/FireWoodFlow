@@ -722,6 +722,77 @@ body {
     gap: 12px;
 }
 
+/* Calendar Integration */
+.input-with-calendar {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.input-with-calendar .date-input {
+    flex: 1;
+}
+
+.btn-calendar {
+    padding: 10px 14px;
+    background: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    min-height: 44px;
+}
+
+.btn-calendar:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.calendar-integration-hint {
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.08), rgba(160, 130, 100, 0.1));
+    border-left: 4px solid var(--primary-color);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.calendar-integration-hint p {
+    margin: 0 0 8px 0;
+    font-size: 0.9em;
+    color: var(--text-dark);
+}
+
+.calendar-integration-hint p:last-child {
+    margin-bottom: 12px;
+}
+
+.btn-calendar-full {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-calendar-full:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
 /* Logo Upload Styles */
 .logo-preview {
     position: relative;
