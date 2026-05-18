@@ -495,17 +495,23 @@ createApp({
                     
                     if (!hasManualRM) {
                         this.newProduct.priceLengths[length].rm = calculatedRM;
+                        // Force Vue 3 reactivity durch Neuzuweisung
+                        this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
                     }
                 } else {
                     // SRM ist leer oder ungültig → RM auch leeren (wenn nicht manuell)
                     const hasManualRM = currentRM && currentRM !== '' && currentRM !== '1.42';
                     if (!hasManualRM) {
                         this.newProduct.priceLengths[length].rm = '';
+                        // Force Vue 3 reactivity
+                        this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
                     }
                 }
             } else if (unit === 'RM') {
                 // RM-Wert manuell setzen
                 this.newProduct.priceLengths[length].rm = value;
+                // Force Vue 3 reactivity
+                this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
             }
         },
 
