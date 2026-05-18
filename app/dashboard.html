@@ -836,7 +836,7 @@
                                     {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
-                            <div class="quantity-unit-row">
+                            <div class="quantity-unit-row-mobile">
                                 <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="flex: 1;">
                                 <select v-model="newOrderItemUnit" class="select-input" style="flex: 1;">
                                     <option value="FM">FM</option>
@@ -846,8 +846,8 @@
                                 <select v-model="newOrderItemLogLength" class="select-input" style="flex: 1;" title="Scheitlänge">
                                     <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
                                 </select>
-                                <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-mini">➕ Hinzufügen</button>
                             </div>
+                            <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-product-full">➕ Hinzufügen</button>
                         </div>
                         <p class="field-hint">Gib die Bestellmenge, Einheit und Scheitlänge ein. Der Preis wird automatisch aus dem Inventar geladen (je nach Scheitlänge und Einheit).</p>
                     </div>

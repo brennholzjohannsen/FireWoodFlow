@@ -1648,6 +1648,47 @@ body {
     min-width: 0;
 }
 
+/* Mobile-optimierte Version mit Button in separater Zeile */
+.quantity-unit-row-mobile {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.quantity-unit-row-mobile input,
+.quantity-unit-row-mobile select {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px; /* Verhindert Zoom auf iOS */
+    padding: 12px 10px;
+    min-height: 44px;
+}
+
+.btn-add-product-full {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, var(--success-color), #27ae60);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-add-product-full:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
 /* Kunde auswählen mit "Neuer Kunde" Button */
 .customer-select-with-add {
     display: flex;
