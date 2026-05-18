@@ -574,6 +574,37 @@ createApp({
         },
 
         loadInventorySettings() {
+            // Zuerst aus Supabase laden (wenn verfügbar)
+            this.loadInventorySettingsFromSupabase();
+            
+            // Fallback: Aus localStorage laden (wird in loadInventorySettingsFromSupabase gemacht)
+        },
+
+        async loadInventorySettingsFromSupabase() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const { data, error } = await supabaseClient
+                        .from('inventory_settings')
+                        .select('*')
+                        .single();
+                    
+                    if (!error && data) {
+                        // JSONB Arrays parsen
+                        this.inventorySettings = {
+                            woodTypes: data.wood_types || [],
+                            drynessLevels: data.dryness_levels || [],
+                            logLengths: data.log_lengths || []
+                        };
+                        console.log('✓ Inventar-Einstellungen aus Supabase geladen');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Konnte Inventar-Einstellungen nicht aus Supabase laden:', error.message);
+            }
+            
+            // Fallback: Aus localStorage laden
             const saved = localStorage.getItem('firewoodflow_inventory_settings');
             if (saved) {
                 const data = JSON.parse(saved);
@@ -582,11 +613,57 @@ createApp({
                     drynessLevels: data.drynessLevels || this.inventorySettings.drynessLevels,
                     logLengths: data.logLengths || this.inventorySettings.logLengths
                 };
+                console.log('✓ Inventar-Einstellungen aus localStorage geladen');
             }
         },
 
-        saveInventorySettings() {
+        async saveInventorySettings() {
+            // In Supabase speichern (wenn verfügbar)
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    // Prüfen ob Eintrag existiert
+                    const { data: existing } = await supabaseClient
+                        .from('inventory_settings')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    let error;
+                    if (existing) {
+                        // Update
+                        ({ error } = await supabaseClient
+                            .from('inventory_settings')
+                            .update({
+                                wood_types: this.inventorySettings.woodTypes,
+                                dryness_levels: this.inventorySettings.drynessLevels,
+                                log_lengths: this.inventorySettings.logLengths
+                            })
+                            .eq('user_id', user.id));
+                    } else {
+                        // Insert
+                        ({ error } = await supabaseClient
+                            .from('inventory_settings')
+                            .insert({
+                                user_id: user.id,
+                                wood_types: this.inventorySettings.woodTypes,
+                                dryness_levels: this.inventorySettings.drynessLevels,
+                                log_lengths: this.inventorySettings.logLengths
+                            }));
+                    }
+                    
+                    if (!error) {
+                        console.log('✓ Inventar-Einstellungen in Supabase gespeichert');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Konnte Inventar-Einstellungen nicht in Supabase speichern:', error.message);
+            }
+            
+            // Fallback: Nur lokal speichern
             localStorage.setItem('firewoodflow_inventory_settings', JSON.stringify(this.inventorySettings));
+            console.log('✓ Inventar-Einstellungen lokal gespeichert');
         },
 
         toggleWoodType(woodType) {
