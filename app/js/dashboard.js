@@ -609,29 +609,33 @@ createApp({
                 }
                 
                 // Firmeneinstellungen laden
-                const { data: settingsData, error: settingsError } = await supabaseClient
-                    .from('company_settings')
-                    .select('*')
-                    .single();
-                
-                if (settingsError && settingsError.code !== 'PGRST116') {
-                    console.warn('Einstellungen konnten nicht geladen werden:', settingsError.message);
-                } else if (settingsData) {
-                    this.companyName = settingsData.company_name || 'FireWoodFlow';
-                    this.companyLogo = settingsData.company_logo || null;
-                    this.companyAddress = settingsData.company_address || '';
-                    this.storageLocation = settingsData.storage_location || '';
-                    this.costPerKm = parseFloat(settingsData.cost_per_km) || 0;
-                    this.roundingMode = settingsData.rounding_mode || 'exact';
+                try {
+                    const { data: settingsData, error: settingsError } = await supabaseClient
+                        .from('company_settings')
+                        .select('*')
+                        .single();
                     
-                    if (settingsData.inventory_settings) {
-                        this.inventorySettings = {
-                            woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
-                            drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
-                            logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
-                        };
+                    if (settingsError && settingsError.code !== 'PGRST116') {
+                        console.warn('Einstellungen konnten nicht geladen werden:', settingsError.message);
+                    } else if (settingsData) {
+                        this.companyName = settingsData.company_name || 'FireWoodFlow';
+                        this.companyLogo = settingsData.company_logo || null;
+                        this.companyAddress = settingsData.company_address || '';
+                        this.storageLocation = settingsData.storage_location || '';
+                        this.costPerKm = parseFloat(settingsData.cost_per_km) || 0;
+                        this.roundingMode = settingsData.rounding_mode || 'exact';
+                        
+                        if (settingsData.inventory_settings) {
+                            this.inventorySettings = {
+                                woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
+                                drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
+                                logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
+                            };
+                        }
+                        console.log('✓ Firmeneinstellungen geladen');
                     }
-                    console.log('✓ Firmeneinstellungen geladen');
+                } catch (e) {
+                    console.log('⚠ company_settings Tabelle nicht verfügbar, verwende Standardwerte');
                 }
                 
             } catch (error) {
