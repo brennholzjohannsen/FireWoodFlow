@@ -608,34 +608,32 @@ createApp({
                     console.log('✓ Bestellungen geladen:', this.orders.length);
                 }
                 
-                // Firmeneinstellungen laden
-                try {
-                    const { data: settingsData, error: settingsError } = await supabaseClient
-                        .from('company_settings')
-                        .select('*')
-                        .single();
+                // Firmeneinstellungen laden (optional, nur wenn Supabase verfügbar)
+                // Wenn company_settings Tabelle nicht existiert, verwende Standardwerte
+                // Hinweis: Fehler wird bewusst nicht geloggt um Console sauber zu halten
+                const { data: settingsData, error: settingsError } = await supabaseClient
+                    .from('company_settings')
+                    .select('*')
+                    .single()
+                    .then(res => res)
+                    .catch(() => ({ data: null, error: null })); // Fehler schlucken
+                
+                if (settingsData) {
+                    this.companyName = settingsData.company_name || 'FireWoodFlow';
+                    this.companyLogo = settingsData.company_logo || null;
+                    this.companyAddress = settingsData.company_address || '';
+                    this.storageLocation = settingsData.storage_location || '';
+                    this.costPerKm = parseFloat(settingsData.cost_per_km) || 0;
+                    this.roundingMode = settingsData.rounding_mode || 'exact';
                     
-                    if (settingsError && settingsError.code !== 'PGRST116') {
-                        console.warn('Einstellungen konnten nicht geladen werden:', settingsError.message);
-                    } else if (settingsData) {
-                        this.companyName = settingsData.company_name || 'FireWoodFlow';
-                        this.companyLogo = settingsData.company_logo || null;
-                        this.companyAddress = settingsData.company_address || '';
-                        this.storageLocation = settingsData.storage_location || '';
-                        this.costPerKm = parseFloat(settingsData.cost_per_km) || 0;
-                        this.roundingMode = settingsData.rounding_mode || 'exact';
-                        
-                        if (settingsData.inventory_settings) {
-                            this.inventorySettings = {
-                                woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
-                                drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
-                                logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
-                            };
-                        }
-                        console.log('✓ Firmeneinstellungen geladen');
+                    if (settingsData.inventory_settings) {
+                        this.inventorySettings = {
+                            woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
+                            drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
+                            logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
+                        };
                     }
-                } catch (e) {
-                    console.log('⚠ company_settings Tabelle nicht verfügbar, verwende Standardwerte');
+                    console.log('✓ Firmeneinstellungen geladen');
                 }
                 
             } catch (error) {
