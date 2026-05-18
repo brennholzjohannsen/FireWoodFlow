@@ -86,6 +86,10 @@ createApp({
             // Stats
             todayOrders: [],
             
+            // Delivery Planning
+            currentWeekStart: null,
+            selectedDay: null,
+            
             // Storage Locations (Lagerplätze)
             storageLocations: [],
             
@@ -194,6 +198,33 @@ createApp({
             });
 
             return todaysOrders;
+        },
+
+        // Delivery Planning Computed
+        weekDays() {
+            // Array der 7 Tage der aktuellen Woche
+            const days = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(this.currentWeekStart);
+                date.setDate(date.getDate() + i);
+                
+                const dateStr = date.toISOString().split('T')[0];
+                const dayOrders = this.orders.filter(o => o.deliveryDate === dateStr);
+                
+                days.push({
+                    date: dateStr,
+                    dayName: date.toLocaleDateString('de-DE', { weekday: 'short' }),
+                    dayNumber: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+                    orderCount: dayOrders.length,
+                    totalDistance: dayOrders.reduce((sum, o) => sum + (o.distance || 0), 0)
+                });
+            }
+            return days;
+        },
+
+        selectedDayOrders() {
+            if (!this.selectedDay) return [];
+            return this.orders.filter(o => o.deliveryDate === this.selectedDay);
         }
     },
 
@@ -203,6 +234,9 @@ createApp({
         
         // Firmen-Daten laden
         this.loadCompanySettings();
+        
+        // Delivery Planning initialisieren
+        this.initWeekStart();
         
         // Daten laden
         await this.loadData();
@@ -2726,6 +2760,205 @@ createApp({
             if (!time || time === '') return dateStr;
             // Zeit im Format HH:MM anzeigen
             return `${dateStr} • ${time} Uhr`;
+        },
+
+        // Delivery Planning Methods
+        initWeekStart() {
+            // Set current week to Monday of this week
+            const now = new Date();
+            const day = now.getDay();
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+            const monday = new Date(now.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            this.currentWeekStart = monday.toISOString().split('T')[0];
+            
+            // Select today by default
+            this.selectedDay = new Date().toISOString().split('T')[0];
+        },
+
+        previousWeek() {
+            const date = new Date(this.currentWeekStart);
+            date.setDate(date.getDate() - 7);
+            this.currentWeekStart = date.toISOString().split('T')[0];
+            this.selectedDay = null;
+        },
+
+        nextWeek() {
+            const date = new Date(this.currentWeekStart);
+            date.setDate(date.getDate() + 7);
+            this.currentWeekStart = date.toISOString().split('T')[0];
+            this.selectedDay = null;
+        },
+
+        goToCurrentWeek() {
+            this.initWeekStart();
+        },
+
+        selectDay(date) {
+            this.selectedDay = date;
+        },
+
+        isToday(dateStr) {
+            const today = new Date().toISOString().split('T')[0];
+            return dateStr === today;
+        },
+
+        formatWeekStart(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+
+        formatWeekEnd(dateStr) {
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + 6);
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+
+        formatFullDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        },
+
+        optimizeRoute() {
+            // Simple optimization: Sort by time, then create Google Maps route
+            if (this.selectedDayOrders.length === 0) return;
+            
+            // Sort orders by delivery time
+            const sorted = [...this.selectedDayOrders].sort((a, b) => {
+                const timeA = a.deliveryTime || '23:59';
+                const timeB = b.deliveryTime || '23:59';
+                return timeA.localeCompare(timeB);
+            });
+            
+            // Assign optimized positions
+            sorted.forEach((order, idx) => {
+                order.optimizedPosition = idx + 1;
+            });
+            
+            // Open Google Maps with all stops
+            const addresses = sorted.map(o => encodeURIComponent(o.deliveryAddress)).join('/');
+            const startAddress = encodeURIComponent(this.companyAddress || this.storageLocations[0]?.address || '');
+            
+            const mapsUrl = `https://www.google.com/maps/dir/${startAddress}/${addresses}`;
+            window.open(mapsUrl, '_blank');
+            
+            alert(`✓ Route optimiert! ${sorted.length} Stopps in Google Maps geöffnet.`);
+        },
+
+        printDeliveryList() {
+            // Create printable version
+            const printWindow = window.open('', '_blank');
+            const orders = this.selectedDayOrders.sort((a, b) => {
+                const timeA = a.deliveryTime || '23:59';
+                const timeB = b.deliveryTime || '23:59';
+                return timeA.localeCompare(timeB);
+            });
+            
+            let html = `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Lieferliste - ${this.formatFullDate(this.selectedDay)}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #8B7355; border-bottom: 3px solid #8B7355; padding-bottom: 10px; }
+        .header { margin-bottom: 30px; }
+        .stats { display: flex; gap: 30px; margin: 20px 0; background: #f5f5f5; padding: 15px; border-radius: 8px; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5em; font-weight: bold; color: #8B7355; }
+        .stat-label { font-size: 0.9em; color: #666; }
+        .delivery { border: 2px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0; page-break-inside: avoid; }
+        .delivery-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .position { background: #8B7355; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .time { font-size: 1.2em; font-weight: bold; }
+        .customer { font-size: 1.1em; font-weight: bold; }
+        .address { color: #666; margin: 8px 0; }
+        .items { background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .total { font-size: 1.1em; font-weight: bold; color: #8B7355; text-align: right; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚚 Lieferliste - ${this.companyName}</h1>
+        <p><strong>Datum:</strong> ${this.formatFullDate(this.selectedDay)}</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value">${orders.length}</div>
+            <div class="stat-label">Lieferungen</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">${this.calculateTotalDistance().toFixed(1)} km</div>
+            <div class="stat-label">Gesamt-Strecke</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">${this.earliestDeliveryTime()}</div>
+            <div class="stat-label">Erster Start</div>
+        </div>
+    </div>
+    
+    <h2>Lieferroute</h2>
+`;
+            
+            orders.forEach((order, idx) => {
+                html += `
+<div class="delivery">
+    <div class="delivery-header">
+        <span class="position">${idx + 1}</span>
+        <span class="time">${this.formatTime(order.deliveryTime)}</span>
+        <span class="customer">${order.customerName}</span>
+    </div>
+    <div class="address">📍 ${order.deliveryAddress}</div>
+    <div class="items">
+        ${order.items.map(item => `<div>• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)</div>`).join('')}
+    </div>
+    <div class="total">💶 ${this.formatCurrency(order.total)}</div>
+</div>
+`;
+            });
+            
+            html += `
+    <div class="no-print" style="margin-top: 30px; text-align: center;">
+        <button onclick="window.print()" style="padding: 15px 30px; font-size: 1em; background: #8B7355; color: white; border: none; border-radius: 8px; cursor: pointer;">🖨️ Drucken</button>
+        <button onclick="window.close()" style="padding: 15px 30px; font-size: 1em; background: #ccc; color: #333; border: none; border-radius: 8px; cursor: pointer; margin-left: 10px;">Schließen</button>
+    </div>
+</body>
+</html>`;
+            
+            printWindow.document.write(html);
+            printWindow.document.close();
+        },
+
+        calculateTotalDistance() {
+            // Simple estimation: 5km average between stops
+            return this.selectedDayOrders.length > 0 ? this.selectedDayOrders.length * 5 : 0;
+        },
+
+        calculateTotalDriveTime() {
+            // Simple estimation: 15 minutes per stop
+            const minutes = this.selectedDayOrders.length * 15;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+        },
+
+        earliestDeliveryTime() {
+            if (this.selectedDayOrders.length === 0) return '-';
+            const times = this.selectedDayOrders.map(o => o.deliveryTime).filter(t => t).sort();
+            return times.length > 0 ? times[0] : 'ganztägig';
+        },
+
+        getGoogleMapsLink(address) {
+            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+        },
+
+        callCustomer(order) {
+            if (order.customerPhone) {
+                window.location.href = `tel:${order.customerPhone}`;
+            }
         }
     }
 }).mount('#app');

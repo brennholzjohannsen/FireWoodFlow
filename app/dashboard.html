@@ -37,6 +37,12 @@
                     <span class="nav-text">Übersicht</span>
                 </a>
                 <a href="#" 
+                   :class="{ active: currentView === 'delivery-planning' }" 
+                   @click.prevent="currentView = 'delivery-planning'">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-text">Lieferplanung</span>
+                </a>
+                <a href="#" 
                    :class="{ active: currentView === 'settings' }" 
                    @click.prevent="currentView = 'settings'">
                     <span class="nav-icon">⚙️</span>
@@ -383,6 +389,131 @@
                         </select>
                         <button @click="deleteOrder(order)" class="btn-delete">Löschen</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY PLANNING VIEW -->
+        <div v-if="currentView === 'delivery-planning'" class="view-delivery-planning">
+            <header class="page-header">
+                <h1>🗺️ Lieferplanung</h1>
+                <p class="subtitle">Plane und optimiere deine Liefertouren</p>
+            </header>
+
+            <!-- Week Selector -->
+            <div class="planning-controls">
+                <button @click="previousWeek" class="btn-nav-week">← Vorherige Woche</button>
+                <div class="week-display">
+                    <span>{{ formatWeekStart(currentWeekStart) }} - {{ formatWeekEnd(currentWeekStart) }}</span>
+                </div>
+                <button @click="nextWeek" class="btn-nav-week">Nächste Woche →</button>
+                <button @click="goToCurrentWeek" class="btn-nav-week btn-today">Diese Woche</button>
+            </div>
+
+            <!-- Week Overview Cards -->
+            <div class="week-overview-grid">
+                <div 
+                    v-for="(day, index) in weekDays" 
+                    :key="index" 
+                    :class="['day-card', { 'is-today': isToday(day.date), 'has-orders': day.orderCount > 0 }]"
+                    @click="selectDay(day.date)"
+                >
+                    <div class="day-header">
+                        <span class="day-name">{{ day.dayName }}</span>
+                        <span class="day-date">{{ day.dayNumber }}</span>
+                    </div>
+                    <div class="day-stats">
+                        <span class="order-count">{{ day.orderCount }} Lieferungen</span>
+                        <span class="total-distance" v-if="day.totalDistance">• {{ day.totalDistance.toFixed(1) }} km</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Day Details -->
+            <div v-if="selectedDayOrders.length > 0" class="day-details-section">
+                <div class="day-details-header">
+                    <h2>📦 Lieferungen am {{ formatFullDate(selectedDay) }}</h2>
+                    <div class="day-actions">
+                        <button @click="optimizeRoute" class="btn-optimize">
+                            🗺️ Route optimieren
+                        </button>
+                        <button @click="printDeliveryList" class="btn-print">
+                            🖨️ Liste drucken
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Delivery Stats -->
+                <div class="delivery-stats-bar">
+                    <div class="stat-item">
+                        <span class="stat-label">Lieferungen</span>
+                        <span class="stat-value">{{ selectedDayOrders.length }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Gesamt-Strecke</span>
+                        <span class="stat-value">{{ calculateTotalDistance().toFixed(1) }} km</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Fahrzeit (ca.)</span>
+                        <span class="stat-value">{{ calculateTotalDriveTime() }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Erster Start</span>
+                        <span class="stat-value">{{ earliestDeliveryTime() }}</span>
+                    </div>
+                </div>
+
+                <!-- Deliveries List -->
+                <div class="deliveries-list">
+                    <div 
+                        v-for="(order, idx) in selectedDayOrders" 
+                        :key="order.id" 
+                        class="delivery-item"
+                        :class="{ 'optimized': order.optimizedPosition }"
+                    >
+                        <div class="delivery-position" v-if="order.optimizedPosition">
+                            #{{ order.optimizedPosition }}
+                        </div>
+                        <div class="delivery-content">
+                            <div class="delivery-header">
+                                <span class="delivery-time">{{ formatTime(order.deliveryTime) }}</span>
+                                <span class="delivery-customer">{{ order.customerName }}</span>
+                                <span class="delivery-status" :class="'status-' + order.status">{{ getStatusLabel(order.status) }}</span>
+                            </div>
+                            <div class="delivery-address">
+                                📍 {{ order.deliveryAddress }}
+                            </div>
+                            <div class="delivery-items">
+                                <span v-for="(item, i) in order.items" :key="i">
+                                    {{ item.quantity }} {{ item.unit }} {{ item.productName }} ({{ item.logLength }}cm)
+                                    <span v-if="i < order.items.length - 1">, </span>
+                                </span>
+                            </div>
+                            <div class="delivery-footer">
+                                <span class="delivery-total">💶 {{ formatCurrency(order.total) }}</span>
+                                <div class="delivery-actions">
+                                    <a :href="getGoogleMapsLink(order.deliveryAddress)" target="_blank" class="btn-maps-small">
+                                        🗺️ Navigation
+                                    </a>
+                                    <button @click="callCustomer(order)" class="btn-call-small" v-if="order.customerPhone">
+                                        📞 Anrufen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Orders Message -->
+            <div v-else class="no-day-orders">
+                <div class="empty-state">
+                    <span class="empty-icon">📅</span>
+                    <h3>Keine Lieferungen an diesem Tag</h3>
+                    <p>Wähle einen anderen Tag oder erfasse neue Bestellungen.</p>
+                    <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
+                        ➕ Neue Bestellung
+                    </button>
                 </div>
             </div>
         </div>

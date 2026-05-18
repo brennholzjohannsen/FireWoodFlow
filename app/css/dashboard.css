@@ -2232,3 +2232,489 @@ body {
         padding-right: max(15px, env(safe-area-inset-right));
     }
 }
+
+/* ============================================
+   DELIVERY PLANNING STYLES
+   ============================================ */
+
+.view-delivery-planning {
+    animation: fadeIn 0.3s ease;
+}
+
+.planning-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    background: var(--white);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-nav-week {
+    padding: 10px 16px;
+    background: var(--white);
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+}
+
+.btn-nav-week:hover {
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+    transform: translateY(-2px);
+}
+
+.btn-nav-week.btn-today {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+.btn-nav-week.btn-today:hover {
+    background: #7A654B;
+}
+
+.week-display {
+    font-weight: 600;
+    color: var(--text-dark);
+    min-width: 200px;
+    text-align: center;
+}
+
+.week-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.day-card {
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.day-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.day-card.is-today {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+}
+
+.day-card.has-orders {
+    border-color: var(--success-color);
+}
+
+.day-header {
+    margin-bottom: 12px;
+}
+
+.day-name {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.day-date {
+    display: block;
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.day-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.order-count {
+    font-size: 0.9em;
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.total-distance {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.day-details-section {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+}
+
+.day-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.day-details-header h2 {
+    color: var(--text-dark);
+    font-size: 1.4em;
+    margin: 0;
+}
+
+.day-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-optimize {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-optimize:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+.btn-print {
+    padding: 12px 20px;
+    background: var(--white);
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-print:hover {
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+    transform: translateY(-2px);
+}
+
+.delivery-stats-bar {
+    display: flex;
+    gap: 24px;
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-label {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.stat-value {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.deliveries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.delivery-item {
+    display: flex;
+    gap: 16px;
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.delivery-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+.delivery-item.optimized {
+    border-left: 4px solid var(--success-color);
+}
+
+.delivery-position {
+    background: var(--primary-color);
+    color: var(--white);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1em;
+    flex-shrink: 0;
+}
+
+.delivery-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.delivery-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.delivery-time {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--text-dark);
+    background: rgba(139, 115, 85, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+}
+
+.delivery-customer {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-dark);
+    flex: 1;
+}
+
+.delivery-status {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.delivery-status.status-neu {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.delivery-status.status-bestaetigt {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.delivery-status.status-in_lieferung {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.delivery-status.status-abgeschlossen {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.delivery-status.status-storniert {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.delivery-address {
+    color: #666;
+    margin-bottom: 12px;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.delivery-items {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.9em;
+    color: var(--text-dark);
+}
+
+.delivery-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.delivery-total {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.delivery-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-maps-small {
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-maps-small:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(66, 133, 244, 0.3);
+}
+
+.btn-call-small {
+    padding: 8px 14px;
+    background: var(--white);
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-call-small:hover {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+}
+
+.no-day-orders {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.empty-icon {
+    font-size: 4em;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: var(--text-dark);
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    color: #666;
+    margin-bottom: 24px;
+}
+
+/* Mobile Responsive for Delivery Planning */
+@media (max-width: 768px) {
+    .planning-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .week-overview-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .day-card {
+        padding: 12px 8px;
+    }
+    
+    .day-date {
+        font-size: 1em;
+    }
+    
+    .day-details-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .day-actions {
+        flex-direction: column;
+    }
+    
+    .btn-optimize,
+    .btn-print {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .delivery-stats-bar {
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+    
+    .stat-item {
+        width: 100%;
+    }
+    
+    .delivery-item {
+        flex-direction: column;
+    }
+    
+    .delivery-position {
+        align-self: flex-start;
+    }
+    
+    .delivery-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .delivery-actions {
+        justify-content: stretch;
+    }
+    
+    .btn-maps-small,
+    .btn-call-small {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+    }
+}
