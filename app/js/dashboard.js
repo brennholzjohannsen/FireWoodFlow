@@ -1057,6 +1057,23 @@ createApp({
                     console.log('✓ Bestellungen geladen:', this.orders.length);
                 }
                 
+                // Ausgaben laden (neu)
+                const { data: expensesData, error: expensesError } = await supabaseClient
+                    .from('expenses')
+                    .select('*')
+                    .order('date DESC');
+                
+                if (expensesError) {
+                    console.warn('Ausgaben konnten nicht geladen werden:', expensesError.message);
+                } else {
+                    // snake_case zu camelCase konvertieren
+                    this.expenses = (expensesData || []).map(expense => ({
+                        ...expense,
+                        userId: expense.user_id
+                    }));
+                    console.log('✓ Ausgaben geladen:', this.expenses.length);
+                }
+                
                 // Firmeneinstellungen laden (optional, nur wenn Supabase verfügbar)
                 // Wenn company_settings Tabelle nicht existiert, verwende Standardwerte
                 // Hinweis: Fehler wird bewusst nicht geloggt um Console sauber zu halten
@@ -3028,7 +3045,7 @@ createApp({
         },
 
         // Expense Management Methods
-        addExpense() {
+        async addExpense() {
             if (!this.newExpense.amount || parseFloat(this.newExpense.amount) <= 0) {
                 alert('Bitte einen gültigen Betrag eingeben.');
                 return;
@@ -3047,6 +3064,31 @@ createApp({
                 notes: this.newExpense.notes || ''
             };
 
+            // In Supabase speichern (wenn verfügbar)
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const { error } = await supabaseClient
+                        .from('expenses')
+                        .insert({
+                            id: expense.id,
+                            user_id: user.id,
+                            amount: expense.amount,
+                            category: expense.category,
+                            description: expense.description,
+                            date: expense.date,
+                            notes: expense.notes
+                        });
+                    
+                    if (!error) {
+                        console.log('✓ Ausgabe in Supabase gespeichert');
+                    }
+                }
+            } catch (error) {
+                console.warn('Konnte Ausgabe nicht in Supabase speichern:', error.message);
+            }
+
+            // Auch lokal speichern (Fallback + sofortige UI-Aktualisierung)
             this.expenses.push(expense);
             this.saveExpenses();
 
@@ -3063,8 +3105,21 @@ createApp({
             alert('✓ Ausgabe erfolgreich erfasst!');
         },
 
-        deleteExpense(expense) {
+        async deleteExpense(expense) {
             if (confirm(`Ausgabe "${expense.description}" für ${this.formatCurrency(expense.amount)} löschen?`)) {
+                // Aus Supabase löschen (wenn verfügbar)
+                try {
+                    await supabaseClient
+                        .from('expenses')
+                        .delete()
+                        .eq('id', expense.id);
+                    
+                    console.log('✓ Ausgabe aus Supabase gelöscht');
+                } catch (error) {
+                    console.warn('Konnte Ausgabe nicht aus Supabase löschen:', error.message);
+                }
+
+                // Auch lokal löschen
                 this.expenses = this.expenses.filter(e => e.id !== expense.id);
                 this.saveExpenses();
             }
