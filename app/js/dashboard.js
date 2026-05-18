@@ -2068,6 +2068,25 @@ createApp({
             }
         },
 
+        viewOrder(order) {
+            // Bestellung in der Orders-Übersicht anzeigen (scrollen zum Order)
+            this.currentView = 'orders';
+            // Optional: Hier könnte man später die Order im Modal öffnen oder zur Karte scrollen
+            console.log('Öffne Bestellung:', order.id);
+        },
+
+        openOrderInMaps(order) {
+            // Google Maps mit Lieferadresse öffnen
+            if (!order.deliveryAddress || !order.deliveryAddress.trim()) {
+                alert('Keine Lieferadresse vorhanden.');
+                return;
+            }
+            
+            const address = encodeURIComponent(order.deliveryAddress);
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${address}`;
+            window.open(url, '_blank');
+        },
+
         editOrder(order) {
             this.editingOrder = { ...order, items: [...order.items] };
             this.showEditOrder = true;

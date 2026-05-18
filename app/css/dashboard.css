@@ -1427,6 +1427,29 @@ body {
     transform: translateY(-2px);
 }
 
+.btn-maps {
+    width: 100%;
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-maps:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
 .order-header {
     display: flex;
     justify-content: space-between;
@@ -1891,8 +1914,160 @@ body {
         font-size: 0.85em;
     }
 
+
+}
+
+/* Mobile Optimization - Better Readability */
+@media (max-width: 767px) {
+    body {
+        font-size: 16px; /* Base size für bessere Lesbarkeit */
+    }
+
+    .page-header h1 {
+        font-size: 1.6em; /* Größere Überschriften */
+    }
+
+    .page-header .subtitle {
+        font-size: 1em;
+    }
+
+    /* Cards größer und lesbarer */
+    .product-card,
+    .customer-card,
+    .order-card {
+        padding: 16px;
+    }
+
+    /* Buttons größer für Touch */
+    .btn-action,
+    .btn-edit,
+    .btn-delete,
+    .btn-add,
+    .btn-submit {
+        padding: 14px 20px;
+        font-size: 1em;
+        min-height: 48px; /* Apple HIG: min 44x44px touch target */
+    }
+
+    /* Form inputs größer */
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    textarea,
+    select {
+        font-size: 16px; /* Verhindert Zoom auf iOS */
+        padding: 12px 14px;
+        min-height: 44px;
+    }
+
+    /* Labels besser lesbar */
+    label {
+        font-size: 0.95em;
+        margin-bottom: 8px;
+    }
+
+    /* Modal Content besser nutzbar */
+    .modal-content {
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+    }
+
+    /* Modal Titel größer */
+    .modal-content h2 {
+        font-size: 1.4em;
+        padding-right: 40px; /* Platz für Close Button */
+    }
+
+    /* Order Card Optimierung */
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .order-number-date h3 {
+        font-size: 1.2em;
+    }
+
+    .order-status {
+        font-size: 0.9em;
+        padding: 6px 12px;
+    }
+
+    .order-customer strong {
+        font-size: 1em;
+    }
+
+    .order-customer p {
+        font-size: 0.9em;
+    }
+
+    /* Toolbar Stack auf Mobile */
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .toolbar .search-input,
+    .toolbar .filter-select,
+    .toolbar .btn-add {
+        width: 100%;
+    }
+
+    /* Stats Grid Single Column */
     .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card-wide {
+        grid-column: span 1;
+    }
+
+    /* Quick Actions größer */
+    .action-buttons {
+        gap: 10px;
+    }
+
+    .btn-action {
+        padding: 16px 20px;
+        flex-direction: column;
+        text-align: center;
+        min-height: 80px;
+    }
+
+    .action-icon {
+        font-size: 2em;
+        margin-bottom: 4px;
+    }
+
+    .action-buttons span:last-child {
+        font-size: 0.85em;
+    }
+
+    /* Nav Tiles größer */
+    .nav-tiles {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .nav-tile {
+        padding: 16px 10px;
+    }
+
+    .tile-icon {
+        font-size: 2em;
+    }
+
+    .tile-label {
+        font-size: 0.75em;
+    }
+
+    /* Maps Button auf Mobile */
+    .btn-maps {
+        padding: 16px 20px;
+        font-size: 1em;
     }
 
     .product-details,

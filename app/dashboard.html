@@ -71,7 +71,7 @@
                                     Aufträge heute ({{ todayOrders.length }})
                                 </div>
                                 <div class="orders-list">
-                                    <div v-for="(order, idx) in todayOrders" :key="idx" class="order-item">
+                                    <div v-for="(order, idx) in todayOrders" :key="idx" class="order-item" @click="viewOrder(order)" style="cursor: pointer;">
                                         <div class="order-meta">
                                             <span>{{ formatTime(order.deliveryTime) }}</span>
                                             <span>•</span>
@@ -99,7 +99,7 @@
                                         <span v-if="nextOrder.items.length > 1 && idx < nextOrder.items.length - 1">, </span>
                                     </span>
                                 </div>
-                                <div class="next-order-customer">{{ nextOrder.customerName }}</div>
+                                <div class="next-order-customer" @click="viewOrder(nextOrder)" style="cursor: pointer;">{{ nextOrder.customerName }}</div>
                             </div>
                             <div v-else class="no-orders">
                                 <div class="no-orders-title">Keine ausstehenden Aufträge</div>
@@ -366,6 +366,10 @@
                             <span>📅 {{ formatDeliveryDate(order.deliveryDate, order.deliveryTime) }}</span>
                         </div>
                     </div>
+
+                    <button @click="openOrderInMaps(order)" class="btn-maps" v-if="order.deliveryAddress && order.deliveryAddress.trim()">
+                        🗺️ Route mit Google Maps
+                    </button>
 
                     <div class="order-actions">
                         <button @click="editOrder(order)" class="btn-edit">Bearbeiten</button>
