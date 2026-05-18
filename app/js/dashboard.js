@@ -820,7 +820,7 @@ createApp({
             
             // TODO: Ersetze diese Client-ID mit deiner eigenen aus Google Cloud Console
             // Anleitung: docs/GOOGLE_OAUTH_SETUP.md
-            const CLIENT_ID = 'DEINE_GOOGLE_CLIENT_ID_HIER';
+            const CLIENT_ID = '107769774507-e0clmnor6j1thjl9bqsee28d008irt9c.apps.googleusercontent.com';
             
             // Prüfen ob Client-ID konfiguriert ist
             if (CLIENT_ID === 'DEINE_GOOGLE_CLIENT_ID_HIER') {
