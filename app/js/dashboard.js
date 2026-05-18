@@ -441,23 +441,19 @@ createApp({
             
             if (unit === 'SRM') {
                 const srm = lengthPrices.srm;
-                // Nur zurückgeben wenn explizit gesetzt und nicht leer
                 if (srm === undefined || srm === null || srm === '') {
                     return '';
                 }
                 return String(srm);
             } else if (unit === 'RM') {
-                // Zuerst prüfen ob RM-Preis explizit gesetzt ist
                 const rm = lengthPrices.rm;
                 if (rm !== undefined && rm !== null && rm !== '') {
                     return String(rm);
                 }
                 
-                // Sonst aus SRM berechnen
                 const srm = lengthPrices.srm;
                 if (srm !== undefined && srm !== null && srm !== '' && !isNaN(parseFloat(srm))) {
                     const srmNum = parseFloat(srm);
-                    // Sicherstellen dass es eine gültige Zahl ist
                     if (srmNum > 0) {
                         const calculated = (srmNum * 1.42).toFixed(2);
                         return calculated;
@@ -468,51 +464,47 @@ createApp({
             return '';
         },
 
-        updatePriceForLength(length, unit, value) {
-            // priceLengths initialisieren wenn nötig
+        // Initialisiere priceLengths Struktur beim ersten Öffnen
+        initPriceLengths() {
             if (!this.newProduct.priceLengths) {
                 this.newProduct.priceLengths = {};
             }
-            
-            // Eintrag für diese Länge initialisieren
+            this.inventorySettings.logLengths.forEach(length => {
+                if (!this.newProduct.priceLengths[length]) {
+                    this.newProduct.priceLengths[length] = { srm: '', rm: '' };
+                }
+            });
+        },
+
+        // Modal öffnen und priceLengths initialisieren
+        openAddProductModal() {
+            this.newProduct.priceLengths = {};
+            this.inventorySettings.logLengths.forEach(length => {
+                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
+            });
+            this.showAddProduct = true;
+        },
+
+        // Wird aufgerufen wenn SRM-Preis geändert wird
+        onSRMPriceChange(length, value) {
+            // Sicherstellen dass die Struktur existiert
             if (!this.newProduct.priceLengths[length]) {
                 this.newProduct.priceLengths[length] = { srm: '', rm: '' };
             }
             
-            if (unit === 'SRM') {
-                // SRM-Wert setzen
-                this.newProduct.priceLengths[length].srm = value;
-                
-                // RM automatisch berechnen WENN noch kein manueller RM-Wert existiert
-                const currentRM = this.newProduct.priceLengths[length].rm;
-                
-                // Nur berechnen wenn SRM einen gültigen Wert hat
-                if (value && value !== '' && !isNaN(parseFloat(value))) {
-                    const calculatedRM = (parseFloat(value) * 1.42).toFixed(2);
-                    
-                    // Prüfen ob RM bereits manuell gesetzt wurde (unterschiedlich vom berechneten Wert)
-                    const hasManualRM = currentRM && currentRM !== '' && currentRM !== calculatedRM;
-                    
-                    if (!hasManualRM) {
-                        this.newProduct.priceLengths[length].rm = calculatedRM;
-                        // Force Vue 3 reactivity durch Neuzuweisung
-                        this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
-                    }
-                } else {
-                    // SRM ist leer oder ungültig → RM auch leeren (wenn nicht manuell)
-                    const hasManualRM = currentRM && currentRM !== '' && currentRM !== '1.42';
-                    if (!hasManualRM) {
-                        this.newProduct.priceLengths[length].rm = '';
-                        // Force Vue 3 reactivity
-                        this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
-                    }
-                }
-            } else if (unit === 'RM') {
-                // RM-Wert manuell setzen
-                this.newProduct.priceLengths[length].rm = value;
-                // Force Vue 3 reactivity
-                this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
+            // SRM speichern
+            this.newProduct.priceLengths[length].srm = value;
+            
+            // RM automatisch berechnen
+            if (value && value !== '' && !isNaN(parseFloat(value))) {
+                const calculatedRM = (parseFloat(value) * 1.42).toFixed(2);
+                this.newProduct.priceLengths[length].rm = calculatedRM;
+            } else {
+                this.newProduct.priceLengths[length].rm = '';
             }
+            
+            // Vue 3 reactivity trigger
+            this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
         },
 
         async loadData() {
