@@ -89,10 +89,6 @@ createApp({
             // Storage Locations (Lagerplätze)
             storageLocations: [],
             
-            // Google Calendar Integration
-            googleCalendarConnected: false,
-            googleCalendarId: 'primary',
-            
             // Bestellungen
             orders: [],
             ordersCount: 0,
@@ -226,16 +222,12 @@ createApp({
             const saved = localStorage.getItem('firewoodflow_company');
             if (saved) {
                 const data = JSON.parse(saved);
-                this.companyName = data.name || 'FireWoodFlow';
-                this.companyLogo = data.logo || null;
+                this.companyName = data.name || '';
+                this.companyLogo = data.logo || '';
                 this.companyAddress = data.address || '';
-                this.storageLocation = data.storageLocation || '';
                 this.storageLocations = data.storageLocations || [];
-                this.costPerKm = parseFloat(data.costPerKm) || 0;
+                this.costPerKm = data.costPerKm || 1.50;
                 this.roundingMode = data.roundingMode || 'exact';
-                // Google Calendar Settings laden
-                this.googleCalendarConnected = data.googleCalendarConnected || false;
-                this.googleCalendarId = data.googleCalendarId || 'primary';
             }
             
             // Inventar-Einstellungen laden
@@ -809,83 +801,6 @@ createApp({
                 console.error('Fehler beim Löschen aus Supabase:', error);
                 throw error;
             }
-        },
-
-        // Google Calendar Integration Methods
-        connectGoogleCalendar() {
-            // Starte Google OAuth 2.0 Flow
-            if (!this.googleCalendarId || !this.googleCalendarId.trim()) {
-                this.googleCalendarId = 'primary';
-            }
-            
-            // TODO: Ersetze diese Client-ID mit deiner eigenen aus Google Cloud Console
-            // Anleitung: docs/GOOGLE_OAUTH_SETUP.md
-            const CLIENT_ID = '107769774507-e0clmnor6j1thjl9bqsee28d008irt9c.apps.googleusercontent.com';
-            
-            // Prüfen ob Client-ID konfiguriert ist
-            if (CLIENT_ID === 'DEINE_GOOGLE_CLIENT_ID_HIER') {
-                alert('⚠️ Google OAuth noch nicht konfiguriert!\n\nBitte folge der Anleitung in docs/GOOGLE_OAUTH_SETUP.md um:\n1. Google Cloud Projekt zu erstellen\n2. OAuth Credentials zu generieren\n3. Client-ID hier im Code einzutragen\n\nSolange kannst du den iCal-Export verwenden.');
-                return;
-            }
-            
-            // OAuth Redirect URI
-            const redirectUri = encodeURIComponent('https://brennholzjohannsen.github.io/FireWoodFlow/app/oauth-callback.html');
-            
-            // Scopes für Calendar API (nur die notwendigsten)
-            const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events.insert https://www.googleapis.com/auth/calendar');
-            
-            // State für CSRF-Schutz
-            const state = btoa(JSON.stringify({
-                calendarId: this.googleCalendarId,
-                timestamp: Date.now()
-            }));
-            
-            // Google OAuth URL zusammenbauen
-            const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-                `client_id=${CLIENT_ID}&` +
-                `redirect_uri=${redirectUri}&` +
-                `response_type=code&` +
-                `scope=${scope}&` +
-                `access_type=offline&` +
-                `prompt=consent&` +
-                `state=${state}`;
-            
-            // OAuth Popup öffnen
-            const width = 600;
-            const height = 700;
-            const left = window.screenX + (window.outerWidth - width) / 2;
-            const top = window.screenY + (window.outerHeight - height) / 2;
-            
-            const popup = window.open(
-                oauthUrl,
-                'Google Calendar OAuth',
-                `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
-            );
-            
-            // Auf Popup schließen warten
-            const checkPopupClosed = setInterval(() => {
-                if (popup && popup.closed) {
-                    clearInterval(checkPopupClosed);
-                    // Prüfen ob OAuth erfolgreich war
-                    const oauthSuccess = localStorage.getItem('firewoodflow_oauth_success');
-                    if (oauthSuccess) {
-                        this.googleCalendarConnected = true;
-                        this.saveCompanySettings();
-                        localStorage.removeItem('firewoodflow_oauth_success');
-                        alert('✓ Mit Google Kalender verbunden!');
-                    }
-                }
-            }, 500);
-        },
-
-        disconnectGoogleCalendar() {
-            if (!confirm('Möchtest du die Verbindung zum Google Kalender wirklich trennen?')) return;
-            
-            this.googleCalendarConnected = false;
-            this.googleCalendarId = 'primary';
-            this.saveCompanySettings();
-            
-            alert('✓ Verbindung zum Google Kalender getrennt.');
         },
 
         async saveCompanySettingsToSupabase() {
