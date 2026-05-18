@@ -84,7 +84,7 @@ createApp({
             },
             
             // Stats
-            todayOrders: 0,
+            todayOrders: [],
             
             // Storage Locations (Lagerplätze)
             storageLocations: [],
@@ -175,6 +175,25 @@ createApp({
             });
 
             return pendingOrders[0];
+        },
+
+        todayOrdersList() {
+            // Alle Aufträge für heute zurückgeben
+            const today = new Date().toISOString().split('T')[0];
+            
+            const todaysOrders = this.orders.filter(o => {
+                const status = o.status || '';
+                return o.deliveryDate === today && status !== 'erledigt' && status !== 'storniert';
+            });
+
+            // Nach Uhrzeit sortieren
+            todaysOrders.sort((a, b) => {
+                const timeA = a.deliveryTime || '00:00';
+                const timeB = b.deliveryTime || '00:00';
+                return timeA.localeCompare(timeB);
+            });
+
+            return todaysOrders;
         }
     },
 
@@ -615,9 +634,16 @@ createApp({
             }
             this.ordersCount = this.orders.length;
             
-            // Heute Bestellungen berechnen
-            const today = new Date().toDateString();
-            this.todayOrders = this.orders.filter(o => new Date(o.createdAt).toDateString() === today).length;
+            // Heute Bestellungen berechnen (Array mit allen Aufträgen heute)
+            const today = new Date().toISOString().split('T')[0];
+            this.todayOrders = this.orders.filter(o => {
+                const status = o.status || '';
+                return o.deliveryDate === today && status !== 'erledigt' && status !== 'storniert';
+            }).sort((a, b) => {
+                const timeA = a.deliveryTime || '00:00';
+                const timeB = b.deliveryTime || '00:00';
+                return timeA.localeCompare(timeB);
+            });
         },
 
         calculateTotalValue() {

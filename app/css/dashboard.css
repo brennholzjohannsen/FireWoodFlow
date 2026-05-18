@@ -232,6 +232,40 @@ body {
     color: var(--text-light);
 }
 
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.order-item {
+    background: rgba(139, 69, 19, 0.04);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.order-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.order-customer {
+    font-weight: 700;
+}
+
+.order-items {
+    font-size: 0.85em;
+    color: var(--text-light);
+    line-height: 1.4;
+}
+
 .no-orders {
     width: 100%;
     text-align: center;
