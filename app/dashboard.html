@@ -426,17 +426,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="storageLocation">Holzlagerplatz (optional)</label>
-                    <textarea 
-                        id="storageLocation" 
-                        v-model="storageLocation" 
-                        @change="saveCompanySettings"
-                        rows="2"
-                        placeholder="Adresse oder GPS-Koordinaten (z.B. 49.006930°, 8.58789°)&#10;Wenn leer, wird Firmenadresse verwendet"
-                    ></textarea>
-                    <button type="button" @click="previewLocation('storageLocation', 'storageMapPreview')" class="btn-map-preview">🗺️ Vorschau anzeigen</button>
-                    <div id="storageMapPreview" class="map-preview"></div>
-                    <p class="field-hint">📍 Für Lieferung wird diese Adresse statt Firmenadresse verwendet</p>
+                    <label>Holzlagerplätze verwalten</label>
+                    <div class="tag-list">
+                        <span v-for="(loc, index) in storageLocations" :key="index" class="tag storage-location-tag">
+                            <span class="tag-text">{{ loc.name || 'Lager ' + (index + 1) }}</span>
+                            <span class="tag-address" v-if="loc.address">{{ loc.address }}</span>
+                            <button @click="editStorageLocation(index)" class="btn-edit-tag" title="Bearbeiten">✎</button>
+                            <button @click="removeStorageLocation(index)" class="btn-remove-tag">×</button>
+                        </span>
+                    </div>
+                    <button @click="addStorageLocation()" class="btn-add-tag">+ Lagerplatz hinzufügen</button>
+                    <p class="field-hint">📍 Mehrere Lagerplätze verwalten. Für Lieferung wird standardmäßig der erste Platz verwendet.</p>
                 </div>
 
                 <div class="form-group">
@@ -606,6 +606,15 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label>Lagerort</label>
+                        <select v-model="newProduct.storageLocationIndex" required>
+                            <option value="">Bitte wählen...</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
                     <!-- Preistabelle für Scheitholz -->
                     <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct.unit)">
                         <label>Verkaufspreise nach Scheitlänge</label>
@@ -685,6 +694,7 @@
                                 <option value="">Bitte wählen...</option>
                                 <option v-for="wood in getActiveWoodTypes()" :key="wood" :value="wood">{{ wood }}</option>
                             </select>
+                            <p class="field-hint" v-if="getActiveWoodTypes().length === 0">⚠️ Keine Holzsorten aktiviert - bitte in den Einstellungen aktivieren</p>
                         </div>
                         <div class="form-group">
                             <label>Scheitlänge (cm)</label>
@@ -699,10 +709,20 @@
                         <div class="form-group">
                             <label>Trocknungsgrad</label>
                             <select v-model="editingProduct.dryness" required>
-                                <option value="">Bitte wählen...</option>
                                 <option v-for="level in getActiveDrynessLevels()" :key="level.key" :value="level.key">{{ level.label }}</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Lagerort</label>
+                            <select v-model="editingProduct.storageLocationIndex" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                            </select>
+                            <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Einkaufspreis pro {{ editingProduct.unit || 'Einheit' }} (€)</label>
                             <input type="number" step="0.01" v-model.number="editingProduct.price" required placeholder="0.00">

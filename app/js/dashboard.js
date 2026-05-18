@@ -85,6 +85,9 @@ createApp({
             // Stats
             todayOrders: 0,
             
+            // Storage Locations (Lagerplätze)
+            storageLocations: [],
+            
             // Bestellungen
             orders: [],
             ordersCount: 0,
@@ -203,6 +206,7 @@ createApp({
                 this.companyLogo = data.logo || null;
                 this.companyAddress = data.address || '';
                 this.storageLocation = data.storageLocation || '';
+                this.storageLocations = data.storageLocations || [];
                 this.costPerKm = parseFloat(data.costPerKm) || 0;
                 this.roundingMode = data.roundingMode || 'exact';
             }
@@ -323,6 +327,7 @@ createApp({
                 logo: this.companyLogo,
                 address: this.companyAddress,
                 storageLocation: this.storageLocation,
+                storageLocations: this.storageLocations,
                 costPerKm: this.costPerKm,
                 roundingMode: this.roundingMode
             };
@@ -330,6 +335,49 @@ createApp({
             
             // Auch in Supabase speichern
             this.saveCompanySettingsToSupabase();
+        },
+
+        // Storage Location Methods
+        addStorageLocation() {
+            const name = prompt('Name für den Lagerplatz (z.B. "Hauptlager", "Außenlager Nord"):', 'Lager ' + (this.storageLocations.length + 1));
+            if (!name || !name.trim()) return;
+            
+            const address = prompt('Adresse oder GPS-Koordinaten des Lagerplatzes:', '');
+            
+            this.storageLocations.push({
+                name: name.trim(),
+                address: address ? address.trim() : ''
+            });
+            
+            this.saveCompanySettings();
+            alert('✓ Lagerplatz "' + name.trim() + '" hinzugefügt!');
+        },
+
+        editStorageLocation(index) {
+            const loc = this.storageLocations[index];
+            if (!loc) return;
+            
+            const newName = prompt('Name bearbeiten:', loc.name);
+            if (!newName || !newName.trim()) return;
+            
+            const newAddress = prompt('Adresse/GPS bearbeiten:', loc.address || '');
+            
+            loc.name = newName.trim();
+            loc.address = newAddress ? newAddress.trim() : '';
+            
+            this.saveCompanySettings();
+            alert('✓ Lagerplatz aktualisiert!');
+        },
+
+        removeStorageLocation(index) {
+            const loc = this.storageLocations[index];
+            if (!loc) return;
+            
+            if (!confirm('Möchtest du den Lagerplatz "' + loc.name + '" wirklich löschen?')) return;
+            
+            this.storageLocations.splice(index, 1);
+            this.saveCompanySettings();
+            alert('✓ Lagerplatz gelöscht.');
         },
 
         getActiveWoodTypes() {
@@ -599,7 +647,8 @@ createApp({
                         woodType: product.wood_type,
                         logLength: product.log_length,
                         priceLengths: product.price_lengths || {},
-                        priceUnit: product.price_unit
+                        priceUnit: product.price_unit,
+                        storageLocationIndex: product.storage_location_index !== undefined ? product.storage_location_index : null
                     }));
                     console.log('✓ Produkte geladen:', this.products.length);
                 }
@@ -1129,6 +1178,7 @@ createApp({
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
                     price_lengths: this.newProduct.priceLengths || {},
+                    storage_location_index: this.newProduct.storageLocationIndex !== undefined ? this.newProduct.storageLocationIndex : null,
                     notes: (this.newProduct.notes || '').trim()
                 };
                 
@@ -1178,6 +1228,7 @@ createApp({
                     dryness: 'lufttrocken',
                     price: 0,
                     priceLengths: {},
+                    storageLocationIndex: '',
                     notes: ''
                 };
                 
@@ -1248,6 +1299,7 @@ createApp({
                         dryness: this.editingProduct.dryness,
                         price: parseFloat(this.editingProduct.price) || 0,
                         price_lengths: this.editingProduct.priceLengths || {},
+                        storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
                         notes: (this.editingProduct.notes || '').trim()
                     };
 
