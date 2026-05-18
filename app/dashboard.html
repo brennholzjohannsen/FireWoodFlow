@@ -801,7 +801,7 @@
                             <select id="orderProductSelect" class="select-input" style="width: 100%;">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
+                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
                             <div class="quantity-unit-row">
@@ -811,33 +811,27 @@
                                     <option value="RM">RM</option>
                                     <option value="SRM">SRM</option>
                                 </select>
+                                <select v-model="newOrderItemLogLength" class="select-input" style="flex: 1;" title="Scheitlänge">
+                                    <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
+                                </select>
                                 <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-mini">➕ Hinzufügen</button>
                             </div>
                         </div>
-                        <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
-                    </div>
-
-                    <!-- Scheitlänge für Bestellung -->
-                    <div class="form-group" v-if="newOrder.items.length > 0">
-                        <label>Scheitlänge für alle Produkte (cm)</label>
-                        <select v-model="newOrder.logLength" class="select-input">
-                            <option value="" disabled>Bitte wählen...</option>
-                            <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
-                        </select>
-                        <p class="field-hint">Diese Scheitlänge wird für alle Produkte der Bestellung verwendet</p>
+                        <p class="field-hint">Gib die Bestellmenge, Einheit und Scheitlänge ein. Der Preis wird automatisch aus dem Inventar geladen (je nach Scheitlänge und Einheit).</p>
                     </div>
 
                     <!-- Bestellpositionen -->
                     <div class="form-group" v-if="newOrder.items.length > 0">
                         <label>Bestellpositionen</label>
                         <div class="order-items-editor">
-                            <div v-for="item in newOrder.items" :key="item.productId" class="order-item-row">
+                            <div v-for="(item, index) in newOrder.items" :key="item.id" class="order-item-row">
                                 <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
                                 <div class="item-controls">
-                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input" title="Menge">
                                     <span>{{ item.unit }}</span>
+                                    <input type="number" v-model.number="item.pricePerUnit" min="0" step="0.01" @change="calculateOrderTotals()" class="item-price-input" title="Preis pro Einheit anpassbar" style="width: 80px;">
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
-                                    <button type="button" @click="removeProductFromOrder(item.productId, false)" class="btn-remove-item">×</button>
+                                    <button type="button" @click="removeProductFromOrder(item.id, false)" class="btn-remove-item">×</button>
                                 </div>
                             </div>
                         </div>
@@ -901,6 +895,10 @@
                         <div class="summary-row">
                             <span>Lieferkosten:</span>
                             <span>{{ formatCurrency(newOrder.deliveryCosts) }}</span>
+                        </div>
+                        <div class="summary-row discount-row">
+                            <label style="margin: 0;">Rabatt (€):</label>
+                            <input type="number" v-model.number="newOrder.discount" min="0" step="0.01" @change="calculateOrderTotals()" placeholder="0.00" style="width: 80px; text-align: right;">
                         </div>
                         <div class="summary-row grand-total">
                             <span>Gesamtsumme:</span>

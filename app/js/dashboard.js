@@ -95,6 +95,8 @@ createApp({
             editOrderItemQuantity: 1,
             newOrderItemUnit: 'RM',
             editOrderItemUnit: 'RM',
+            newOrderItemLogLength: 100,
+            editOrderItemLogLength: 100,
             newOrder: {
                 customerId: '',
                 customerName: '',
@@ -103,6 +105,7 @@ createApp({
                 items: [],
                 subtotal: 0,
                 deliveryCosts: 0,
+                discount: 0,
                 total: 0,
                 paymentMethod: 'bar',
                 paymentStatus: 'offen',
@@ -1566,9 +1569,10 @@ createApp({
         },
 
         addProductToOrderWithQuantity(isEditing = false) {
-            // Menge und Einheit aus den reaktiven Werten lesen
+            // Menge, Einheit und Scheitlänge aus den reaktiven Werten lesen
             const quantity = isEditing ? this.editOrderItemQuantity : this.newOrderItemQuantity;
             const orderUnit = isEditing ? this.editOrderItemUnit : this.newOrderItemUnit;
+            const logLength = isEditing ? this.editOrderItemLogLength : this.newOrderItemLogLength;
             
             // Produkt-Select ID bestimmen
             const selectId = isEditing ? 'editOrderProductSelect' : 'orderProductSelect';
@@ -1584,6 +1588,11 @@ createApp({
                 return;
             }
             
+            if (!logLength) {
+                alert('Bitte wähle eine Scheitlänge.');
+                return;
+            }
+            
             const product = this.products.find(p => p.id === selectInput.value);
             
             if (!product) {
@@ -1592,8 +1601,6 @@ createApp({
             }
             
             // Umrechnungsfaktoren (in RM als Basis)
-            // 1 FM = 1.42 RM
-            // 1 RM = 1.42 SRM → 1 FM = 1.42 * 1.42 = 2.0164 SRM
             const toRM = {
                 'FM': 1.42,
                 'RM': 1,
@@ -1603,31 +1610,23 @@ createApp({
             // Bestellmenge in Produkteinheit umrechnen für Lagerbestandsprüfung
             const quantityInProductUnit = quantity * toRM[orderUnit] / toRM[product.unit];
             
-            // Lagerbestand prüfen (mit der umgerechneten Menge)
+            // Lagerbestand prüfen
             if (product.quantity < quantityInProductUnit) {
                 alert(`❌ Nicht genügend Lagerbestand!\nVerfügbar: ${product.quantity.toFixed(2)} ${product.unit}\nBestellt: ${quantityInProductUnit.toFixed(2)} ${product.unit} (${quantity} ${orderUnit})`);
                 return;
             }
             
-            // Ziel-Array bestimmen (newOrder oder editingOrder)
+            // Ziel-Array bestimmen
             const targetItems = isEditing ? this.editingOrder.items : this.newOrder.items;
             
             // Prüfen ob Produkt bereits vorhanden
-            const existingItem = targetItems.find(item => item.productId === product.id);
+            const existingItem = targetItems.find(item => item.productId === product.id && item.logLength === logLength);
             
             if (existingItem) {
                 // Wenn gleiche Einheit, Menge addieren
                 if (existingItem.unit === orderUnit) {
                     existingItem.quantity += quantity;
                     existingItem.total = existingItem.quantity * existingItem.pricePerUnit;
-                    
-                    // Preis anpassen wenn Preiseinheit anders ist
-                    if (product.priceUnit && product.priceUnit !== orderUnit) {
-                        // Umrechnung für korrekte Preisanzeige
-                        const conversionFactor = toRM[orderUnit] / toRM[product.priceUnit];
-                        existingItem.pricePerUnit = product.price * conversionFactor;
-                    }
-                    
                     this.calculateOrderTotals();
                     selectInput.value = '';
                     if (isEditing) {
@@ -1645,28 +1644,39 @@ createApp({
                 }
             }
             
-            // Preis pro Einheit berechnen basierend auf Produktpreis
-            let pricePerUnit = product.price;
-            const priceUnit = product.priceUnit || product.unit;
+            // Preis pro Einheit basierend auf Scheitlänge und Einheit ermitteln
+            let pricePerUnit = product.price; // Fallback: Einkaufspreis
             
-            // Wenn Bestelleinheit != Preiseinheit, Preis umrechnen
-            if (orderUnit !== priceUnit) {
-                // Preis von Preiseinheit auf Bestelleinheit umrechnen
-                // Beispiel: Preis ist €100/FM, Bestellung in RM → €100/1.42 = €70.42/RM
-                pricePerUnit = product.price * (toRM[priceUnit] / toRM[orderUnit]);
+            // Wenn priceLengths existiert und die Scheitlänge konfiguriert ist
+            if (product.priceLengths && product.priceLengths[logLength]) {
+                const lengthPrices = product.priceLengths[logLength];
+                
+                // Preis basierend auf Einheit wählen
+                if (orderUnit === 'SRM' && lengthPrices.srm) {
+                    pricePerUnit = parseFloat(lengthPrices.srm);
+                } else if (orderUnit === 'RM' && lengthPrices.rm) {
+                    pricePerUnit = parseFloat(lengthPrices.rm);
+                } else if (orderUnit === 'FM') {
+                    // FM-Preis: RM-Preis × 1.42 (da 1 FM = 1.42 RM)
+                    if (lengthPrices.rm) {
+                        pricePerUnit = parseFloat(lengthPrices.rm) * 1.42;
+                    } else if (lengthPrices.srm) {
+                        pricePerUnit = parseFloat(lengthPrices.srm) * 2.0164; // 1.42 × 1.42
+                    }
+                }
             }
             
-            // Neues Item mit der eingegebenen Menge und Einheit
+            // Neues Item mit der eingegebenen Menge, Einheit und Scheitlänge
             targetItems.push({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
                 productName: product.name,
                 woodType: product.woodType || '',
-                logLength: product.logLength || 25,
+                logLength: logLength,
                 quantity: quantity,
                 unit: orderUnit,
                 pricePerUnit: pricePerUnit,
-                priceUnit: priceUnit,
+                priceUnit: orderUnit,
                 total: quantity * pricePerUnit
             });
             
@@ -1681,8 +1691,8 @@ createApp({
             }
             
             this.calculateOrderTotals();
-            console.log('Produkt mit Menge hinzugefügt:', product.name, quantity, orderUnit);
-            alert('✓ ' + product.name + ' (' + quantity.toFixed(2) + ' ' + orderUnit + ') hinzugefügt!');
+            console.log('Produkt mit Menge hinzugefügt:', product.name, quantity, orderUnit, logLength + 'cm');
+            alert('✓ ' + product.name + ' (' + quantity.toFixed(2) + ' ' + orderUnit + ', ' + logLength + 'cm) hinzugefügt!');
         },
 
         removeProductFromOrder(itemId, isEditing = false) {
@@ -1714,7 +1724,8 @@ createApp({
             }, 0);
             
             this.newOrder.subtotal = subtotal;
-            this.newOrder.total = subtotal + this.newOrder.deliveryCosts;
+            // Rabatt von der Gesamtsumme abziehen
+            this.newOrder.total = subtotal + this.newOrder.deliveryCosts - (this.newOrder.discount || 0);
             
             // Auch für editingOrder berechnen falls vorhanden
             if (this.editingOrder && this.editingOrder.items) {
@@ -1723,7 +1734,7 @@ createApp({
                 }, 0);
                 
                 this.editingOrder.subtotal = editSubtotal;
-                this.editingOrder.total = editSubtotal + (this.editingOrder.deliveryCosts || 0);
+                this.editingOrder.total = editSubtotal + (this.editingOrder.deliveryCosts || 0) - (this.editingOrder.discount || 0);
             }
         },
 
