@@ -829,7 +829,7 @@ createApp({
             }
             
             // OAuth Redirect URI
-            const redirectUri = encodeURIComponent(window.location.origin + '/FireWoodFlow/app/oauth-callback.html');
+            const redirectUri = encodeURIComponent('https://brennholzjohannsen.github.io/FireWoodFlow/app/oauth-callback.html');
             
             // Scopes für Calendar API
             const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events.insert https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendars.readonly');
