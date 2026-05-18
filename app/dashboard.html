@@ -95,14 +95,14 @@
                     <div class="action-buttons">
                         <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
                             <span class="action-icon">📦</span>
-                            <span>Bestellung</span>
+                            <span>Neue Bestellung</span>
                         </button>
                         <button @click="currentView = 'customers'; action = 'add'" class="btn-action">
                             <span class="action-icon">👤</span>
                             <span>Neuer Kunde</span>
                         </button>
                         <button @click="currentView = 'inventory'; action = 'add'" class="btn-action">
-                            <span class="action-icon">➕</span>
+                            <span class="action-icon">🪵</span>
                             <span>Neues Produkt</span>
                         </button>
                     </div>
@@ -121,7 +121,7 @@
                             <span class="tile-label">Kunden</span>
                         </a>
                         <a href="#" @click.prevent="currentView = 'orders'" class="nav-tile">
-                            <span class="tile-icon">📋</span>
+                            <span class="tile-icon">📦</span>
                             <span class="tile-label">Bestellungen</span>
                         </a>
                     </div>
@@ -1106,6 +1106,15 @@
                         <p class="field-hint">Kann später berechnet oder manuell angepasst werden</p>
                     </div>
 
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="newCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
                     <button type="submit" class="btn-submit">Kunde speichern</button>
                 </form>
             </div>
@@ -1151,6 +1160,15 @@
                         <p class="field-hint">Kann später berechnet werden</p>
                     </div>
 
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="newCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
                     <button type="submit" class="btn-submit">Kunde speichern & für Bestellung verwenden</button>
                 </form>
             </div>
@@ -1193,6 +1211,15 @@
                         <label>Lieferkosten (€)</label>
                         <input type="number" step="0.01" v-model.number="editingCustomer.deliveryCosts" placeholder="0.00" min="0">
                         <p class="field-hint">Kann berechnet oder manuell angepasst werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="editingCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
                     </div>
 
                     <button type="submit" class="btn-submit">Änderungen speichern</button>

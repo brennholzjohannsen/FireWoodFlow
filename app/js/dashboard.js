@@ -79,7 +79,8 @@ createApp({
                 phone: '',
                 email: '',
                 notes: '',
-                deliveryCosts: 0
+                deliveryCosts: 0,
+                preferredStorageLocationIndex: ''
             },
             
             // Stats
@@ -1391,7 +1392,8 @@ createApp({
                     address: (this.newCustomer.address || '').trim(),
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
-                    notes: (this.newCustomer.notes || '').trim()
+                    notes: (this.newCustomer.notes || '').trim(),
+                    preferred_storage_location_index: this.newCustomer.preferredStorageLocationIndex !== '' ? parseInt(this.newCustomer.preferredStorageLocationIndex) : null
                 };
 
                 console.log('Erstelle Kunde:', customer);
@@ -1427,7 +1429,8 @@ createApp({
                     phone: '',
                     email: '',
                     notes: '',
-                    deliveryCosts: 0
+                    deliveryCosts: 0,
+                    preferredStorageLocationIndex: ''
                 };
 
                 // Modal schließen mit kleiner Verzögerung damit Alert zuerst kommt
@@ -1465,7 +1468,8 @@ createApp({
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
                     notes: (this.newCustomer.notes || '').trim(),
-                    deliveryCosts: this.newCustomer.deliveryCosts || 0
+                    deliveryCosts: this.newCustomer.deliveryCosts || 0,
+                    preferred_storage_location_index: this.newCustomer.preferredStorageLocationIndex !== '' ? parseInt(this.newCustomer.preferredStorageLocationIndex) : null
                 };
 
                 console.log('Erstelle Kunde für Bestellung:', customer);
@@ -1503,7 +1507,8 @@ createApp({
                     phone: '',
                     email: '',
                     notes: '',
-                    deliveryCosts: 0
+                    deliveryCosts: 0,
+                    preferredStorageLocationIndex: ''
                 };
 
                 // Modal schließen
@@ -1526,14 +1531,18 @@ createApp({
                 phone: '',
                 email: '',
                 notes: '',
-                deliveryCosts: 0
+                deliveryCosts: 0,
+                preferredStorageLocationIndex: ''
             };
             this.showAddCustomerFromOrder = false;
         },
 
         editCustomer(customer) {
             // Kunde zum Bearbeiten laden
-            this.editingCustomer = { ...customer };
+            this.editingCustomer = { 
+                ...customer,
+                preferredStorageLocationIndex: customer.preferred_storage_location_index !== undefined && customer.preferred_storage_location_index !== null ? customer.preferred_storage_location_index : ''
+            };
             this.showEditCustomer = true;
         },
 
@@ -1558,7 +1567,8 @@ createApp({
                         phone: (this.editingCustomer.phone || '').trim(),
                         email: (this.editingCustomer.email || '').trim(),
                         notes: (this.editingCustomer.notes || '').trim(),
-                        delivery_costs: this.editingCustomer.deliveryCosts || 0
+                        delivery_costs: this.editingCustomer.deliveryCosts || 0,
+                        preferred_storage_location_index: this.editingCustomer.preferredStorageLocationIndex !== '' && this.editingCustomer.preferredStorageLocationIndex !== undefined ? parseInt(this.editingCustomer.preferredStorageLocationIndex) : null
                     };
 
                     // In Supabase speichern wenn User eingeloggt ist
