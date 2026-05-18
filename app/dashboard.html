@@ -432,6 +432,7 @@
                             <span class="tag-text">{{ loc.name || 'Lager ' + (index + 1) }}</span>
                             <span class="tag-address" v-if="loc.address">{{ loc.address }}</span>
                             <button @click="editStorageLocation(index)" class="btn-edit-tag" title="Bearbeiten">✎</button>
+                            <button @click="previewStorageLocation(loc.address)" class="btn-map-preview-tag" title="Karte anzeigen" v-if="loc.address">🗺️</button>
                             <button @click="removeStorageLocation(index)" class="btn-remove-tag">×</button>
                         </span>
                     </div>

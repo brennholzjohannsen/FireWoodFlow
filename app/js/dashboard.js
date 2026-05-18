@@ -2301,7 +2301,105 @@ createApp({
 
             } catch (error) {
                 console.error('Fehler beim Laden der Karte:', error);
-                previewDiv.innerHTML = `<p style="color:#dc3545;text-align:center;padding:20px;">❌ Karte konnte nicht geladen werden: ${error.message}</p>`;
+                previewDiv.innerHTML = `<p style="color:#C0392B;text-align:center;">❌ Fehler: ${error.message}</p>`;
+            }
+        },
+
+        async previewStorageLocation(address) {
+            if (!address || !address.trim()) {
+                alert('Dieser Lagerplatz hat keine Adresse hinterlegt.');
+                return;
+            }
+
+            // Modal mit Kartenvorschau erstellen
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+            modal.onclick = () => document.body.removeChild(modal);
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            modalContent.style.cssText = 'max-width:600px;width:90%;padding:20px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+            modalContent.onclick = (e) => e.stopPropagation();
+
+            modalContent.innerHTML = `
+                <h2 style="margin-bottom:15px;color:#4A3728;">🗺️ Lagerplatz Vorschau</h2>
+                <div id="storageMapPreviewModal" style="min-height:250px;"></div>
+                <button onclick="this.closest('.modal-overlay').remove()" style="margin-top:15px;padding:10px 20px;background:#8B4513;color:white;border:none;border-radius:6px;cursor:pointer;">Schließen</button>
+            `;
+
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+
+            // Karte laden
+            const previewDiv = document.getElementById('storageMapPreviewModal');
+            previewDiv.innerHTML = '<p style="text-align:center;padding:20px;">🗺️ Lade Karte...</p>';
+
+            try {
+                // Koordinaten ermitteln
+                let coords;
+                
+                const coordMatch = address.match(
+                    /(-?\d+[,.]?\d*)°?\s*[NS]?\s*,\s*(-?\d+[,.]?\d*)°?\s*[OW]?\s*/i
+                );
+                
+                if (coordMatch) {
+                    let lat = parseFloat(coordMatch[1].replace(',', '.'));
+                    let lon = parseFloat(coordMatch[2].replace(',', '.'));
+                    
+                    const upperAddress = address.toUpperCase();
+                    
+                    if (upperAddress.includes('S') && !upperAddress.includes('N')) {
+                        lat = -Math.abs(lat);
+                    } else {
+                        lat = Math.abs(lat);
+                    }
+                    
+                    if (upperAddress.includes('W') && !upperAddress.includes('O') && !upperAddress.includes('E')) {
+                        lon = -Math.abs(lon);
+                    } else {
+                        lon = Math.abs(lon);
+                    }
+                    
+                    coords = { lat, lon };
+                } else {
+                    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept-Language': 'de',
+                            'User-Agent': 'FireWoodFlow/1.0'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Geocoding fehlgeschlagen');
+                    
+                    const data = await response.json();
+                    if (data.length === 0) throw new Error('Adresse nicht gefunden');
+                    
+                    coords = {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon)
+                    };
+                }
+
+                const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon - 0.01},${coords.lat - 0.01},${coords.lon + 0.01},${coords.lat + 0.01}&layer=mapnik&marker=${coords.lat},${coords.lon}`;
+                
+                previewDiv.innerHTML = `
+                    <iframe 
+                        src="${mapUrl}" 
+                        width="100%" 
+                        height="300" 
+                        style="border:1px solid #ccc;border-radius:8px;"
+                        loading="lazy"
+                    ></iframe>
+                    <p style="text-align:center;margin-top:10px;font-size:0.9em;color:#6B5D52;">
+                        📍 ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}
+                    </p>
+                `;
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Karte:', error);
+                previewDiv.innerHTML = `<p style="color:#C0392B;text-align:center;">❌ Fehler: ${error.message}</p>`;
             }
         },
 
