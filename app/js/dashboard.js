@@ -696,8 +696,8 @@ createApp({
 
         async saveCompanySettingsToSupabase() {
             try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) return;
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError || !user) return;
                 
                 const settings = {
                     company_name: this.companyName,
@@ -710,32 +710,36 @@ createApp({
                 };
                 
                 // Prüfen ob bereits Einstellungen existieren
-                const { data: existing } = await supabaseClient
-                    .from('company_settings')
-                    .select('id')
-                    .eq('user_id', user.id)
-                    .single();
-                
-                if (existing) {
-                    // Update
-                    await supabaseClient
+                try {
+                    const { data: existing } = await supabaseClient
                         .from('company_settings')
-                        .update({ ...settings, updated_at: new Date().toISOString() })
-                        .eq('id', existing.id);
-                } else {
-                    // Insert
-                    await supabaseClient
-                        .from('company_settings')
-                        .insert([{
-                            id: crypto.randomUUID(),
-                            user_id: user.id,
-                            ...settings,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }]);
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (existing) {
+                        // Update
+                        await supabaseClient
+                            .from('company_settings')
+                            .update({ ...settings, updated_at: new Date().toISOString() })
+                            .eq('id', existing.id);
+                    } else {
+                        // Insert
+                        await supabaseClient
+                            .from('company_settings')
+                            .insert([{
+                                id: crypto.randomUUID(),
+                                user_id: user.id,
+                                ...settings,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            }]);
+                    }
+                    
+                    console.log('✓ Firmeneinstellungen in Supabase gespeichert');
+                } catch (e) {
+                    console.log('⚠ company_settings Tabelle nicht verfügbar, speichere nur lokal');
                 }
-                
-                console.log('✓ Firmeneinstellungen in Supabase gespeichert');
             } catch (error) {
                 console.error('Fehler beim Speichern der Einstellungen:', error);
             }
