@@ -43,6 +43,12 @@
                     <span class="nav-text">Lieferplanung</span>
                 </a>
                 <a href="#" 
+                   :class="{ active: currentView === 'revenue' }" 
+                   @click.prevent="currentView = 'revenue'">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Umsatz</span>
+                </a>
+                <a href="#" 
                    :class="{ active: currentView === 'settings' }" 
                    @click.prevent="currentView = 'settings'">
                     <span class="nav-icon">⚙️</span>
@@ -514,6 +520,272 @@
                     <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
                         ➕ Neue Bestellung
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- REVENUE DASHBOARD VIEW -->
+        <div v-if="currentView === 'revenue'" class="view-revenue">
+            <header class="page-header">
+                <h1>💰 Umsatz & Finanzen</h1>
+                <p class="subtitle">Dein finanzieller Überblick</p>
+            </header>
+
+            <!-- Time Period Selector -->
+            <div class="period-selector">
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'today' }]" 
+                    @click="revenuePeriod = 'today'">
+                    Heute
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'week' }]" 
+                    @click="revenuePeriod = 'week'">
+                    Diese Woche
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'month' }]" 
+                    @click="revenuePeriod = 'month'">
+                    Dieser Monat
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'year' }]" 
+                    @click="revenuePeriod = 'year'">
+                    Dieses Jahr
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'all' }]" 
+                    @click="revenuePeriod = 'all'">
+                    Gesamt
+                </button>
+            </div>
+
+            <!-- Revenue Stats Cards -->
+            <div class="revenue-stats-grid">
+                <div class="revenue-stat-card primary">
+                    <div class="stat-icon">💶</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Umsatz</div>
+                        <div class="stat-value">{{ formatCurrency(periodRevenue) }}</div>
+                        <div class="stat-sub">{{ periodOrderCount }} Bestellungen</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card expense">
+                    <div class="stat-icon">💸</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Ausgaben</div>
+                        <div class="stat-value">{{ formatCurrency(periodExpenses) }}</div>
+                        <div class="stat-sub">{{ periodExpenseCount }} Ausgaben</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card profit" :class="{ 'is-negative': periodProfit < 0 }">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Gewinn</div>
+                        <div class="stat-value">{{ formatCurrency(periodProfit) }}</div>
+                        <div class="stat-sub">{{ profitMargin > 0 ? '+' : '' }}{{ profitMargin.toFixed(1) }}% Marge</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card">
+                    <div class="stat-icon">🛒</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Ø Bestellwert</div>
+                        <div class="stat-value">{{ formatCurrency(avgOrderValue) }}</div>
+                        <div class="stat-sub">Pro Bestellung</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Chart (Simple Bar Chart) -->
+            <div class="chart-section">
+                <h3>📈 Umsatzverlauf</h3>
+                <div class="revenue-chart">
+                    <div class="chart-bars">
+                        <div 
+                            v-for="(day, idx) in revenueChartData" 
+                            :key="idx" 
+                            class="chart-bar-container"
+                        >
+                            <div 
+                                class="chart-bar" 
+                                :style="{ height: day.height + '%' }"
+                                :title="day.label + ': ' + formatCurrency(day.value)"
+                            ></div>
+                            <div class="chart-label">{{ day.label }}</div>
+                            <div class="chart-value">{{ formatCurrency(day.value) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Customers & Products -->
+            <div class="top-section-grid">
+                <!-- Top Customers -->
+                <div class="top-section-card">
+                    <h3>🏆 Top Kunden</h3>
+                    <div class="top-list">
+                        <div 
+                            v-for="(customer, idx) in topCustomers" 
+                            :key="idx" 
+                            class="top-item"
+                        >
+                            <div class="top-rank">#{{ idx + 1 }}</div>
+                            <div class="top-content">
+                                <div class="top-name">{{ customer.name }}</div>
+                                <div class="top-detail">{{ customer.orderCount }} Bestellungen</div>
+                            </div>
+                            <div class="top-value">{{ formatCurrency(customer.total) }}</div>
+                        </div>
+                        <div v-if="topCustomers.length === 0" class="empty-list">
+                            Keine Bestellungen in diesem Zeitraum
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Products -->
+                <div class="top-section-card">
+                    <h3>🪵 Top Produkte</h3>
+                    <div class="top-list">
+                        <div 
+                            v-for="(product, idx) in topProducts" 
+                            :key="idx" 
+                            class="top-item"
+                        >
+                            <div class="top-rank">#{{ idx + 1 }}</div>
+                            <div class="top-content">
+                                <div class="top-name">{{ product.name }}</div>
+                                <div class="top-detail">{{ product.quantitySold }} {{ product.unit }} verkauft</div>
+                            </div>
+                            <div class="top-value">{{ formatCurrency(product.revenue) }}</div>
+                        </div>
+                        <div v-if="topProducts.length === 0" class="empty-list">
+                            Keine Verkäufe in diesem Zeitraum
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses Section -->
+            <div class="expenses-section">
+                <div class="section-header">
+                    <h3>💸 Ausgaben</h3>
+                    <button @click="showAddExpense = true" class="btn-add-expense">
+                        ➕ Neue Ausgabe
+                    </button>
+                </div>
+
+                <!-- Expense Categories Summary -->
+                <div class="expense-categories-summary">
+                    <div 
+                        v-for="(cat, key) in expensesByCategory" 
+                        :key="key" 
+                        class="expense-category-chip"
+                    >
+                        <span class="category-icon">{{ getCategoryIcon(key) }}</span>
+                        <span class="category-name">{{ getCategoryName(key) }}</span>
+                        <span class="category-amount">{{ formatCurrency(cat.total) }}</span>
+                    </div>
+                </div>
+
+                <!-- Recent Expenses List -->
+                <div class="expenses-list">
+                    <div 
+                        v-for="expense in recentExpenses" 
+                        :key="expense.id" 
+                        class="expense-item"
+                    >
+                        <div class="expense-icon">{{ getCategoryIcon(expense.category) }}</div>
+                        <div class="expense-content">
+                            <div class="expense-description">{{ expense.description }}</div>
+                            <div class="expense-meta">
+                                <span class="expense-category">{{ getCategoryName(expense.category) }}</span>
+                                <span class="expense-date">{{ formatDate(expense.date) }}</span>
+                            </div>
+                        </div>
+                        <div class="expense-amount">-{{ formatCurrency(expense.amount) }}</div>
+                        <button @click="deleteExpense(expense)" class="btn-delete-expense" title="Löschen">✕</button>
+                    </div>
+                    <div v-if="recentExpenses.length === 0" class="empty-list">
+                        Noch keine Ausgaben erfasst
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Expense Modal -->
+        <div v-if="showAddExpense" class="modal-overlay" @click.self="showAddExpense = false">
+            <div class="modal-content modal-medium">
+                <div class="modal-header">
+                    <h2>💸 Neue Ausgabe erfassen</h2>
+                    <button @click="showAddExpense = false" class="btn-close-modal">✕</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="expenseAmount">Betrag (€)</label>
+                        <input 
+                            type="number" 
+                            id="expenseAmount" 
+                            v-model="newExpense.amount" 
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            class="form-input-large"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseCategory">Kategorie</label>
+                        <select id="expenseCategory" v-model="newExpense.category" class="form-input">
+                            <option value="fuel">⛽ Sprit / Diesel</option>
+                            <option value="maintenance">🔧 Wartung / Reparatur</option>
+                            <option value="insurance">📋 Versicherung</option>
+                            <option value="material">🪵 Material / Einkauf</option>
+                            <option value="tools">🔨 Werkzeuge</option>
+                            <option value="office">📁 Büro / Verwaltung</option>
+                            <option value="other">📦 Sonstiges</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDescription">Beschreibung</label>
+                        <input 
+                            type="text" 
+                            id="expenseDescription" 
+                            v-model="newExpense.description" 
+                            placeholder="z.B. Diesel getankt, Säge gekauft..."
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDate">Datum</label>
+                        <input 
+                            type="date" 
+                            id="expenseDate" 
+                            v-model="newExpense.date" 
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseNotes">Notizen (optional)</label>
+                        <textarea 
+                            id="expenseNotes" 
+                            v-model="newExpense.notes" 
+                            rows="3"
+                            placeholder="Weitere Details..."
+                            class="form-input"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button @click="showAddExpense = false" class="btn-secondary">Abbrechen</button>
+                    <button @click="addExpense" class="btn-primary">Ausgabe speichern</button>
                 </div>
             </div>
         </div>

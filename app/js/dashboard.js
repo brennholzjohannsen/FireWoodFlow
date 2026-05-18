@@ -90,6 +90,18 @@ createApp({
             currentWeekStart: null,
             selectedDay: null,
             
+            // Revenue Dashboard
+            revenuePeriod: 'month',
+            showAddExpense: false,
+            expenses: [],
+            newExpense: {
+                amount: '',
+                category: 'fuel',
+                description: '',
+                date: '',
+                notes: ''
+            },
+            
             // Storage Locations (Lagerplätze)
             storageLocations: [],
             
@@ -225,6 +237,292 @@ createApp({
         selectedDayOrders() {
             if (!this.selectedDay) return [];
             return this.orders.filter(o => o.deliveryDate === this.selectedDay);
+        },
+
+        // Revenue Dashboard Computed
+        periodOrders() {
+            const now = new Date();
+            let startDate = null;
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    startDate = now.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    startDate = monday.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    break;
+                case 'all':
+                default:
+                    startDate = '2000-01-01';
+            }
+            
+            return this.orders.filter(o => o.deliveryDate >= startDate && o.status !== 'storniert');
+        },
+
+        periodRevenue() {
+            return this.periodOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+        },
+
+        periodOrderCount() {
+            return this.periodOrders.length;
+        },
+
+        periodExpenses() {
+            const now = new Date();
+            let startDate = null;
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    startDate = now.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    startDate = monday.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    break;
+                case 'all':
+                default:
+                    startDate = '2000-01-01';
+            }
+            
+            return this.expenses.filter(e => e.date >= startDate).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        },
+
+        periodExpenseCount() {
+            const now = new Date();
+            let startDate = null;
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    startDate = now.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    startDate = monday.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    break;
+                case 'all':
+                default:
+                    startDate = '2000-01-01';
+            }
+            
+            return this.expenses.filter(e => e.date >= startDate).length;
+        },
+
+        periodProfit() {
+            return this.periodRevenue - this.periodExpenses;
+        },
+
+        profitMargin() {
+            if (this.periodRevenue === 0) return 0;
+            return (this.periodProfit / this.periodRevenue) * 100;
+        },
+
+        avgOrderValue() {
+            if (this.periodOrderCount === 0) return 0;
+            return this.periodRevenue / this.periodOrderCount;
+        },
+
+        revenueChartData() {
+            const data = [];
+            const now = new Date();
+            let days = [];
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    // Hourly chart for today
+                    for (let i = 0; i < 24; i += 4) {
+                        days.push({ label: `${i}:00`, value: 0 });
+                    }
+                    break;
+                case 'week':
+                    // Daily chart for this week
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    for (let i = 0; i < 7; i++) {
+                        const date = new Date(monday);
+                        date.setDate(date.getDate() + i);
+                        const dateStr = date.toISOString().split('T')[0];
+                        days.push({ 
+                            label: date.toLocaleDateString('de-DE', { weekday: 'short' }), 
+                            date: dateStr,
+                            value: 0 
+                        });
+                    }
+                    break;
+                case 'month':
+                    // Daily chart for this month (simplified to weeks)
+                    const year = now.getFullYear();
+                    const month = now.getMonth();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const weeks = Math.ceil(daysInMonth / 7);
+                    for (let i = 0; i < weeks; i++) {
+                        days.push({ label: `KW ${i + 1}`, value: 0 });
+                    }
+                    break;
+                case 'year':
+                    // Monthly chart
+                    const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+                    for (let i = 0; i < 12; i++) {
+                        days.push({ label: months[i], value: 0 });
+                    }
+                    break;
+                case 'all':
+                default:
+                    // Yearly chart
+                    const currentYear = now.getFullYear();
+                    for (let i = currentYear - 4; i <= currentYear; i++) {
+                        days.push({ label: String(i), value: 0 });
+                    }
+            }
+            
+            // Calculate values
+            this.periodOrders.forEach(order => {
+                const orderDate = new Date(order.deliveryDate);
+                let idx = -1;
+                
+                switch(this.revenuePeriod) {
+                    case 'today':
+                        idx = Math.floor(orderDate.getHours() / 4);
+                        break;
+                    case 'week':
+                        const dayOfWeek = orderDate.getDay() || 7; // Convert Sunday from 0 to 7
+                        idx = dayOfWeek - 1;
+                        break;
+                    case 'month':
+                        const dayOfMonth = orderDate.getDate();
+                        idx = Math.floor((dayOfMonth - 1) / 7);
+                        break;
+                    case 'year':
+                        idx = orderDate.getMonth();
+                        break;
+                    case 'all':
+                        idx = orderDate.getFullYear() - (now.getFullYear() - 4);
+                }
+                
+                if (idx >= 0 && idx < days.length) {
+                    days[idx].value += parseFloat(order.total) || 0;
+                }
+            });
+            
+            // Calculate heights based on max value
+            const maxValue = Math.max(...days.map(d => d.value), 1);
+            days.forEach(day => {
+                day.height = (day.value / maxValue) * 100;
+            });
+            
+            return days;
+        },
+
+        topCustomers() {
+            const customerMap = {};
+            
+            this.periodOrders.forEach(order => {
+                if (!customerMap[order.customerName]) {
+                    customerMap[order.customerName] = { name: order.customerName, total: 0, orderCount: 0 };
+                }
+                customerMap[order.customerName].total += parseFloat(order.total) || 0;
+                customerMap[order.customerName].orderCount++;
+            });
+            
+            return Object.values(customerMap)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 5);
+        },
+
+        topProducts() {
+            const productMap = {};
+            
+            this.periodOrders.forEach(order => {
+                order.items.forEach(item => {
+                    const key = `${item.productName}-${item.logLength}`;
+                    if (!productMap[key]) {
+                        productMap[key] = { 
+                            name: item.productName, 
+                            logLength: item.logLength,
+                            unit: item.unit,
+                            quantitySold: 0, 
+                            revenue: 0 
+                        };
+                    }
+                    productMap[key].quantitySold += parseFloat(item.quantity) || 0;
+                    
+                    // Calculate revenue proportionally
+                    const itemTotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.pricePerUnit) || 0);
+                    productMap[key].revenue += itemTotal;
+                });
+            });
+            
+            return Object.values(productMap)
+                .sort((a, b) => b.revenue - a.revenue)
+                .slice(0, 5);
+        },
+
+        recentExpenses() {
+            return this.expenses
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 10);
+        },
+
+        expensesByCategory() {
+            const categoryMap = {};
+            const now = new Date();
+            let startDate = null;
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    startDate = now.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    startDate = monday.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    break;
+                case 'all':
+                default:
+                    startDate = '2000-01-01';
+            }
+            
+            this.expenses.filter(e => e.date >= startDate).forEach(expense => {
+                if (!categoryMap[expense.category]) {
+                    categoryMap[expense.category] = { total: 0, count: 0 };
+                }
+                categoryMap[expense.category].total += parseFloat(expense.amount) || 0;
+                categoryMap[expense.category].count++;
+            });
+            
+            return categoryMap;
         }
     },
 
@@ -668,6 +966,12 @@ createApp({
                 }
             }
             this.ordersCount = this.orders.length;
+            
+            // Expenses laden
+            const savedExpenses = localStorage.getItem('firewoodflow_expenses');
+            if (savedExpenses) {
+                this.expenses = JSON.parse(savedExpenses);
+            }
             
             // Heute Bestellungen berechnen (Array mit allen Aufträgen heute)
             const today = new Date().toISOString().split('T')[0];
@@ -2721,6 +3025,85 @@ createApp({
                 await supabaseClient.auth.signOut();
                 window.location.href = 'index.html';
             }
+        },
+
+        // Expense Management Methods
+        addExpense() {
+            if (!this.newExpense.amount || parseFloat(this.newExpense.amount) <= 0) {
+                alert('Bitte einen gültigen Betrag eingeben.');
+                return;
+            }
+
+            if (!this.newExpense.date) {
+                this.newExpense.date = new Date().toISOString().split('T')[0];
+            }
+
+            const expense = {
+                id: Date.now().toString(),
+                amount: parseFloat(this.newExpense.amount),
+                category: this.newExpense.category,
+                description: this.newExpense.description || 'Ohne Beschreibung',
+                date: this.newExpense.date,
+                notes: this.newExpense.notes || ''
+            };
+
+            this.expenses.push(expense);
+            this.saveExpenses();
+
+            // Reset form
+            this.newExpense = {
+                amount: '',
+                category: 'fuel',
+                description: '',
+                date: '',
+                notes: ''
+            };
+            this.showAddExpense = false;
+
+            alert('✓ Ausgabe erfolgreich erfasst!');
+        },
+
+        deleteExpense(expense) {
+            if (confirm(`Ausgabe "${expense.description}" für ${this.formatCurrency(expense.amount)} löschen?`)) {
+                this.expenses = this.expenses.filter(e => e.id !== expense.id);
+                this.saveExpenses();
+            }
+        },
+
+        saveExpenses() {
+            localStorage.setItem('firewoodflow_expenses', JSON.stringify(this.expenses));
+        },
+
+        getCategoryName(category) {
+            const names = {
+                fuel: 'Sprit',
+                maintenance: 'Wartung',
+                insurance: 'Versicherung',
+                material: 'Material',
+                tools: 'Werkzeuge',
+                office: 'Büro',
+                other: 'Sonstiges'
+            };
+            return names[category] || category;
+        },
+
+        getCategoryIcon(category) {
+            const icons = {
+                fuel: '⛽',
+                maintenance: '🔧',
+                insurance: '📋',
+                material: '🪵',
+                tools: '🔨',
+                office: '📁',
+                other: '📦'
+            };
+            return icons[category] || '📦';
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
         },
 
         // Helper Methoden für Bestellungen
