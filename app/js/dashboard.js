@@ -2076,15 +2076,38 @@ createApp({
         },
 
         openOrderInMaps(order) {
-            // Google Maps mit Lieferadresse öffnen
+            // Google Maps mit Routenplanung vom Lager zur Lieferadresse öffnen
             if (!order.deliveryAddress || !order.deliveryAddress.trim()) {
                 alert('Keine Lieferadresse vorhanden.');
                 return;
             }
             
-            const address = encodeURIComponent(order.deliveryAddress);
-            const url = `https://www.google.com/maps/dir/?api=1&destination=${address}`;
-            window.open(url, '_blank');
+            // Startadresse ermitteln: Lagerplatz der Bestellung oder Firmenadresse
+            let startAddress = '';
+            
+            // Prüfen ob Bestellung einen Lagerplatz hat
+            if (order.storageLocationIndex !== undefined && order.storageLocationIndex !== null && this.storageLocations[order.storageLocationIndex]) {
+                const warehouse = this.storageLocations[order.storageLocationIndex];
+                startAddress = warehouse.address || warehouse.name || '';
+            }
+            
+            // Fallback auf Firmenadresse wenn kein Lagerplatz
+            if (!startAddress && this.companyAddress) {
+                startAddress = this.companyAddress;
+            }
+            
+            // URLs zusammenbauen
+            const destination = encodeURIComponent(order.deliveryAddress);
+            
+            if (startAddress) {
+                const origin = encodeURIComponent(startAddress);
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                window.open(url, '_blank');
+            } else {
+                // Nur Zieladresse wenn keine Startadresse verfügbar
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+                window.open(url, '_blank');
+            }
         },
 
         editOrder(order) {
