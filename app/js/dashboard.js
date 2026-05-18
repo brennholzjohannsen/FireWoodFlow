@@ -89,6 +89,10 @@ createApp({
             // Storage Locations (Lagerplätze)
             storageLocations: [],
             
+            // Google Calendar Integration
+            googleCalendarConnected: false,
+            googleCalendarId: 'primary',
+            
             // Bestellungen
             orders: [],
             ordersCount: 0,
@@ -229,6 +233,9 @@ createApp({
                 this.storageLocations = data.storageLocations || [];
                 this.costPerKm = parseFloat(data.costPerKm) || 0;
                 this.roundingMode = data.roundingMode || 'exact';
+                // Google Calendar Settings laden
+                this.googleCalendarConnected = data.googleCalendarConnected || false;
+                this.googleCalendarId = data.googleCalendarId || 'primary';
             }
             
             // Inventar-Einstellungen laden
@@ -349,7 +356,9 @@ createApp({
                 storageLocation: this.storageLocation,
                 storageLocations: this.storageLocations,
                 costPerKm: this.costPerKm,
-                roundingMode: this.roundingMode
+                roundingMode: this.roundingMode,
+                googleCalendarConnected: this.googleCalendarConnected,
+                googleCalendarId: this.googleCalendarId
             };
             localStorage.setItem('firewoodflow_company', JSON.stringify(data));
             
@@ -800,6 +809,36 @@ createApp({
                 console.error('Fehler beim Löschen aus Supabase:', error);
                 throw error;
             }
+        },
+
+        // Google Calendar Integration Methods
+        connectGoogleCalendar() {
+            // Simulierter OAuth Flow - in echter Implementierung würde hier Google OAuth stattfinden
+            if (!this.googleCalendarId || !this.googleCalendarId.trim()) {
+                this.googleCalendarId = 'primary';
+            }
+            
+            // In echter Implementierung:
+            // 1. Google OAuth 2.0 Popup öffnen
+            // 2. Berechtigungen anfordern (calendar.events.insert, calendar.events.readonly)
+            // 3. Access Token speichern
+            // 4. Kalender-ID validieren
+            
+            // Demo-Implementierung: Direkt als verbunden markieren
+            this.googleCalendarConnected = true;
+            this.saveCompanySettings();
+            
+            alert('✓ Mit Google Kalender verbunden!\n\nKalender-ID: ' + this.googleCalendarId + '\n\nHinweis: Dies ist eine Demo-Verbindung. Für echte Synchronisation muss Google OAuth implementiert werden.');
+        },
+
+        disconnectGoogleCalendar() {
+            if (!confirm('Möchtest du die Verbindung zum Google Kalender wirklich trennen?')) return;
+            
+            this.googleCalendarConnected = false;
+            this.googleCalendarId = 'primary';
+            this.saveCompanySettings();
+            
+            alert('✓ Verbindung zum Google Kalender getrennt.');
         },
 
         async saveCompanySettingsToSupabase() {

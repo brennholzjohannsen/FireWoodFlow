@@ -464,6 +464,44 @@
                     <p class="field-hint">📍 Mehrere Lagerplätze verwalten. Für Lieferung wird standardmäßig der erste Platz verwendet.</p>
                 </div>
 
+                <!-- Google Calendar Integration -->
+                <div class="form-group">
+                    <label>🗓️ Google Calendar Integration</label>
+                    <div class="calendar-settings-box">
+                        <p class="calendar-info">
+                            🔗 Verbinde deinen Google Kalender, um Liefertermine automatisch zu synchronisieren.
+                        </p>
+                        
+                        <div class="calendar-status" v-if="googleCalendarConnected">
+                            <span class="status-indicator connected">✓</span>
+                            <span class="status-text">Google Kalender verbunden</span>
+                            <button @click="disconnectGoogleCalendar" class="btn-disconnect-calendar">Trennen</button>
+                        </div>
+                        
+                        <div class="calendar-connect-form" v-else>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="googleCalendarId">Kalender-ID (optional)</label>
+                                    <input 
+                                        type="text" 
+                                        id="googleCalendarId" 
+                                        v-model="googleCalendarId"
+                                        placeholder="primary oder calendar-id@group.calendar.google.com"
+                                        class="select-input"
+                                    >
+                                    <p class="field-hint">Leer lassen für Hauptkalender oder spezifische Kalender-ID angeben</p>
+                                </div>
+                            </div>
+                            <button @click="connectGoogleCalendar" class="btn-connect-calendar">
+                                🔗 Mit Google Kalender verbinden
+                            </button>
+                        </div>
+                    </div>
+                    <p class="field-hint">
+                        ℹ️ Bei Verbindung werden neue Liefertermine automatisch in deinen Google Kalender eingetragen.
+                    </p>
+                </div>
+
                 <div class="form-group">
                     <label for="costPerKm">Fahrtkosten pro km (einfach)</label>
                     <div class="input-with-prefix">
