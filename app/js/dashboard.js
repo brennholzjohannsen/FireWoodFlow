@@ -488,7 +488,7 @@ createApp({
             this.showAddProduct = true;
         },
 
-        // Wird aufgerufen wenn SRM-Preis geändert wird
+        // Wird aufgerufen wenn SRM-Preis geändert wird (beim neuen Produkt)
         onSRMPriceChange(length, value) {
             // Sicherstellen dass die Struktur existiert
             if (!this.newProduct.priceLengths[length]) {
@@ -508,6 +508,32 @@ createApp({
             
             // Vue 3 reactivity trigger
             this.newProduct = { ...this.newProduct, priceLengths: { ...this.newProduct.priceLengths } };
+        },
+
+        // Wird aufgerufen wenn Preis beim Bearbeiten geändert wird
+        onEditProductPriceChange(length, unit) {
+            // Sicherstellen dass die Struktur existiert
+            if (!this.editingProduct.priceLengths) {
+                this.editingProduct.priceLengths = {};
+            }
+            if (!this.editingProduct.priceLengths[length]) {
+                this.editingProduct.priceLengths[length] = { srm: '', rm: '' };
+            }
+            
+            // Bei SRM-Änderung RM automatisch berechnen
+            if (unit === 'SRM') {
+                const srmValue = this.editingProduct.priceLengths[length].srm;
+                
+                if (srmValue && srmValue !== '' && !isNaN(parseFloat(srmValue))) {
+                    const calculatedRM = (parseFloat(srmValue) * 1.42).toFixed(2);
+                    this.editingProduct.priceLengths[length].rm = calculatedRM;
+                } else {
+                    this.editingProduct.priceLengths[length].rm = '';
+                }
+            }
+            
+            // Vue 3 reactivity trigger
+            this.editingProduct = { ...this.editingProduct, priceLengths: { ...this.editingProduct.priceLengths } };
         },
 
         async loadData() {
@@ -1163,6 +1189,25 @@ createApp({
                 logLength: product.log_length,
                 priceLengths: product.price_lengths || {}
             };
+            
+            // priceLengths für alle Scheitlängen initialisieren
+            if (!this.editingProduct.priceLengths) {
+                this.editingProduct.priceLengths = {};
+            }
+            this.inventorySettings.logLengths.forEach(length => {
+                if (!this.editingProduct.priceLengths[length]) {
+                    this.editingProduct.priceLengths[length] = { srm: '', rm: '' };
+                } else {
+                    // Ensure both srm and rm exist
+                    if (this.editingProduct.priceLengths[length].srm === undefined) {
+                        this.editingProduct.priceLengths[length].srm = '';
+                    }
+                    if (this.editingProduct.priceLengths[length].rm === undefined) {
+                        this.editingProduct.priceLengths[length].rm = '';
+                    }
+                }
+            });
+            
             this.showEditProduct = true;
         },
 
