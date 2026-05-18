@@ -24,7 +24,8 @@
         <!-- Navigation Bar (Mobile Bottom, Desktop Top) -->
         <nav class="navbar">
             <div class="nav-brand">
-                <span class="brand-emoji">🔥</span>
+                <img v-if="companyLogo" :src="companyLogo" alt="Logo" class="brand-logo">
+                <span v-else class="brand-emoji">🔥</span>
                 <span class="brand-name">{{ companyName }}</span>
             </div>
             

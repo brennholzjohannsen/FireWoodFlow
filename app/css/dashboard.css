@@ -63,6 +63,13 @@ body {
     font-size: 1.4em;
 }
 
+.brand-logo {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
 .brand-name {
     display: none;
 }
