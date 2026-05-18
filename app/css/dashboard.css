@@ -307,6 +307,55 @@ body {
     font-size: 1.8em;
 }
 
+/* Quick Navigation Tiles */
+.quick-nav {
+    margin-bottom: 25px;
+}
+
+.quick-nav h2 {
+    color: var(--text-dark);
+    font-size: 1.2em;
+    margin-bottom: 12px;
+}
+
+.nav-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.nav-tile {
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: var(--text-dark);
+}
+
+.nav-tile:hover {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.05), rgba(166, 139, 108, 0.05));
+    transform: translateY(-2px);
+}
+
+.tile-icon {
+    font-size: 2.2em;
+    line-height: 1;
+}
+
+.tile-label {
+    font-size: 0.85em;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
 /* Inventory Summary (Lagerwert Card) */
 .inventory-summary {
     margin-bottom: 20px;

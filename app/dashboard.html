@@ -36,24 +36,6 @@
                     <span class="nav-text">Übersicht</span>
                 </a>
                 <a href="#" 
-                   :class="{ active: currentView === 'inventory' }" 
-                   @click.prevent="currentView = 'inventory'">
-                    <span class="nav-icon">🪵</span>
-                    <span class="nav-text">Inventar</span>
-                </a>
-                <a href="#" 
-                   :class="{ active: currentView === 'customers' }" 
-                   @click.prevent="currentView = 'customers'">
-                    <span class="nav-icon">👥</span>
-                    <span class="nav-text">Kunden</span>
-                </a>
-                <a href="#" 
-                   :class="{ active: currentView === 'orders' }" 
-                   @click.prevent="currentView = 'orders'">
-                    <span class="nav-icon">📦</span>
-                    <span class="nav-text">Bestellungen</span>
-                </a>
-                <a href="#" 
                    :class="{ active: currentView === 'settings' }" 
                    @click.prevent="currentView = 'settings'">
                     <span class="nav-icon">⚙️</span>
@@ -80,20 +62,6 @@
 
                 <!-- Quick Stats Cards -->
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🪵</div>
-                        <div class="stat-info">
-                            <div class="stat-value">{{ inventoryCount }}</div>
-                            <div class="stat-label">Produkte im Lager</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">👥</div>
-                        <div class="stat-info">
-                            <div class="stat-value">{{ customerCount }}</div>
-                            <div class="stat-label">Kunden</div>
-                        </div>
-                    </div>
                     <div class="stat-card stat-card-wide next-order-card">
                         <div class="stat-icon">📦</div>
                         <div class="stat-info">
@@ -124,18 +92,37 @@
                 <section class="quick-actions">
                     <h2>Schnellaktionen</h2>
                     <div class="action-buttons">
-                        <button @click="currentView = 'inventory'; action = 'add'" class="btn-action">
-                            <span class="action-icon">➕</span>
-                            <span>Neues Produkt</span>
+                        <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
+                            <span class="action-icon">📦</span>
+                            <span>Bestellung</span>
                         </button>
                         <button @click="currentView = 'customers'; action = 'add'" class="btn-action">
                             <span class="action-icon">👤</span>
                             <span>Neuer Kunde</span>
                         </button>
-                        <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
-                            <span class="action-icon">📦</span>
-                            <span>Bestellung</span>
+                        <button @click="currentView = 'inventory'; action = 'add'" class="btn-action">
+                            <span class="action-icon">➕</span>
+                            <span>Neues Produkt</span>
                         </button>
+                    </div>
+                </section>
+
+                <!-- Quick Navigation -->
+                <section class="quick-nav">
+                    <h2>Bereiche</h2>
+                    <div class="nav-tiles">
+                        <a href="#" @click.prevent="currentView = 'inventory'" class="nav-tile">
+                            <span class="tile-icon">🪵</span>
+                            <span class="tile-label">Inventar</span>
+                        </a>
+                        <a href="#" @click.prevent="currentView = 'customers'" class="nav-tile">
+                            <span class="tile-icon">👥</span>
+                            <span class="tile-label">Kunden</span>
+                        </a>
+                        <a href="#" @click.prevent="currentView = 'orders'" class="nav-tile">
+                            <span class="tile-icon">📋</span>
+                            <span class="tile-label">Bestellungen</span>
+                        </a>
                     </div>
                 </section>
 
