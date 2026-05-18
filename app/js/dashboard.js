@@ -534,8 +534,11 @@ createApp({
         // Session prüfen
         await this.checkAuth();
         
-        // Firmen-Daten laden
+        // Firmen-Daten laden (ohne storageLocations - die kommen aus Supabase)
         this.loadCompanySettings();
+        
+        // Lagerplätze aus Supabase laden (neu!)
+        await this.loadStorageLocations();
         
         // Delivery Planning initialisieren
         this.initWeekStart();
@@ -561,7 +564,7 @@ createApp({
                 this.companyName = data.name || '';
                 this.companyLogo = data.logo || '';
                 this.companyAddress = data.address || '';
-                this.storageLocations = data.storageLocations || [];
+                // storageLocations werden jetzt aus Supabase geladen!
                 this.costPerKm = data.costPerKm || 1.50;
                 this.roundingMode = data.roundingMode || 'exact';
             }
@@ -681,8 +684,7 @@ createApp({
                 name: this.companyName,
                 logo: this.companyLogo,
                 address: this.companyAddress,
-                storageLocation: this.storageLocation,
-                storageLocations: this.storageLocations,
+                // storageLocations werden jetzt in Supabase gespeichert!
                 costPerKm: this.costPerKm,
                 roundingMode: this.roundingMode,
                 googleCalendarConnected: this.googleCalendarConnected,
@@ -695,22 +697,80 @@ createApp({
         },
 
         // Storage Location Methods
-        addStorageLocation() {
+        async loadStorageLocations() {
+            // Zuerst aus Supabase laden (wenn verfügbar)
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const { data, error } = await supabaseClient
+                        .from('storage_locations')
+                        .select('*')
+                        .order('sort_order', { ascending: true });
+                    
+                    if (!error && data) {
+                        this.storageLocations = data;
+                        console.log('✓ Lagerplätze aus Supabase geladen:', this.storageLocations.length);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Konnte Lagerplätze nicht aus Supabase laden:', error.message);
+            }
+            
+            // Fallback: Aus localStorage laden
+            const saved = localStorage.getItem('firewoodflow_company_settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                this.storageLocations = settings.storageLocations || [];
+                console.log('✓ Lagerplätze aus localStorage geladen:', this.storageLocations.length);
+            }
+        },
+
+        async addStorageLocation() {
             const name = prompt('Name für den Lagerplatz (z.B. "Hauptlager", "Außenlager Nord"):', 'Lager ' + (this.storageLocations.length + 1));
             if (!name || !name.trim()) return;
             
             const address = prompt('Adresse oder GPS-Koordinaten des Lagerplatzes:', '');
             
-            this.storageLocations.push({
+            const newLocation = {
                 name: name.trim(),
-                address: address ? address.trim() : ''
-            });
+                address: address ? address.trim() : '',
+                sort_order: this.storageLocations.length
+            };
             
+            // In Supabase speichern (wenn verfügbar)
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const { data, error } = await supabaseClient
+                        .from('storage_locations')
+                        .insert({
+                            user_id: user.id,
+                            name: newLocation.name,
+                            address: newLocation.address,
+                            sort_order: newLocation.sort_order
+                        })
+                        .select()
+                        .single();
+                    
+                    if (!error && data) {
+                        this.storageLocations.push(data);
+                        console.log('✓ Lagerplatz in Supabase gespeichert');
+                        alert('✓ Lagerplatz "' + name.trim() + '" hinzugefügt!');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Konnte Lagerplatz nicht in Supabase speichern:', error.message);
+            }
+            
+            // Fallback: Nur lokal speichern
+            this.storageLocations.push(newLocation);
             this.saveCompanySettings();
-            alert('✓ Lagerplatz "' + name.trim() + '" hinzugefügt!');
+            alert('✓ Lagerplatz "' + name.trim() + '" hinzugefügt! (nur lokal)');
         },
 
-        editStorageLocation(index) {
+        async editStorageLocation(index) {
             const loc = this.storageLocations[index];
             if (!loc) return;
             
@@ -719,22 +779,66 @@ createApp({
             
             const newAddress = prompt('Adresse/GPS bearbeiten:', loc.address || '');
             
-            loc.name = newName.trim();
-            loc.address = newAddress ? newAddress.trim() : '';
+            const updatedData = {
+                name: newName.trim(),
+                address: newAddress ? newAddress.trim() : ''
+            };
             
+            // In Supabase aktualisieren (wenn verfügbar)
+            if (loc.id) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('storage_locations')
+                        .update(updatedData)
+                        .eq('id', loc.id);
+                    
+                    if (!error) {
+                        Object.assign(loc, updatedData);
+                        console.log('✓ Lagerplatz in Supabase aktualisiert');
+                        alert('✓ Lagerplatz aktualisiert!');
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Konnte Lagerplatz nicht in Supabase aktualisieren:', error.message);
+                }
+            }
+            
+            // Fallback: Nur lokal aktualisieren
+            loc.name = updatedData.name;
+            loc.address = updatedData.address;
             this.saveCompanySettings();
-            alert('✓ Lagerplatz aktualisiert!');
+            alert('✓ Lagerplatz aktualisiert! (nur lokal)');
         },
 
-        removeStorageLocation(index) {
+        async removeStorageLocation(index) {
             const loc = this.storageLocations[index];
             if (!loc) return;
             
             if (!confirm('Möchtest du den Lagerplatz "' + loc.name + '" wirklich löschen?')) return;
             
+            // Aus Supabase löschen (wenn verfügbar)
+            if (loc.id) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('storage_locations')
+                        .delete()
+                        .eq('id', loc.id);
+                    
+                    if (!error) {
+                        this.storageLocations.splice(index, 1);
+                        console.log('✓ Lagerplatz aus Supabase gelöscht');
+                        alert('✓ Lagerplatz gelöscht.');
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Konnte Lagerplatz nicht aus Supabase löschen:', error.message);
+                }
+            }
+            
+            // Fallback: Nur lokal löschen
             this.storageLocations.splice(index, 1);
             this.saveCompanySettings();
-            alert('✓ Lagerplatz gelöscht.');
+            alert('✓ Lagerplatz gelöscht. (nur lokal)');
         },
 
         getActiveWoodTypes() {
