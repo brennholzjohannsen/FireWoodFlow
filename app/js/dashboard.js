@@ -52,10 +52,10 @@ createApp({
             newProduct: {
                 name: '',
                 quantity: 0,
-                unit: 'RM',
+                unit: 'FM',
                 woodType: '',
-                logLength: 25,
-                dryness: 'lufttrocken',
+                logLength: 100,
+                dryness: 'frisch',
                 price: 0,
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
                 notes: ''
@@ -1278,8 +1278,7 @@ createApp({
                     address: (this.newCustomer.address || '').trim(),
                     phone: (this.newCustomer.phone || '').trim(),
                     email: (this.newCustomer.email || '').trim(),
-                    notes: (this.newCustomer.notes || '').trim(),
-                    deliveryCosts: this.newCustomer.deliveryCosts || 0
+                    notes: (this.newCustomer.notes || '').trim()
                 };
 
                 console.log('Erstelle Kunde:', customer);
@@ -1292,12 +1291,14 @@ createApp({
                     customer.user_id = user.id;
                     customer.created_at = new Date().toISOString();
                     customer.updated_at = customer.created_at;
+                    customer.deliveryCosts = 0;
                     this.customers.push(customer);
                     console.log('✓ Kunde in Supabase gespeichert');
                 } else {
                     // Fallback: localStorage
                     customer.id = Date.now().toString();
                     customer.createdAt = new Date().toISOString();
+                    customer.deliveryCosts = 0;
                     this.customers.push(customer);
                 }
                 
