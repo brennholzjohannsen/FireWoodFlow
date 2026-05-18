@@ -99,8 +99,10 @@ createApp({
                 category: 'fuel',
                 description: '',
                 date: '',
-                notes: ''
+                notes: '',
+                storageLocationIndex: ''
             },
+            selectedStorageLocation: null, // null = alle Lager, 0 = Lager 1, 1 = Lager 2, etc.
             
             // Storage Locations (Lagerplätze)
             storageLocations: [],
@@ -133,7 +135,8 @@ createApp({
                 deliveryTime: '',
                 status: 'neu',
                 notes: '',
-                logLength: ''
+                logLength: '',
+                storageLocationIndex: 0 // Default: erster Lagerplatz
             },
             orderStatusFilter: 'alle'
         };
@@ -268,68 +271,69 @@ createApp({
             return this.orders.filter(o => o.deliveryDate >= startDate && o.status !== 'storniert');
         },
 
+        // Filter orders by selected storage location
+        filteredPeriodOrders() {
+            if (this.selectedStorageLocation === null) {
+                return this.periodOrders;
+            }
+            return this.periodOrders.filter(o => {
+                const orderLoc = o.storageLocationIndex !== undefined ? o.storageLocationIndex : 0;
+                return orderLoc === this.selectedStorageLocation;
+            });
+        },
+
         periodRevenue() {
-            return this.periodOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+            return this.filteredPeriodOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
         },
 
         periodOrderCount() {
-            return this.periodOrders.length;
+            return this.filteredPeriodOrders.length;
+        },
+
+        // Filter expenses by selected storage location
+        filteredPeriodExpensesData() {
+            const now = new Date();
+            let startDate = null;
+            
+            switch(this.revenuePeriod) {
+                case 'today':
+                    startDate = now.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    startDate = monday.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    break;
+                case 'all':
+                default:
+                    startDate = '2000-01-01';
+            }
+            
+            let filtered = this.expenses.filter(e => e.date >= startDate);
+            
+            if (this.selectedStorageLocation !== null) {
+                filtered = filtered.filter(e => {
+                    const expenseLoc = e.storageLocationIndex !== undefined ? e.storageLocationIndex : null;
+                    return expenseLoc === this.selectedStorageLocation;
+                });
+            }
+            
+            return filtered;
         },
 
         periodExpenses() {
-            const now = new Date();
-            let startDate = null;
-            
-            switch(this.revenuePeriod) {
-                case 'today':
-                    startDate = now.toISOString().split('T')[0];
-                    break;
-                case 'week':
-                    const day = now.getDay();
-                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-                    const monday = new Date(now.setDate(diff));
-                    startDate = monday.toISOString().split('T')[0];
-                    break;
-                case 'month':
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                    break;
-                case 'year':
-                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-                    break;
-                case 'all':
-                default:
-                    startDate = '2000-01-01';
-            }
-            
-            return this.expenses.filter(e => e.date >= startDate).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+            return this.filteredPeriodExpensesData.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
         },
 
         periodExpenseCount() {
-            const now = new Date();
-            let startDate = null;
-            
-            switch(this.revenuePeriod) {
-                case 'today':
-                    startDate = now.toISOString().split('T')[0];
-                    break;
-                case 'week':
-                    const day = now.getDay();
-                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-                    const monday = new Date(now.setDate(diff));
-                    startDate = monday.toISOString().split('T')[0];
-                    break;
-                case 'month':
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                    break;
-                case 'year':
-                    startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-                    break;
-                case 'all':
-                default:
-                    startDate = '2000-01-01';
-            }
-            
-            return this.expenses.filter(e => e.date >= startDate).length;
+            return this.filteredPeriodExpensesData.length;
         },
 
         periodProfit() {
@@ -3061,7 +3065,8 @@ createApp({
                 category: this.newExpense.category,
                 description: this.newExpense.description || 'Ohne Beschreibung',
                 date: this.newExpense.date,
-                notes: this.newExpense.notes || ''
+                notes: this.newExpense.notes || '',
+                storageLocationIndex: this.newExpense.storageLocationIndex !== '' ? parseInt(this.newExpense.storageLocationIndex) : null
             };
 
             // In Supabase speichern (wenn verfügbar)
@@ -3077,7 +3082,8 @@ createApp({
                             category: expense.category,
                             description: expense.description,
                             date: expense.date,
-                            notes: expense.notes
+                            notes: expense.notes,
+                            storage_location_index: expense.storageLocationIndex
                         });
                     
                     if (!error) {

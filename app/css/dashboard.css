@@ -2761,6 +2761,44 @@ body {
     border-color: var(--primary-color);
 }
 
+/* Storage Location Tabs (neu) */
+.storage-location-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    background: var(--white);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.location-tab {
+    padding: 10px 16px;
+    background: var(--white);
+    color: #666;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.location-tab:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.location-tab.active {
+    background: linear-gradient(135deg, var(--primary-color), #A68B6C);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
 .revenue-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

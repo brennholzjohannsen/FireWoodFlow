@@ -560,6 +560,22 @@
                 </button>
             </div>
 
+            <!-- Storage Location Tabs (neu) -->
+            <div class="storage-location-tabs" v-if="storageLocations.length > 0">
+                <button 
+                    :class="['location-tab', { active: selectedStorageLocation === null }]" 
+                    @click="selectedStorageLocation = null">
+                    📊 Alle Lager
+                </button>
+                <button 
+                    v-for="(loc, index) in storageLocations" 
+                    :key="index"
+                    :class="['location-tab', { active: selectedStorageLocation === index }]" 
+                    @click="selectedStorageLocation = index">
+                    🪵 {{ loc.name || 'Lager ' + (index + 1) }}
+                </button>
+            </div>
+
             <!-- Revenue Stats Cards -->
             <div class="revenue-stats-grid">
                 <div class="revenue-stat-card primary">
@@ -748,6 +764,18 @@
                             <option value="office">📁 Büro / Verwaltung</option>
                             <option value="other">📦 Sonstiges</option>
                         </select>
+                    </div>
+
+                    <!-- Lagerplatz-Zuordnung (neu) -->
+                    <div class="form-group" v-if="storageLocations.length > 0">
+                        <label for="expenseStorageLocation">🪵 Lagerplatz zuordnen</label>
+                        <select id="expenseStorageLocation" v-model="newExpense.storageLocationIndex" class="form-input">
+                            <option value="">Allgemein / Alle Lager</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">
+                                {{ loc.name || 'Lager ' + (index + 1) }}
+                            </option>
+                        </select>
+                        <p class="field-hint">Welchem Lagerplatz wird diese Ausgabe zugeordnet? Allgemein = alle Lager.</p>
                     </div>
 
                     <div class="form-group">
@@ -1318,6 +1346,18 @@
                             <label>Lieferzeit (Uhrzeit)</label>
                             <input type="time" v-model="newOrder.deliveryTime" class="date-input">
                         </div>
+                    </div>
+
+                    <!-- Lagerplatz auswählen (neu) -->
+                    <div class="form-group" v-if="storageLocations.length > 0">
+                        <label>🪵 Lagerplatz</label>
+                        <select v-model="newOrder.storageLocationIndex" class="select-input">
+                            <option value="">Erster Lagerplatz (Standard)</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">
+                                {{ loc.name || 'Lager ' + (index + 1) }}
+                            </option>
+                        </select>
+                        <p class="field-hint">Welcher Lagerplatz liefert diese Bestellung? Wichtig für Gewinnberechnung pro Lager.</p>
                     </div>
                     
                     <!-- Kalender Integration Hinweis -->
