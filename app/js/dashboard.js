@@ -1014,6 +1014,103 @@ createApp({
             window.open(calendarUrl, '_blank');
         },
 
+        // iCal/ICS Export - Funktioniert immer, keine OAuth nötig
+        exportOrderAsIcs() {
+            const order = this.showEditOrder ? this.editingOrder : this.newOrder;
+            
+            if (!order.deliveryDate) {
+                alert('Bitte wähle zuerst ein Lieferdatum.');
+                return;
+            }
+
+            // Kundenname ermitteln
+            let customerName = order.customerName || 'Unbekannt';
+            if (!order.customerName && order.customerId && this.customers) {
+                const customer = this.customers.find(c => c.id === order.customerId);
+                if (customer) customerName = customer.name;
+            }
+
+            // iCal Dateiinhalt erstellen
+            const uid = `firewoodflow-order-${order.id || Date.now()}@firewoodflow`;
+            const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+            
+            // Startzeit berechnen
+            let dtStart, dtEnd;
+            if (order.deliveryTime) {
+                // Mit Uhrzeit: 1 Stunde Dauer
+                const [hours, mins] = order.deliveryTime.split(':');
+                const startDate = order.deliveryDate.replace(/-/g, '');
+                dtStart = `${startDate}T${hours}${mins}00`;
+                
+                const endHours = String(Math.min(parseInt(hours) + 1, 23)).padStart(2, '0');
+                dtEnd = `${startDate}T${endHours}${mins}00`;
+            } else {
+                // Ganztägig
+                const startDate = order.deliveryDate.replace(/-/g, '');
+                dtStart = startDate;
+                dtEnd = startDate;
+            }
+
+            // Beschreibung zusammenbauen
+            let description = 'FireWoodFlow Bestellung\\n';
+            description += `Kunde: ${customerName}\\n`;
+            if (order.deliveryAddress) {
+                description += `Lieferadresse: ${order.deliveryAddress}\\n`;
+            }
+            if (order.items && order.items.length > 0) {
+                description += '\\nBestellung:\\n';
+                for (const item of order.items) {
+                    description += `${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)\\n`;
+                }
+            }
+            if (order.total) {
+                description += `\\nGesamtsumme: €${order.total.toFixed(2)}`;
+            }
+
+            // LOCATION für Google Maps
+            let location = '';
+            if (order.deliveryAddress) {
+                location = `LOCATION:${order.deliveryAddress}\\n`;
+            }
+
+            // iCal Content
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//FireWoodFlow//Delivery Calendar//DE',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'X-WR-CALNAME:FireWoodFlow Lieferungen',
+                'X-WR-TIMEZONE:Europe/Berlin',
+                'BEGIN:VEVENT',
+                `UID:${uid}`,
+                `DTSTAMP:${now}`,
+                `DTSTART:${dtStart}`,
+                `DTEND:${dtEnd}`,
+                `SUMMARY:🚚 Lieferung an ${customerName}`,
+                location,
+                `DESCRIPTION:${description}`,
+                'URL:https://firewoodflow.de',
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\\r\\n');
+
+            // Datei herunterladen
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Dateiname generieren
+            const dateStr = order.deliveryDate.replace(/-/g, '_');
+            link.setAttribute('download', `firewoodflow-lieferung-${dateStr}.ics`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        },
+
         formatDuration(seconds) {
             if (!seconds) return '-';
             const hours = Math.floor(seconds / 3600);

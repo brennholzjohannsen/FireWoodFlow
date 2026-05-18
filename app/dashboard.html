@@ -957,16 +957,40 @@
                     
                     <!-- Kalender Integration Hinweis -->
                     <div class="calendar-integration-hint" v-if="newOrder.deliveryDate">
-                        <p>📅 <strong>Google Calendar wird geöffnet:</strong></p>
-                        <p v-if="newOrder.deliveryTime">
-                            {{ formatDateForCalendar(newOrder.deliveryDate) }} um {{ newOrder.deliveryTime }} Uhr
-                        </p>
-                        <p v-else>
-                            {{ formatDateForCalendar(newOrder.deliveryDate) }} (ganztägig)
-                        </p>
-                        <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
-                            🗓️ In Google Calendar eintragen
-                        </button>
+                        <p>📅 <strong>Kalender-Optionen:</strong></p>
+                        
+                        <!-- iCal Export - Immer verfügbar -->
+                        <div class="calendar-export-options">
+                            <button type="button" @click="exportOrderAsIcs" class="btn-calendar-ics">
+                                📥 Als iCal-Datei herunterladen
+                            </button>
+                            <p class="field-hint" style="margin-top: 8px;">
+                                💡 Die .ics Datei kannst du in jeden Kalender importieren (Google, Apple, Outlook)
+                            </p>
+                        </div>
+                        
+                        <!-- Google Calendar - Nur wenn verbunden -->
+                        <div v-if="googleCalendarConnected" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(139, 115, 85, 0.2);">
+                            <p v-if="newOrder.deliveryTime">
+                                {{ formatDateForCalendar(newOrder.deliveryDate) }} um {{ newOrder.deliveryTime }} Uhr
+                            </p>
+                            <p v-else>
+                                {{ formatDateForCalendar(newOrder.deliveryDate) }} (ganztägig)
+                            </p>
+                            <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
+                                🗓️ In Google Calendar eintragen
+                            </button>
+                        </div>
+                        
+                        <!-- Google Calendar - Nicht verbunden -->
+                        <div v-else style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(139, 115, 85, 0.2);">
+                            <p style="margin-bottom: 8px;">
+                                🔔 <strong>Tipp:</strong> Verbinde deinen Google Kalender in den Einstellungen für automatische Synchronisation.
+                            </p>
+                            <button type="button" @click="currentView = 'settings'" class="btn-calendar-settings">
+                                ⚙️ Zu Kalender-Einstellungen
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Notizen -->
@@ -1116,16 +1140,40 @@
                     
                     <!-- Kalender Integration Hinweis -->
                     <div class="calendar-integration-hint" v-if="editingOrder.deliveryDate">
-                        <p>📅 <strong>Google Calendar wird geöffnet:</strong></p>
-                        <p v-if="editingOrder.deliveryTime">
-                            {{ formatDateForCalendar(editingOrder.deliveryDate) }} um {{ editingOrder.deliveryTime }} Uhr
-                        </p>
-                        <p v-else>
-                            {{ formatDateForCalendar(editingOrder.deliveryDate) }} (ganztägig)
-                        </p>
-                        <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
-                            🗓️ In Google Calendar eintragen
-                        </button>
+                        <p>📅 <strong>Kalender-Optionen:</strong></p>
+                        
+                        <!-- iCal Export - Immer verfügbar -->
+                        <div class="calendar-export-options">
+                            <button type="button" @click="exportOrderAsIcs" class="btn-calendar-ics">
+                                📥 Als iCal-Datei herunterladen
+                            </button>
+                            <p class="field-hint" style="margin-top: 8px;">
+                                💡 Die .ics Datei kannst du in jeden Kalender importieren (Google, Apple, Outlook)
+                            </p>
+                        </div>
+                        
+                        <!-- Google Calendar - Nur wenn verbunden -->
+                        <div v-if="googleCalendarConnected" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(139, 115, 85, 0.2);">
+                            <p v-if="editingOrder.deliveryTime">
+                                {{ formatDateForCalendar(editingOrder.deliveryDate) }} um {{ editingOrder.deliveryTime }} Uhr
+                            </p>
+                            <p v-else>
+                                {{ formatDateForCalendar(editingOrder.deliveryDate) }} (ganztägig)
+                            </p>
+                            <button type="button" @click="openInCalendar('full')" class="btn-calendar-full">
+                                🗓️ In Google Calendar eintragen
+                            </button>
+                        </div>
+                        
+                        <!-- Google Calendar - Nicht verbunden -->
+                        <div v-else style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(139, 115, 85, 0.2);">
+                            <p style="margin-bottom: 8px;">
+                                🔔 <strong>Tipp:</strong> Verbinde deinen Google Kalender in den Einstellungen für automatische Synchronisation.
+                            </p>
+                            <button type="button" @click="currentView = 'settings'" class="btn-calendar-settings">
+                                ⚙️ Zu Kalender-Einstellungen
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Status -->
