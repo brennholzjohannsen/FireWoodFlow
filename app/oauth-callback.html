@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Calendar Verbindung - FireWoodFlow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1em;
+            margin-bottom: 30px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success {
+            color: #4CAF50;
+            font-size: 4em;
+            margin: 20px 0;
+        }
+
+        .error {
+            color: #f44336;
+            background: #ffebee;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .error-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: #1976d2;
+            font-size: 0.9em;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🗓️</div>
+        
+        <!-- Loading State -->
+        <div id="loading">
+            <h1>Verbinde mit Google Calendar...</h1>
+            <p class="subtitle">Bitte warte einen Moment</p>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Success State -->
+        <div id="success" class="hidden">
+            <div class="success">✓</div>
+            <h1>Erfolgreich verbunden!</h1>
+            <p class="subtitle">Dein Google Kalender ist jetzt mit FireWoodFlow verknüpft</p>
+            
+            <div class="info">
+                🔔 Neue Liefertermine werden automatisch in deinem Kalender erstellt!
+            </div>
+            
+            <a href="dashboard.html" class="btn">Zurück zu FireWoodFlow</a>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="hidden">
+            <h1>Verbindung fehlgeschlagen</h1>
+            <div id="error-message" class="error">
+                <div class="error-title">❌ Fehler</div>
+                <div id="error-details"></div>
+            </div>
+            <a href="dashboard.html" class="btn">Erneut versuchen</a>
+        </div>
+    </div>
+
+    <script>
+        // OAuth Callback Handler
+        async function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            const state = urlParams.get('state');
+
+            // Check for errors
+            if (error) {
+                showError(`Google OAuth Error: ${error}`);
+                return;
+            }
+
+            if (!code) {
+                showError('Kein Authorization Code erhalten.');
+                return;
+            }
+
+            try {
+                // In einer echten Implementation würdest du hier den Code an deinen Backend-Server senden
+                // Der Server tauscht dann den Code gegen Tokens und speichert sie sicher
+                
+                // Für diese Demo-Version speichern wir nur die Info dass OAuth erfolgreich war
+                // TODO: Ersetze dies durch echte Token-Verarbeitung
+                
+                console.log('Authorization Code:', code);
+                
+                // Simuliere erfolgreiche Verarbeitung
+                await simulateTokenExchange(code);
+                
+                showSuccess();
+                
+            } catch (err) {
+                console.error('OAuth Error:', err);
+                showError(err.message);
+            }
+        }
+
+        async function simulateTokenExchange(code) {
+            // TODO: Hier kommt der echte OAuth Flow hin:
+            // 1. Sende code an Backend/Supabase Function
+            // 2. Backend tauscht code gegen access_token und refresh_token
+            // 3. Tokens verschlüsselt in Datenbank speichern
+            // 4. googleCalendarConnected = true setzen
+            
+            // Für jetzt simulieren wir nur eine Verzögerung
+            return new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        function showSuccess() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('success').classList.remove('hidden');
+            
+            // Speichere dass OAuth erfolgreich war (für Demo)
+            localStorage.setItem('firewoodflow_oauth_success', 'true');
+            
+            // Aktualisiere die Einstellungen
+            const settings = JSON.parse(localStorage.getItem('firewoodflow_company') || '{}');
+            settings.googleCalendarConnected = true;
+            localStorage.setItem('firewoodflow_company', JSON.stringify(settings));
+        }
+
+        function showError(message) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error-details').textContent = message;
+        }
+
+        // Start when page loads
+        window.addEventListener('load', handleOAuthCallback);
+    </script>
+</body>
+</html>

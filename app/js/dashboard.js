@@ -813,22 +813,69 @@ createApp({
 
         // Google Calendar Integration Methods
         connectGoogleCalendar() {
-            // Simulierter OAuth Flow - in echter Implementierung würde hier Google OAuth stattfinden
+            // Starte Google OAuth 2.0 Flow
             if (!this.googleCalendarId || !this.googleCalendarId.trim()) {
                 this.googleCalendarId = 'primary';
             }
             
-            // In echter Implementierung:
-            // 1. Google OAuth 2.0 Popup öffnen
-            // 2. Berechtigungen anfordern (calendar.events.insert, calendar.events.readonly)
-            // 3. Access Token speichern
-            // 4. Kalender-ID validieren
+            // TODO: Ersetze diese Client-ID mit deiner eigenen aus Google Cloud Console
+            // Anleitung: docs/GOOGLE_OAUTH_SETUP.md
+            const CLIENT_ID = 'DEINE_GOOGLE_CLIENT_ID_HIER';
             
-            // Demo-Implementierung: Direkt als verbunden markieren
-            this.googleCalendarConnected = true;
-            this.saveCompanySettings();
+            // Prüfen ob Client-ID konfiguriert ist
+            if (CLIENT_ID === 'DEINE_GOOGLE_CLIENT_ID_HIER') {
+                alert('⚠️ Google OAuth noch nicht konfiguriert!\n\nBitte folge der Anleitung in docs/GOOGLE_OAUTH_SETUP.md um:\n1. Google Cloud Projekt zu erstellen\n2. OAuth Credentials zu generieren\n3. Client-ID hier im Code einzutragen\n\nSolange kannst du den iCal-Export verwenden.');
+                return;
+            }
             
-            alert('✓ Mit Google Kalender verbunden!\n\nKalender-ID: ' + this.googleCalendarId + '\n\nHinweis: Dies ist eine Demo-Verbindung. Für echte Synchronisation muss Google OAuth implementiert werden.');
+            // OAuth Redirect URI
+            const redirectUri = encodeURIComponent(window.location.origin + '/FireWoodFlow/app/oauth-callback.html');
+            
+            // Scopes für Calendar API
+            const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events.insert https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendars.readonly');
+            
+            // State für CSRF-Schutz
+            const state = btoa(JSON.stringify({
+                calendarId: this.googleCalendarId,
+                timestamp: Date.now()
+            }));
+            
+            // Google OAuth URL zusammenbauen
+            const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${CLIENT_ID}&` +
+                `redirect_uri=${redirectUri}&` +
+                `response_type=code&` +
+                `scope=${scope}&` +
+                `access_type=offline&` +
+                `prompt=consent&` +
+                `state=${state}`;
+            
+            // OAuth Popup öffnen
+            const width = 600;
+            const height = 700;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+            
+            const popup = window.open(
+                oauthUrl,
+                'Google Calendar OAuth',
+                `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
+            );
+            
+            // Auf Popup schließen warten
+            const checkPopupClosed = setInterval(() => {
+                if (popup && popup.closed) {
+                    clearInterval(checkPopupClosed);
+                    // Prüfen ob OAuth erfolgreich war
+                    const oauthSuccess = localStorage.getItem('firewoodflow_oauth_success');
+                    if (oauthSuccess) {
+                        this.googleCalendarConnected = true;
+                        this.saveCompanySettings();
+                        localStorage.removeItem('firewoodflow_oauth_success');
+                        alert('✓ Mit Google Kalender verbunden!');
+                    }
+                }
+            }, 500);
         },
 
         disconnectGoogleCalendar() {
