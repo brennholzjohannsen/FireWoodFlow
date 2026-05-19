@@ -70,6 +70,12 @@ createApp({
             editingCustomer: null,
             showDeliveryModal: false,
             selectedCustomer: null,
+            
+            // Customer Details Modal (neu)
+            showCustomerDetailsModal: false,
+            customerOrdersFilter: 'all',
+            selectedSeasonYear: null,
+            
             loadingDistance: false,
             distanceError: '',
             distanceResult: null,
@@ -484,6 +490,135 @@ createApp({
             return Object.values(productMap)
                 .sort((a, b) => b.revenue - a.revenue)
                 .slice(0, 5);
+        },
+
+        // Customer Details Computed Properties
+        customerLifetimeRevenue() {
+            if (!this.selectedCustomer) return 0;
+            const customerOrders = this.orders.filter(o => o.customerId === this.selectedCustomer.id && o.status !== 'storniert');
+            return customerOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+        },
+
+        customerOrderCount() {
+            if (!this.selectedCustomer) return 0;
+            return this.orders.filter(o => o.customerId === this.selectedCustomer.id).length;
+        },
+
+        customerAvgOrderValue() {
+            if (!this.selectedCustomer || this.customerOrderCount === 0) return 0;
+            return this.customerLifetimeRevenue / this.customerOrderCount;
+        },
+
+        customerLastOrderDate() {
+            if (!this.selectedCustomer) return null;
+            const customerOrders = this.orders.filter(o => o.customerId === this.selectedCustomer.id);
+            if (customerOrders.length === 0) return null;
+            
+            const sorted = customerOrders.sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
+            return this.formatDate(sorted[0].deliveryDate);
+        },
+
+        // Season year (Juli–Juni): Saison 2025/26 = Juli 2025 bis Juni 2026
+        availableSeasonYears() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const years = [];
+            
+            // Letzte 5 Saisons + aktuelle Saison
+            for (let i = 4; i >= 0; i--) {
+                years.push(currentYear - i);
+            }
+            return years;
+        },
+
+        selectedSeasonYear() {
+            // Automatisch aktuelle Saison auswählen
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            // Wenn wir zwischen Jan-Jun sind, gehört das zur vorherigen Saison (Juni ist Ende)
+            // Wenn wir zwischen Jul-Dez sind, gehört das zur aktuellen Saison
+            if (now.getMonth() < 6) { // Jan-Jun
+                return currentYear - 1;
+            } else { // Jul-Dez
+                return currentYear;
+            }
+        },
+
+        // Bestellungen der aktuellen Saison für den Kunden
+        currentSeasonOrders() {
+            if (!this.selectedCustomer) return [];
+            
+            const seasonStartYear = this.selectedSeasonYear;
+            const seasonEndYear = seasonStartYear + 1;
+            
+            // Saison: 1. Juli seasonStartYear bis 30. Juni seasonEndYear
+            const seasonStart = new Date(seasonStartYear, 6, 1); // 1. Juli (Monat 6 = Juli)
+            const seasonEnd = new Date(seasonEndYear, 5, 30); // 30. Juni (Monat 5 = Juni)
+            
+            return this.orders.filter(o => {
+                if (o.customerId !== this.selectedCustomer.id) return false;
+                if (o.status === 'storniert') return false;
+                
+                const orderDate = new Date(o.deliveryDate);
+                return orderDate >= seasonStart && orderDate <= seasonEnd;
+            });
+        },
+
+        // Durchschnitt pro Scheitlänge für aktuelle Saison
+        currentSeasonStats() {
+            const orders = this.currentSeasonOrders;
+            if (orders.length === 0) return [];
+            
+            // Gruppiere nach Scheitlänge
+            const byLogLength = {};
+            
+            orders.forEach(order => {
+                order.items.forEach(item => {
+                    const key = `${item.logLength}-${item.unit}`;
+                    if (!byLogLength[key]) {
+                        byLogLength[key] = {
+                            logLength: item.logLength,
+                            unit: item.unit,
+                            totalQuantity: 0,
+                            orderCount: 0
+                        };
+                    }
+                    byLogLength[key].totalQuantity += parseFloat(item.quantity) || 0;
+                    byLogLength[key].orderCount++;
+                });
+            });
+            
+            // Berechne Durchschnitt pro Bestellung
+            return Object.values(byLogLength).map(stat => ({
+                ...stat,
+                avgQuantity: stat.totalQuantity / stat.orderCount
+            })).sort((a, b) => a.logLength - b.logLength);
+        },
+
+        // Gefilterte Bestellungen des Kunden
+        filteredCustomerOrders() {
+            if (!this.selectedCustomer) return [];
+            
+            let orders = this.orders.filter(o => o.customerId === this.selectedCustomer.id);
+            
+            // Nach Jahr filtern
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            
+            if (this.customerOrdersFilter === 'this_year') {
+                const yearStart = new Date(currentYear, 0, 1);
+                orders = orders.filter(o => new Date(o.deliveryDate) >= yearStart);
+            } else if (this.customerOrdersFilter === 'last_year') {
+                const lastYearStart = new Date(currentYear - 1, 0, 1);
+                const thisYearStart = new Date(currentYear, 0, 1);
+                orders = orders.filter(o => {
+                    const d = new Date(o.deliveryDate);
+                    return d >= lastYearStart && d < thisYearStart;
+                });
+            }
+            
+            // Sortieren nach Datum (neueste zuerst)
+            return orders.sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
         },
 
         recentExpenses() {
@@ -2287,6 +2422,24 @@ createApp({
                 preferredStorageLocationIndex: customer.preferred_storage_location_index !== undefined && customer.preferred_storage_location_index !== null ? customer.preferred_storage_location_index : ''
             };
             this.showEditCustomer = true;
+        },
+
+        showCustomerDetails(customer) {
+            // Kunden-Detailansicht öffnen
+            this.selectedCustomer = customer;
+            this.customerOrdersFilter = 'all';
+            this.showCustomerDetailsModal = true;
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                neu: '🆕 Neu',
+                bestaetigt: '✓ Bestätigt',
+                in_lieferung: '🚚 In Lieferung',
+                abgeschlossen: '✅ Abgeschlossen',
+                storniert: '❌ Storniert'
+            };
+            return labels[status] || status;
         },
 
         async saveCustomer() {

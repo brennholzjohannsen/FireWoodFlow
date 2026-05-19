@@ -295,6 +295,7 @@
                         <div class="customer-actions">
                             <button @click="editCustomer(customer)" class="btn-edit">Bearbeiten</button>
                             <button @click="showDeliveryCost(customer)" class="btn-action-cost">🚚 Kosten</button>
+                            <button @click="showCustomerDetails(customer)" class="btn-action-details">📊 Details</button>
                             <button @click="deleteCustomer(customer)" class="btn-delete">Löschen</button>
                         </div>
                     </div>
@@ -1729,6 +1730,105 @@
 
                     <button type="submit" class="btn-submit">Änderungen speichern</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Customer Details Modal (neu) -->
+        <div class="modal-overlay modal-large" v-if="showCustomerDetailsModal" @click="showCustomerDetailsModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showCustomerDetailsModal = false">&times;</button>
+                
+                <div class="customer-details-header" v-if="selectedCustomer">
+                    <h2>📊 {{ selectedCustomer.name }}</h2>
+                    <p class="subtitle">{{ selectedCustomer.address || 'Keine Adresse' }}</p>
+                    <div class="customer-contact-info">
+                        <span v-if="selectedCustomer.phone">📞 {{ selectedCustomer.phone }}</span>
+                        <span v-if="selectedCustomer.email">✉️ {{ selectedCustomer.email }}</span>
+                    </div>
+                </div>
+
+                <div class="customer-stats-grid" v-if="selectedCustomer">
+                    <div class="stat-card">
+                        <div class="stat-label">Gesamtumsatz</div>
+                        <div class="stat-value primary">{{ formatCurrency(customerLifetimeRevenue) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Bestellungen</div>
+                        <div class="stat-value">{{ customerOrderCount }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Ø Bestellwert</div>
+                        <div class="stat-value">{{ formatCurrency(customerAvgOrderValue) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Letzte Bestellung</div>
+                        <div class="stat-value small">{{ customerLastOrderDate || 'Keine' }}</div>
+                    </div>
+                </div>
+
+                <!-- Saison-Statistiken -->
+                <div class="season-stats-section" v-if="selectedCustomer && currentSeasonStats.length > 0">
+                    <h3>🪵 Durchschnitt pro Saison (Juli–Juni)</h3>
+                    
+                    <div class="season-selector">
+                        <select v-model="selectedSeasonYear" class="select-input">
+                            <option v-for="year in availableSeasonYears" :key="year" :value="year">
+                                Saison {{ year }}/{{ (year + 1) % 100 }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="season-averages-grid" v-if="currentSeasonStats.length > 0">
+                        <div v-for="stat in currentSeasonStats" :key="stat.logLength" class="avg-stat-card">
+                            <div class="avg-stat-header">
+                                <span class="log-length-badge">{{ stat.logLength }} cm</span>
+                            </div>
+                            <div class="avg-stat-body">
+                                <div class="avg-stat-value">{{ stat.avgQuantity.toFixed(2) }}</div>
+                                <div class="avg-stat-unit">{{ stat.unit }}</div>
+                                <div class="avg-stat-total">Gesamt: {{ stat.totalQuantity.toFixed(2) }} {{ stat.unit }} ({{ stat.orderCount }} Best.)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="empty-state">
+                        <p>Keine Bestellungen in dieser Saison</p>
+                    </div>
+                </div>
+
+                <!-- Alle Bestellungen -->
+                <div class="customer-orders-section" v-if="selectedCustomer">
+                    <h3>📦 Alle Bestellungen</h3>
+                    
+                    <div class="orders-filter-bar">
+                        <select v-model="customerOrdersFilter" class="filter-select-small">
+                            <option value="all">Alle</option>
+                            <option value="this_year">Dieses Jahr</option>
+                            <option value="last_year">Letztes Jahr</option>
+                        </select>
+                        <span class="order-count-badge">{{ filteredCustomerOrders.length }} Bestellungen</span>
+                    </div>
+
+                    <div class="customer-orders-list">
+                        <div v-for="order in filteredCustomerOrders" :key="order.id" class="order-item">
+                            <div class="order-date">
+                                {{ formatDate(order.deliveryDate) }}
+                                <span v-if="order.deliveryTime" class="order-time">{{ order.deliveryTime }}</span>
+                            </div>
+                            <div class="order-items">
+                                <div v-for="item in order.items" :key="item.productId" class="order-item-detail">
+                                    {{ item.quantity.toFixed(2) }} {{ item.unit }} {{ item.productName }} ({{ item.logLength }} cm)
+                                </div>
+                            </div>
+                            <div class="order-total">{{ formatCurrency(order.total) }}</div>
+                            <div class="order-status" :class="'status-' + order.status">
+                                {{ getStatusLabel(order.status) }}
+                            </div>
+                        </div>
+                        <div v-if="filteredCustomerOrders.length === 0" class="empty-state">
+                            <p>Keine Bestellungen gefunden</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
