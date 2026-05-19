@@ -76,6 +76,15 @@ createApp({
             customerOrdersFilter: 'all',
             selectedSeasonYear: null,
             
+            // Reminder & WhatsApp Settings
+            reminderSettings: {
+                enabled: false,
+                daysBeforeReminder: 30, // Tage vor erwarteter Bestellung
+                viaWhatsApp: true,
+                viaEmail: false,
+                customMessage: ''
+            },
+            
             loadingDistance: false,
             distanceError: '',
             distanceResult: null,
@@ -619,6 +628,226 @@ createApp({
             
             // Sortieren nach Datum (neueste zuerst)
             return orders.sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
+        },
+
+        // Vorjahres-Vergleich (aktuelle Saison vs. letzte Saison)
+        previousSeasonOrders() {
+            if (!this.selectedCustomer) return [];
+            
+            const prevSeasonStartYear = this.selectedSeasonYear - 1;
+            const prevSeasonEndYear = prevSeasonStartYear + 1;
+            
+            // Letzte Saison: 1. Juli (Jahr-1) bis 30. Juni (Jahr)
+            const seasonStart = new Date(prevSeasonStartYear, 6, 1);
+            const seasonEnd = new Date(prevSeasonEndYear, 5, 30);
+            
+            return this.orders.filter(o => {
+                if (o.customerId !== this.selectedCustomer.id) return false;
+                if (o.status === 'storniert') return false;
+                
+                const orderDate = new Date(o.deliveryDate);
+                return orderDate >= seasonStart && orderDate <= seasonEnd;
+            });
+        },
+
+        seasonComparison() {
+            const currentRevenue = this.currentSeasonOrders.reduce((sum, o) => sum + parseFloat(o.total), 0);
+            const prevRevenue = this.previousSeasonOrders.reduce((sum, o) => sum + parseFloat(o.total), 0);
+            
+            const currentQuantity = {};
+            const prevQuantity = {};
+            
+            // Mengen nach Scheitlänge aggregieren
+            this.currentSeasonOrders.forEach(o => {
+                o.items.forEach(item => {
+                    const key = `${item.logLength}-${item.unit}`;
+                    if (!currentQuantity[key]) currentQuantity[key] = 0;
+                    currentQuantity[key] += parseFloat(item.quantity);
+                });
+            });
+            
+            this.previousSeasonOrders.forEach(o => {
+                o.items.forEach(item => {
+                    const key = `${item.logLength}-${item.unit}`;
+                    if (!prevQuantity[key]) prevQuantity[key] = 0;
+                    prevQuantity[key] += parseFloat(item.quantity);
+                });
+            });
+            
+            // Vergleich berechnen
+            const comparisons = [];
+            const allKeys = [...new Set([...Object.keys(currentQuantity), ...Object.keys(prevQuantity)])];
+            
+            allKeys.forEach(key => {
+                const [logLength, unit] = key.split('-');
+                const curr = currentQuantity[key] || 0;
+                const prev = prevQuantity[key] || 0;
+                const diff = curr - prev;
+                const percentChange = prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
+                
+                comparisons.push({
+                    logLength,
+                    unit,
+                    current: curr,
+                    previous: prev,
+                    diff,
+                    percentChange
+                });
+            });
+            
+            return {
+                revenue: {
+                    current: currentRevenue,
+                    previous: prevRevenue,
+                    diff: currentRevenue - prevRevenue,
+                    percentChange: prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : (currentRevenue > 0 ? 100 : 0)
+                },
+                quantities: comparisons.sort((a, b) => a.logLength - b.logLength)
+            };
+        },
+
+        // Nächste Bestellung vorhersagen
+        nextOrderPrediction() {
+            if (!this.selectedCustomer) return null;
+            
+            const customerOrders = this.orders
+                .filter(o => o.customerId === this.selectedCustomer.id && o.status !== 'storniert')
+                .sort((a, b) => new Date(a.deliveryDate) - new Date(b.deliveryDate));
+            
+            if (customerOrders.length < 2) return null;
+            
+            // Durchschnittlichen Abstand zwischen Bestellungen berechnen
+            const intervals = [];
+            for (let i = 1; i < customerOrders.length; i++) {
+                const daysDiff = (new Date(customerOrders[i].deliveryDate) - new Date(customerOrders[i-1].deliveryDate)) / (1000 * 60 * 60 * 24);
+                intervals.push(daysDiff);
+            }
+            
+            const avgInterval = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
+            
+            // Letzte Bestellung
+            const lastOrder = customerOrders[customerOrders.length - 1];
+            const lastOrderDate = new Date(lastOrder.deliveryDate);
+            
+            // Voraussichtlicher nächster Termin
+            const predictedDate = new Date(lastOrderDate);
+            predictedDate.setDate(predictedDate.getDate() + Math.round(avgInterval));
+            
+            // Erinnerungsd datum (basierend auf reminderSettings)
+            const reminderDays = this.reminderSettings.daysBeforeReminder || 30;
+            const reminderDate = new Date(predictedDate);
+            reminderDate.setDate(reminderDate.getDate() - reminderDays);
+            
+            return {
+                avgIntervalDays: Math.round(avgInterval),
+                lastOrderDate,
+                predictedDate,
+                reminderDate,
+                shouldRemindNow: new Date() >= reminderDate && new Date() < predictedDate
+            };
+        },
+
+        // Treue-Rabatt Empfehlung
+        loyaltyDiscountRecommendation() {
+            if (!this.selectedCustomer) return null;
+            
+            const totalRevenue = this.customerLifetimeRevenue;
+            const orderCount = this.customerOrderCount;
+            
+            // Rabatt-Stufen basierend auf Umsatz
+            let tier = '';
+            let recommendedPercent = 0;
+            let nextTierThreshold = 0;
+            let progress = 0;
+            
+            if (totalRevenue >= 5000) {
+                tier = 'Platin';
+                recommendedPercent = 8;
+                nextTierThreshold = 0;
+                progress = 100;
+            } else if (totalRevenue >= 2500) {
+                tier = 'Gold';
+                recommendedPercent = 5;
+                nextTierThreshold = 5000;
+                progress = ((totalRevenue - 2500) / 2500) * 100;
+            } else if (totalRevenue >= 1000) {
+                tier = 'Silber';
+                recommendedPercent = 3;
+                nextTierThreshold = 2500;
+                progress = ((totalRevenue - 1000) / 1500) * 100;
+            } else if (totalRevenue >= 500) {
+                tier = 'Bronze';
+                recommendedPercent = 2;
+                nextTierThreshold = 1000;
+                progress = ((totalRevenue - 500) / 500) * 100;
+            } else {
+                tier = 'Standard';
+                recommendedPercent = 0;
+                nextTierThreshold = 500;
+                progress = (totalRevenue / 500) * 100;
+            }
+            
+            return {
+                tier,
+                recommendedPercent,
+                nextTierThreshold,
+                progress: Math.min(progress, 100),
+                totalRevenue,
+                orderCount,
+                avgOrderValue: this.customerAvgOrderValue
+            };
+        },
+
+        // WhatsApp Nachricht vorbereiten
+        getWhatsAppMessage(template) {
+            if (!this.selectedCustomer) return '';
+            
+            const prediction = this.nextOrderPrediction;
+            const loyalty = this.loyaltyDiscountRecommendation;
+            
+            const messages = {
+                reminder: () => {
+                    const dateStr = prediction.predictedDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    return `Hallo ${this.selectedCustomer.name}! 👋%0A%0AEs ist wieder soweit – die nächste Brennholz-Bestellung steht an! Basierend auf Ihren bisherigen Bestellungen empfehlen wir eine Lieferung am ${dateStr}.%0A%0AWollen wir das so planen? Einfach antworten! 🔥`;
+                },
+                loyalty: () => {
+                    if (!loyalty || loyalty.recommendedPercent === 0) return '';
+                    return `Hallo ${this.selectedCustomer.name}! 👋%0A%0AAls treuer Kunde (Umsatz: €${loyalty.totalRevenue.toFixed(2)}) haben Sie sich einen ${loyalty.recommendedPercent}% Treue-Rabatt verdient! 🎉%0A%0ABei Ihrer nächsten Bestellung einfach diesen Code nennen: LOYAL${loyalty.recommendedPercent}%0A%0AVielen Dank für Ihre Treue! 🔥`;
+                },
+                seasonal: () => {
+                    return `Hallo ${this.selectedCustomer.name}! 👋%0A%0ADie neue Heizsaison kommt! 🍂 Haben Sie schon genug Brennholz für den Winter?%0A%0AJetzt bestellen und von aktuellen Preisen profitieren. Gerne liefern wir Ihnen! 🔥%0A%0AFragen Sie einfach nach Ihrem persönlichen Angebot!`;
+                }
+            };
+            
+            return messages[template] ? messages[template]() : '';
+        },
+
+        openWhatsApp(template) {
+            if (!this.selectedCustomer) return;
+            
+            const message = this.getWhatsAppMessage(template);
+            if (!message) {
+                alert('Keine Nachricht verfügbar');
+                return;
+            }
+            
+            // Telefonnumer formatieren (nur Ziffern, Ländervorwahl)
+            let phone = this.selectedCustomer.phone || '';
+            phone = phone.replace(/[^0-9+]/g, '');
+            
+            // Wenn keine Ländervorwahl, deutsche hinzufügen
+            if (!phone.startsWith('+')) {
+                if (phone.startsWith('0')) {
+                    phone = '+49' + phone.substring(1);
+                } else if (phone.startsWith('49')) {
+                    phone = '+' + phone;
+                } else {
+                    phone = '+49' + phone;
+                }
+            }
+            
+            const url = `https://wa.me/${phone}?text=${message}`;
+            window.open(url, '_blank');
         },
 
         recentExpenses() {
