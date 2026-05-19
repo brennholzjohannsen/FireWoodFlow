@@ -18,6 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/customer-insights.css">
 </head>
 <body>
     <div id="app">
@@ -1797,88 +1798,109 @@
 
                 <!-- Vorjahres-Vergleich & Treue-Rabatt (neu) -->
                 <div class="insights-section" v-if="selectedCustomer">
+                    <h3>📊 Kunden-Insights</h3>
+                    
                     <div class="insights-grid">
                         <!-- Vorjahres-Vergleich -->
                         <div class="insight-card comparison" v-if="previousSeasonOrders.length > 0">
-                            <h4>📊 Vergleich mit letzter Saison</h4>
-                            <div class="comparison-metric" :class="seasonComparison.revenue.percentChange >= 0 ? 'positive' : 'negative'">
-                                <span class="metric-label">Umsatz-Änderung</span>
-                                <span class="metric-value">
-                                    {{ seasonComparison.revenue.percentChange >= 0 ? '+' : '' }}{{ seasonComparison.revenue.percentChange.toFixed(1) }}%
-                                </span>
-                                <span class="metric-detail">
-                                    {{ formatCurrency(seasonComparison.revenue.previous) }} → {{ formatCurrency(seasonComparison.revenue.current) }}
-                                </span>
+                            <div class="card-header">
+                                <span class="card-icon">📊</span>
+                                <span class="card-title">Vergleich mit letzter Saison</span>
                             </div>
-                            <div class="quantity-comparison">
-                                <div v-for="comp in seasonComparison.quantities" :key="comp.logLength" class="qty-comp-item">
-                                    <span class="qty-length">{{ comp.logLength }} cm:</span>
-                                    <span :class="comp.diff >= 0 ? 'qty-up' : 'qty-down'">
-                                        {{ comp.diff >= 0 ? '+' : '' }}{{ comp.diff.toFixed(2) }} {{ comp.unit }}
-                                        ({{ comp.percentChange >= 0 ? '+' : '' }}{{ comp.percentChange.toFixed(0) }}%)
+                            <div class="comparison-main">
+                                <div class="revenue-change" :class="seasonComparison.revenue.percentChange >= 0 ? 'positive' : 'negative'">
+                                    <span class="change-percent">
+                                        {{ seasonComparison.revenue.percentChange >= 0 ? '+' : '' }}{{ seasonComparison.revenue.percentChange.toFixed(1) }}%
                                     </span>
+                                    <span class="change-label">{{ seasonComparison.revenue.percentChange >= 0 ? 'mehr' : 'weniger' }} Umsatz</span>
+                                </div>
+                                <div class="revenue-details">
+                                    <span class="detail-item">
+                                        <span class="detail-label">Vorher:</span>
+                                        <span class="detail-value">{{ formatCurrency(seasonComparison.revenue.previous) }}</span>
+                                    </span>
+                                    <span class="detail-arrow">→</span>
+                                    <span class="detail-item">
+                                        <span class="detail-label">Nachher:</span>
+                                        <span class="detail-value">{{ formatCurrency(seasonComparison.revenue.current) }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="quantity-breakdown" v-if="seasonComparison.quantities.length > 0">
+                                <div class="breakdown-title">Nach Scheitlänge:</div>
+                                <div class="breakdown-list">
+                                    <div v-for="comp in seasonComparison.quantities.slice(0, 3)" :key="comp.logLength" class="breakdown-item">
+                                        <span class="length-badge">{{ comp.logLength }} cm</span>
+                                        <span class="change-value" :class="comp.diff >= 0 ? 'up' : 'down'">
+                                            {{ comp.diff >= 0 ? '+' : '' }}{{ comp.diff.toFixed(1) }} {{ comp.unit }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Nächste Bestellung vorhersagen -->
                         <div class="insight-card prediction" v-if="nextOrderPrediction">
-                            <h4>🔮 Nächste Bestellung</h4>
-                            <div class="prediction-timeline">
-                                <div class="timeline-item past">
-                                    <span class="timeline-dot"></span>
-                                    <div>
-                                        <div class="timeline-label">Letzte Bestellung</div>
-                                        <div class="timeline-date">{{ formatDate(nextOrderPrediction.lastOrderDate) }}</div>
-                                    </div>
+                            <div class="card-header">
+                                <span class="card-icon">🔮</span>
+                                <span class="card-title">Nächste Bestellung</span>
+                            </div>
+                            <div class="prediction-content">
+                                <div class="prediction-row">
+                                    <span class="prediction-label">Letzte Bestellung:</span>
+                                    <span class="prediction-value past">{{ formatDate(nextOrderPrediction.lastOrderDate) }}</span>
                                 </div>
-                                <div class="timeline-line"></div>
-                                <div class="timeline-item future" :class="{ highlight: nextOrderPrediction.shouldRemindNow }">
-                                    <span class="timeline-dot"></span>
-                                    <div>
-                                        <div class="timeline-label">Voraussichtlich nächste</div>
-                                        <div class="timeline-date">{{ formatDate(nextOrderPrediction.predictedDate) }}</div>
-                                        <div class="timeline-hint">Ø Abstand: {{ nextOrderPrediction.avgIntervalDays }} Tage</div>
-                                    </div>
+                                <div class="prediction-row highlight">
+                                    <span class="prediction-label">Voraussichtlich nächste:</span>
+                                    <span class="prediction-value future">{{ formatDate(nextOrderPrediction.predictedDate) }}</span>
                                 </div>
-                                <div class="timeline-line"></div>
-                                <div class="timeline-item reminder" v-if="reminderSettings.enabled">
-                                    <span class="timeline-dot"></span>
-                                    <div>
-                                        <div class="timeline-label">Erinnerung am</div>
-                                        <div class="timeline-date">{{ formatDate(nextOrderPrediction.reminderDate) }}</div>
-                                        <div class="timeline-hint">{{ reminderSettings.daysBeforeReminder }} Tage vorher</div>
-                                    </div>
+                                <div class="prediction-meta">
+                                    <span class="meta-badge">Ø {{ nextOrderPrediction.avgIntervalDays }} Tage zwischen Bestellungen</span>
                                 </div>
                             </div>
-                            <div class="whatsapp-actions" v-if="selectedCustomer.phone">
-                                <button @click="openWhatsApp('reminder')" class="btn-whatsapp">
-                                    📱 Erinnerung senden
+                            <div class="card-actions" v-if="selectedCustomer.phone">
+                                <button @click="openWhatsApp('reminder')" class="btn-action btn-whatsapp">
+                                    <span class="btn-icon">📱</span>
+                                    Erinnerung senden
                                 </button>
                             </div>
                         </div>
 
                         <!-- Treue-Rabatt -->
                         <div class="insight-card loyalty" v-if="loyaltyDiscountRecommendation">
-                            <h4>💎 Treue-Rabatt Empfehlung</h4>
-                            <div class="loyalty-tier-badge" :class="'tier-' + loyaltyDiscountRecommendation.tier.toLowerCase()">
-                                {{ loyaltyDiscountRecommendation.tier }}
+                            <div class="card-header">
+                                <span class="card-icon">💎</span>
+                                <span class="card-title">Treue-Status</span>
                             </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" :style="{ width: loyaltyDiscountRecommendation.progress + '%' }"></div>
+                            <div class="loyalty-content">
+                                <div class="tier-display">
+                                    <span class="tier-badge" :class="'tier-' + loyaltyDiscountRecommendation.tier.toLowerCase()">
+                                        {{ loyaltyDiscountRecommendation.tier }}
+                                    </span>
+                                    <span class="tier-info" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0">
+                                        {{ loyaltyDiscountRecommendation.recommendedPercent }}% Rabatt möglich
+                                    </span>
                                 </div>
-                                <div class="progress-text">
-                                    €{{ loyaltyDiscountRecommendation.totalRevenue.toFixed(0) }} / €{{ loyaltyDiscountRecommendation.nextTierThreshold }}
+                                <div class="progress-section">
+                                    <div class="progress-track">
+                                        <div class="progress-fill" :style="{ width: loyaltyDiscountRecommendation.progress + '%' }"></div>
+                                    </div>
+                                    <div class="progress-labels">
+                                        <span>€{{ loyaltyDiscountRecommendation.totalRevenue.toFixed(0) }}</span>
+                                        <span v-if="loyaltyDiscountRecommendation.nextTierThreshold > 0">
+                                            → €{{ loyaltyDiscountRecommendation.nextTierThreshold }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="loyalty-code" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0">
+                                    <span class="code-label">Code:</span>
+                                    <span class="code-value">LOYAL{{ loyaltyDiscountRecommendation.recommendedPercent }}</span>
                                 </div>
                             </div>
-                            <div class="loyalty-recommendation" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0">
-                                <span class="recommendation-highlight">{{ loyaltyDiscountRecommendation.recommendedPercent }}% Rabatt</span>
-                                <span class="recommendation-code">Code: LOYAL{{ loyaltyDiscountRecommendation.recommendedPercent }}</span>
-                            </div>
-                            <div class="whatsapp-actions" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0 && selectedCustomer.phone">
-                                <button @click="openWhatsApp('loyalty')" class="btn-whatsapp">
-                                    📱 Rabatt anbieten
+                            <div class="card-actions" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0 && selectedCustomer.phone">
+                                <button @click="openWhatsApp('loyalty')" class="btn-action btn-whatsapp">
+                                    <span class="btn-icon">📱</span>
+                                    Rabatt anbieten
                                 </button>
                             </div>
                         </div>
@@ -1887,19 +1909,19 @@
 
                 <!-- Reminder Einstellungen (neu) -->
                 <div class="reminder-settings-section" v-if="selectedCustomer">
-                    <h3>⏰ Automatische Erinnerungen</h3>
-                    <div class="settings-grid">
-                        <div class="setting-toggle">
-                            <label class="toggle-label">
-                                <input type="checkbox" v-model="reminderSettings.enabled" class="toggle-checkbox">
-                                <span class="toggle-switch"></span>
-                                <span class="toggle-text">Erinnerungen aktivieren</span>
-                            </label>
-                        </div>
-
-                        <div class="setting-row" v-if="reminderSettings.enabled">
-                            <label>Tage vor Bestellung erinnern</label>
-                            <select v-model.number="reminderSettings.daysBeforeReminder" class="select-input-small">
+                    <div class="section-header">
+                        <h3>⏰ Erinnerungen</h3>
+                        <label class="toggle-switch-inline">
+                            <input type="checkbox" v-model="reminderSettings.enabled" class="toggle-checkbox">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label-text">{{ reminderSettings.enabled ? 'Aktiviert' : 'Deaktiviert' }}</span>
+                        </label>
+                    </div>
+                    
+                    <div class="settings-content" v-if="reminderSettings.enabled">
+                        <div class="setting-row">
+                            <label class="setting-label">Erinnerung senden</label>
+                            <select v-model.number="reminderSettings.daysBeforeReminder" class="setting-select">
                                 <option value="14">2 Wochen vorher</option>
                                 <option value="21">3 Wochen vorher</option>
                                 <option value="30">1 Monat vorher</option>
@@ -1908,36 +1930,32 @@
                             </select>
                         </div>
 
-                        <div class="setting-row" v-if="reminderSettings.enabled">
-                            <label>Via</label>
-                            <div class="channel-selector">
-                                <label class="channel-option">
-                                    <input type="checkbox" v-model="reminderSettings.viaWhatsApp">
-                                    <span class="channel-icon whatsapp">📱</span>
+                        <div class="setting-row">
+                            <label class="setting-label">Kanal</label>
+                            <div class="channel-options">
+                                <label class="channel-option selected">
+                                    <input type="checkbox" v-model="reminderSettings.viaWhatsApp" checked>
+                                    <span class="channel-icon">📱</span>
                                     <span>WhatsApp</span>
                                 </label>
-                                <label class="channel-option">
-                                    <input type="checkbox" v-model="reminderSettings.viaEmail" disabled title="Noch nicht verfügbar">
-                                    <span class="channel-icon email">✉️</span>
+                                <label class="channel-option disabled">
+                                    <input type="checkbox" v-model="reminderSettings.viaEmail" disabled>
+                                    <span class="channel-icon">✉️</span>
                                     <span>E-Mail <small>(bald)</small></span>
                                 </label>
                             </div>
                         </div>
 
-                        <div class="setting-row" v-if="reminderSettings.enabled">
-                            <label>Vorlage für Erinnerung</label>
-                            <div class="template-preview">
-                                <p class="template-text">{{ getWhatsAppMessage('reminder').replace(/%0A/g, '\n') }}</p>
+                        <div class="setting-row" v-if="selectedCustomer.phone">
+                            <label class="setting-label">Testen</label>
+                            <div class="action-buttons">
+                                <button @click="openWhatsApp('reminder')" class="btn-test">
+                                    📱 Erinnerung
+                                </button>
+                                <button @click="openWhatsApp('seasonal')" class="btn-test secondary">
+                                    🍂 Saison-Start
+                                </button>
                             </div>
-                        </div>
-
-                        <div class="setting-actions" v-if="reminderSettings.enabled && selectedCustomer.phone">
-                            <button @click="openWhatsApp('reminder')" class="btn-test-whatsapp">
-                                📱 Test-Nachricht senden
-                            </button>
-                            <button @click="openWhatsApp('seasonal')" class="btn-test-whatsapp secondary">
-                                🍂 Saison-Start Nachricht
-                            </button>
                         </div>
                     </div>
                 </div>
