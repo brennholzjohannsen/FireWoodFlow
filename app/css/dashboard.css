@@ -3244,23 +3244,34 @@ body {
 
 .customer-stats-grid .stat-card {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 16px;
+    padding: 20px 16px;
     border-radius: 12px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
 }
 
 .customer-stats-grid .stat-label {
-    font-size: 0.85em;
+    font-size: 0.8em;
     color: #666;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    line-height: 1.3;
+    display: block;
+    width: 100%;
 }
 
 .customer-stats-grid .stat-value {
-    font-size: 1.4em;
+    font-size: 1.5em;
     font-weight: bold;
     color: var(--primary-color);
+    display: block;
+    width: 100%;
+    word-break: break-word;
 }
 
 .customer-stats-grid .stat-value.primary {
@@ -3268,7 +3279,7 @@ body {
 }
 
 .customer-stats-grid .stat-value.small {
-    font-size: 1em;
+    font-size: 1.1em;
 }
 
 .season-stats-section {
