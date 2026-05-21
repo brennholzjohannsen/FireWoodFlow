@@ -155,7 +155,30 @@ createApp({
                 logLength: '',
                 storageLocationIndex: 0 // Default: erster Lagerplatz
             },
-            orderStatusFilter: 'alle'
+            orderStatusFilter: 'alle',
+            
+            // Quick Order (Schnellbestellung)
+            showQuickOrderModal: false,
+            quickOrderStep: 1,
+            selectedQuickOrderCustomer: null,
+            quickOrderCustomers: [],
+            lastOrderForCustomer: null,
+            quickOrderData: {
+                customerId: '',
+                customerName: '',
+                customerAddress: '',
+                deliveryAddress: '',
+                items: [],
+                subtotal: 0,
+                deliveryCosts: 0,
+                total: 0,
+                paymentMethod: 'bar',
+                paymentStatus: 'offen',
+                deliveryDate: '',
+                deliveryTime: '',
+                status: 'neu',
+                notes: ''
+            }
         };
     },
 
@@ -2218,15 +2241,18 @@ createApp({
                     this.distanceResult.distance * this.costPerKm
                 );
 
-                // Speichere beim Kunden
+                // Speichere beim Kunden: Lieferkosten + tatsächliche Distanz
                 const index = this.customers.findIndex(c => c.id === this.selectedCustomer.id);
                 if (index !== -1) {
                     const updatedCustomers = [...this.customers];
                     updatedCustomers[index].deliveryCosts = calculatedCost;
+                    updatedCustomers[index].actualDistanceKm = this.distanceResult.distance;
+                    updatedCustomers[index].distanceCalculatedAt = new Date().toISOString();
                     this.customers = updatedCustomers;
                     
                     console.log('Lieferkosten gespeichert:', calculatedCost, 'für', this.selectedCustomer.name);
-                    alert(`✓ Lieferkosten gespeichert: ${this.formatCurrency(calculatedCost)}`);
+                    console.log('Distanz gespeichert:', this.distanceResult.distance.toFixed(1), 'km');
+                    alert(`✓ Lieferkosten gespeichert: ${this.formatCurrency(calculatedCost)} (${this.distanceResult.distance.toFixed(1)} km)`);
                     
                     // Modal schließen
                     this.showDeliveryModal = false;
@@ -3355,6 +3381,46 @@ createApp({
             }
         },
 
+        // ========== WHATSAPP BESTÄTIGUNG ==========
+        
+        getCustomerPhone(order) {
+            // Kunden-Telefonnummer für Bestellung finden
+            const customer = this.customers.find(c => c.id === order.customerId);
+            return customer ? customer.phone : null;
+        },
+
+        sendWhatsAppConfirmation(order) {
+            // Kunden-Informationen holen
+            const customer = this.customers.find(c => c.id === order.customerId);
+            if (!customer || !customer.phone) {
+                alert('Keine Telefonnummer für diesen Kunden gespeichert.');
+                return;
+            }
+
+            // Bestell-Details formatieren
+            const itemsText = order.items.map(item => 
+                `• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)`
+            ).join('\n');
+
+            const totalText = `${this.formatCurrency(order.total)} (inkl. ${this.formatCurrency(order.deliveryCosts)} Lieferkosten)`;
+
+            // WhatsApp Nachricht zusammenbauen
+            const message = `Hallo ${customer.name},\n\nvielen Dank für Ihre Bestellung bei FireWoodFlow!\n\n📦 **Bestellübersicht**:\n${itemsText}\n\n💰 **Gesamtsumme**: ${totalText}\n\n📅 **Lieferdatum**: ${this.formatDeliveryDate(order.deliveryDate, order.deliveryTime)}\n📍 **Lieferadresse**: ${order.deliveryAddress || customer.address}\n\nBei Fragen antworten Sie einfach auf diese Nachricht.\n\nMit freundlichen Grüßen,\nIhr FireWoodFlow Team`;
+
+            // URL encoden für WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            
+            // WhatsApp Link erstellen (wa.me Format)
+            // Entferne + und Leerzeichen von der Telefonnummer
+            const cleanPhone = customer.phone.replace(/[\s\+\-]/g, '');
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+
+            // In neuem Tab öffnen
+            window.open(whatsappUrl, '_blank');
+            
+            console.log('WhatsApp Bestätigung geöffnet für:', customer.name, '-', customer.phone);
+        },
+
         editOrder(order) {
             this.editingOrder = { ...order, items: [...order.items] };
             this.showEditOrder = true;
@@ -3543,6 +3609,275 @@ createApp({
         
         saveOrders() {
             localStorage.setItem('firewoodflow_orders', JSON.stringify(this.orders));
+        },
+
+        // ========== QUICK ORDER (SCHNELLBESTELLUNG) ==========
+        
+        // Lade Kunden mit letzter Bestellung für Quick Order Modal
+        loadQuickOrderCustomers() {
+            // Kunden sortieren: die mit Bestellungen zuerst, alphabetisch danach
+            this.quickOrderCustomers = this.customers.map(customer => {
+                const customerOrders = this.orders
+                    .filter(o => o.customerId === customer.id)
+                    .sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
+                
+                const lastOrder = customerOrders[0];
+                
+                return {
+                    ...customer,
+                    lastOrderDate: lastOrder ? this.formatDateGerman(lastOrder.deliveryDate) : null,
+                    lastOrderId: lastOrder ? lastOrder.id : null
+                };
+            }).sort((a, b) => {
+                // Kunden mit letzten Bestellungen zuerst
+                if (a.lastOrderDate && !b.lastOrderDate) return -1;
+                if (!a.lastOrderDate && b.lastOrderDate) return 1;
+                return a.name.localeCompare(b.name);
+            });
+        },
+        
+        onQuickOrderCustomerSelect() {
+            if (!this.selectedQuickOrderCustomer) {
+                this.lastOrderForCustomer = null;
+                return;
+            }
+            
+            // Letzte Bestellung des Kunden finden
+            const customerOrders = this.orders
+                .filter(o => o.customerId === this.selectedQuickOrderCustomer.id)
+                .sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate));
+            
+            this.lastOrderForCustomer = customerOrders.length > 0 ? customerOrders[0] : null;
+        },
+        
+        startNewQuickOrder() {
+            if (!this.selectedQuickOrderCustomer) {
+                alert('Bitte wähle einen Kunden aus.');
+                return;
+            }
+            
+            // Quick Order Daten vorbereiten
+            const customer = this.selectedQuickOrderCustomer;
+            
+            this.quickOrderData = {
+                customerId: customer.id,
+                customerName: customer.name,
+                customerAddress: customer.address || '',
+                deliveryAddress: customer.address || '',
+                items: [],
+                subtotal: 0,
+                deliveryCosts: parseFloat(customer.deliveryCosts) || 0,
+                total: 0,
+                paymentMethod: 'bar',
+                paymentStatus: 'offen',
+                deliveryDate: new Date().toISOString().split('T')[0],
+                deliveryTime: '',
+                status: 'neu',
+                notes: customer.notes || ''
+            };
+            
+            // Wenn letzte Bestellung existiert, diese laden
+            if (this.lastOrderForCustomer) {
+                // Items kopieren (ohne IDs damit sie neu sind)
+                this.quickOrderData.items = this.lastOrderForCustomer.items.map(item => ({
+                    productId: item.productId,
+                    productName: item.productName,
+                    woodType: item.woodType,
+                    logLength: item.logLength,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    pricePerUnit: item.pricePerUnit,
+                    total: item.total
+                }));
+                
+                // Lieferadresse von Kunde übernehmen (kann geändert werden)
+                this.quickOrderData.deliveryAddress = this.lastOrderForCustomer.deliveryAddress || customer.address;
+                this.quickOrderData.deliveryTime = this.lastOrderForCustomer.deliveryTime || '';
+                this.quickOrderData.paymentMethod = this.lastOrderForCustomer.paymentMethod || 'bar';
+                this.quickOrderData.deliveryCosts = parseFloat(this.lastOrderForCustomer.deliveryCosts) || 0;
+            }
+            
+            // Berechne Totals
+            this.calculateQuickOrderTotals();
+            
+            // Zu Schritt 2 wechseln
+            this.quickOrderStep = 2;
+        },
+        
+        resetQuickOrder() {
+            this.quickOrderStep = 1;
+            this.selectedQuickOrderCustomer = null;
+            this.lastOrderForCustomer = null;
+            this.quickOrderData = {
+                customerId: '',
+                customerName: '',
+                customerAddress: '',
+                deliveryAddress: '',
+                items: [],
+                subtotal: 0,
+                deliveryCosts: 0,
+                total: 0,
+                paymentMethod: 'bar',
+                paymentStatus: 'offen',
+                deliveryDate: '',
+                deliveryTime: '',
+                status: 'neu',
+                notes: ''
+            };
+        },
+        
+        changeQuickOrderCustomer() {
+            this.resetQuickOrder();
+        },
+        
+        addQuickOrderProduct() {
+            if (this.products.length === 0) {
+                alert('Keine Produkte im Lager. Bitte zuerst Produkte anlegen.');
+                return;
+            }
+            
+            // Erstes Produkt als Default nehmen
+            const product = this.products[0];
+            
+            this.quickOrderData.items.push({
+                productId: product.id,
+                productName: product.name,
+                woodType: product.woodType,
+                logLength: product.logLength,
+                quantity: 1,
+                unit: 'RM',
+                pricePerUnit: this.getProductPrice(product, 'RM'),
+                total: 0
+            });
+            
+            this.calculateQuickOrderTotals();
+        },
+        
+        removeQuickOrderItem(index) {
+            this.quickOrderData.items.splice(index, 1);
+            this.calculateQuickOrderTotals();
+        },
+        
+        getProductPrice(product, unit) {
+            // Preis aus priceLengths holen wenn vorhanden, sonst Basis-Preis
+            if (product.priceLengths && product.priceLengths[product.logLength]) {
+                const lengthPrices = product.priceLengths[product.logLength];
+                if (unit === 'SRM' && lengthPrices.srm) return parseFloat(lengthPrices.srm);
+                if (unit === 'RM' && lengthPrices.rm) return parseFloat(lengthPrices.rm);
+            }
+            return parseFloat(product.price) || 0;
+        },
+        
+        calculateQuickOrderSubtotal() {
+            let subtotal = 0;
+            this.quickOrderData.items.forEach(item => {
+                const price = this.getProductPriceByItemId(item);
+                item.total = (parseFloat(item.quantity) || 0) * price;
+                subtotal += item.total;
+            });
+            this.quickOrderData.subtotal = subtotal;
+            return subtotal;
+        },
+        
+        getProductPriceByItemId(item) {
+            const product = this.products.find(p => p.id === item.productId);
+            if (!product) return 0;
+            return this.getProductPrice(product, item.unit);
+        },
+        
+        calculateQuickOrderTotal() {
+            const subtotal = this.calculateQuickOrderSubtotal();
+            const deliveryCosts = parseFloat(this.quickOrderData.deliveryCosts) || 0;
+            this.quickOrderData.total = subtotal + deliveryCosts;
+            return this.quickOrderData.total;
+        },
+        
+        calculateQuickOrderTotals() {
+            this.calculateQuickOrderTotal();
+        },
+        
+        async submitQuickOrder() {
+            // Validierung
+            if (!this.quickOrderData.customerId) {
+                alert('Kein Kunde ausgewählt.');
+                return;
+            }
+            
+            if (this.quickOrderData.items.length === 0) {
+                alert('Bitte füge mindestens ein Produkt hinzu.');
+                return;
+            }
+            
+            if (!this.quickOrderData.deliveryDate) {
+                alert('Bitte wähle ein Lieferdatum.');
+                return;
+            }
+            
+            // Lagerbestand prüfen und anpassen
+            const toRM = { 'FM': 1.42, 'RM': 1, 'SRM': 1 / 1.42 };
+            
+            for (const item of this.quickOrderData.items) {
+                const productIndex = this.products.findIndex(p => p.id === item.productId);
+                if (productIndex !== -1) {
+                    const quantityInProductUnit = (parseFloat(item.quantity) || 0) * toRM[item.unit] / toRM[this.products[productIndex].unit];
+                    
+                    if (this.products[productIndex].quantity < quantityInProductUnit) {
+                        alert(`❌ Nicht genügend Lagerbestand für "${this.products[productIndex].name}"`);
+                        return;
+                    }
+                    
+                    this.products[productIndex].quantity = Math.round((this.products[productIndex].quantity - quantityInProductUnit) * 10) / 10;
+                }
+            }
+            
+            // Bestellung erstellen
+            const newOrder = {
+                id: crypto.randomUUID(),
+                customerId: this.quickOrderData.customerId,
+                customerName: this.quickOrderData.customerName,
+                customerAddress: this.quickOrderData.customerAddress,
+                deliveryAddress: this.quickOrderData.deliveryAddress,
+                items: [...this.quickOrderData.items],
+                subtotal: this.quickOrderData.subtotal,
+                deliveryCosts: this.quickOrderData.deliveryCosts,
+                total: this.quickOrderData.total,
+                paymentMethod: this.quickOrderData.paymentMethod,
+                paymentStatus: this.quickOrderData.paymentStatus,
+                deliveryDate: this.quickOrderData.deliveryDate,
+                deliveryTime: this.quickOrderData.deliveryTime,
+                status: this.quickOrderData.status,
+                notes: this.quickOrderData.notes,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            // In Supabase speichern
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                try {
+                    await this.saveToSupabase('orders', newOrder, user.id);
+                    console.log('✓ Schnellbestellung in Supabase gespeichert');
+                } catch (err) {
+                    console.error('❌ Fehler beim Speichern in Supabase:', err);
+                }
+            }
+            
+            // Lokal speichern
+            this.orders.push(newOrder);
+            this.saveOrders();
+            this.saveProducts();
+            
+            // Stats aktualisieren
+            this.inventoryCount = this.products.length;
+            this.totalValue = this.calculateTotalValue();
+            
+            // Activity Feed wird automatisch aktualisiert durch computed property
+            
+            alert('✅ Schnellbestellung erstellt!');
+            
+            // Modal schließen und zurücksetzen
+            this.showQuickOrderModal = false;
+            this.resetQuickOrder();
         },
 
         updateOrderStatus(order, newStatus) {

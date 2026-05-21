@@ -130,6 +130,10 @@
                             <span class="action-icon">📦</span>
                             <span>Neue Bestellung</span>
                         </button>
+                        <button @click="showQuickOrderModal = true; loadQuickOrderCustomers()" class="btn-action btn-action-highlight">
+                            <span class="action-icon">⚡</span>
+                            <span>Schnellbestellung</span>
+                        </button>
                         <button @click="currentView = 'customers'; action = 'add'" class="btn-action">
                             <span class="action-icon">👤</span>
                             <span>Neuer Kunde</span>
@@ -400,6 +404,10 @@
 
                     <button @click="openOrderInMaps(order)" class="btn-maps" v-if="order.deliveryAddress && order.deliveryAddress.trim()">
                         🗺️ Route mit Google Maps
+                    </button>
+
+                    <button @click="sendWhatsAppConfirmation(order)" class="btn-whatsapp" v-if="getCustomerPhone(order)">
+                        📱 WhatsApp Bestätigung
                     </button>
 
                     <div class="order-actions">
@@ -2035,6 +2043,153 @@
 
         <!-- Delivery Cost Modal -->
         <div class="modal-overlay" v-if="showDeliveryModal" @click="showDeliveryModal = false">
+
+        <!-- Quick Order Modal (Schnellbestellung) -->
+        <div class="modal-overlay modal-large" v-if="showQuickOrderModal" @click="showQuickOrderModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showQuickOrderModal = false">&times;</button>
+                <h2>⚡ Schnellbestellung</h2>
+                <p class="subtitle">Wähle einen Kunden und lade die letzte Bestellung – dann nur noch anpassen und fertig!</p>
+                
+                <!-- Schritt 1: Kunde auswählen -->
+                <div v-if="quickOrderStep === 1" class="quick-order-step">
+                    <div class="form-group">
+                        <label>Kunde auswählen *</label>
+                        <select v-model="selectedQuickOrderCustomer" class="select-input" @change="onQuickOrderCustomerSelect">
+                            <option value="">-- Kunde wählen --</option>
+                            <option v-for="customer in quickOrderCustomers" :key="customer.id" :value="customer">
+                                {{ customer.name }}{{ customer.lastOrderDate ? ' (letzte Bestellung: ' + customer.lastOrderDate + ')' : '' }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div v-if="selectedQuickOrderCustomer && lastOrderForCustomer" class="last-order-preview">
+                        <h3>📦 Letzte Bestellung von {{ selectedQuickOrderCustomer.name }}</h3>
+                        <div class="order-preview-date">
+                            📅 {{ lastOrderForCustomer.deliveryDate }}{% if lastOrderForCustomer.deliveryTime %} um {{ lastOrderForCustomer.deliveryTime }}{% endif %}
+                        </div>
+                        <div class="order-preview-items">
+                            <div v-for="(item, idx) in lastOrderForCustomer.items" :key="idx" class="preview-item">
+                                <span class="preview-quantity">{{ item.quantity }} {{ item.unit }}</span>
+                                <span class="preview-product">{{ item.productName }} ({{ item.logLength }}cm)</span>
+                                <span class="preview-price">{{ formatCurrency(item.total || (item.quantity * item.pricePerUnit)) }}</span>
+                            </div>
+                        </div>
+                        <div class="order-preview-total">
+                            Gesamt: <strong>{{ formatCurrency(lastOrderForCustomer.total) }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div v-else-if="selectedQuickOrderCustomer && !lastOrderForCustomer" class="no-last-order-hint">
+                        <p>💡 Dieser Kunde hat noch keine bisherigen Bestellungen. Du kannst eine neue Bestellung anlegen.</p>
+                    </div>
+                    
+                    <div class="quick-order-actions">
+                        <button @click="startNewQuickOrder" class="btn-action btn-action-primary" :disabled="!selectedQuickOrderCustomer">
+                            {{ lastOrderForCustomer ? '🔄 Letzte Bestellung laden & anpassen' : '➕ Neue Bestellung für diesen Kunden' }}
+                        </button>
+                        <button @click="showQuickOrderModal = false" class="btn-action btn-action-secondary">Abbrechen</button>
+                    </div>
+                </div>
+                
+                <!-- Schritt 2: Bestellung bearbeiten -->
+                <div v-if="quickOrderStep === 2" class="quick-order-step">
+                    <div class="quick-order-header">
+                        <h3>📝 Bestellung bearbeiten</h3>
+                        <button @click="resetQuickOrder" class="btn-small">← Zurück zur Auswahl</button>
+                    </div>
+                    
+                    <!-- Kunde anzeigen (nicht änderbar hier) -->
+                    <div class="quick-order-customer-display">
+                        <strong>Kunde:</strong> {{ quickOrderData.customerName }}
+                        <button @click="changeQuickOrderCustomer" class="btn-small btn-link">Wechseln</button>
+                    </div>
+                    
+                    <!-- Produkte -->
+                    <div class="quick-order-items-section">
+                        <h4>Produkte</h4>
+                        <div v-for="(item, idx) in quickOrderData.items" :key="idx" class="quick-order-item">
+                            <div class="item-info">
+                                <span class="item-name">{{ item.productName }}</span>
+                                <span class="item-details">{{ item.woodType }}, {{ item.logLength }}cm</span>
+                            </div>
+                            <div class="item-controls">
+                                <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" class="item-qty-input" style="width: 80px;">
+                                <select v-model="item.unit" class="item-unit-select" style="width: 70px;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <button @click="removeQuickOrderItem(idx)" class="btn-icon-delete">🗑️</button>
+                            </div>
+                        </div>
+                        
+                        <button @click="addQuickOrderProduct" class="btn-add-small">
+                            <span>➕</span> Produkt hinzufügen
+                        </button>
+                    </div>
+                    
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="quickOrderData.deliveryAddress" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+                    
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum *</label>
+                            <input type="date" v-model="quickOrderData.deliveryDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit</label>
+                            <input type="time" v-model="quickOrderData.deliveryTime">
+                        </div>
+                    </div>
+                    
+                    <!-- Zahlungsart -->
+                    <div class="form-group">
+                        <label>Zahlungsart</label>
+                        <select v-model="quickOrderData.paymentMethod" class="select-input">
+                            <option value="bar">Bar bei Lieferung</option>
+                            <option value="ueberweisung">Überweisung</option>
+                            <option value="paypal">PayPal</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="quickOrderData.notes" rows="2" placeholder="z.B. Klingeln nicht möglich..."></textarea>
+                    </div>
+                    
+                    <!-- Gesamtpreis Vorschau -->
+                    <div class="quick-order-total-preview">
+                        <div class="total-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(calculateQuickOrderSubtotal()) }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Lieferkosten:</span>
+                            <input type="number" v-model.number="quickOrderData.deliveryCosts" step="0.01" min="0" class="delivery-cost-input" style="width: 100px; text-align: right;">
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Gesamt:</span>
+                            <span><strong>{{ formatCurrency(calculateQuickOrderTotal()) }}</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-order-actions">
+                        <button @click="submitQuickOrder" class="btn-action btn-action-primary btn-action-large">
+                            ✅ Bestellung speichern
+                        </button>
+                        <button @click="resetQuickOrder" class="btn-action btn-action-secondary">Abbrechen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Cost Modal -->
             <div class="modal-content" @click.stop>
                 <button class="modal-close" @click="showDeliveryModal = false">&times;</button>
                 <h2>🚚 Lieferkosten berechnen</h2>
