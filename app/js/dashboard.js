@@ -1562,6 +1562,9 @@ createApp({
                 this.expenses = JSON.parse(savedExpenses);
             }
             
+            // Rückwirkend Wareneinkäufe für bestehende Produkte erstellen
+            await this.createMissingInventoryExpenses();
+            
             // Heute Bestellungen berechnen (Array mit allen Aufträgen heute)
             const today = new Date().toISOString().split('T')[0];
             this.todayOrders = this.orders.filter(o => {
@@ -3819,6 +3822,47 @@ createApp({
             this.expenses.push(expense);
             this.saveExpenses();
             console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt (local):', expense.description);
+        },
+
+        async createMissingInventoryExpenses() {
+            // Erstellt rückwirkend Wareneinkäufe für alle bestehenden Produkte ohne Ausgabe
+            let createdCount = 0;
+            
+            for (const product of this.products) {
+                // Prüfen ob bereits eine Wareneinkauf-Ausgabe existiert
+                const existingExpense = this.expenses.find(e => 
+                    e.product_id === product.id && e.is_inventory_purchase === true
+                );
+                
+                if (!existingExpense && product.quantity > 0 && product.price > 0) {
+                    // Keine Ausgabe vorhanden → erstellen
+                    const totalValue = parseFloat(product.quantity) * parseFloat(product.price);
+                    
+                    const expense = {
+                        id: 'inv-missing-' + product.id + '-' + Date.now().toString(),
+                        amount: totalValue,
+                        category: 'material',
+                        description: `Wareneinkauf (nachgetragen): ${product.name} (${product.quantity} ${product.unit})`,
+                        date: product.purchase_date || product.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                        notes: `Rückwirkend erstellt für bestehendes Produkt "${product.name}"`,
+                        storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                        is_inventory_purchase: true,
+                        product_id: product.id
+                    };
+                    
+                    this.expenses.push(expense);
+                    createdCount++;
+                    console.log('✓ Nachgetragener Wareneinkauf:', expense.description);
+                }
+            }
+            
+            if (createdCount > 0) {
+                this.saveExpenses();
+                console.log(`✅ ${createdCount} Wareneinkäufe nachträglich erstellt`);
+                
+                // UI aktualisieren
+                alert(`ℹ️ ${createdCount} Wareneinkäufe für bestehende Produkte wurden nachträglich als Ausgaben erfasst.`);
+            }
         },
 
         getCategoryName(category) {
