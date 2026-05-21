@@ -1014,6 +1014,18 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Produktarten verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="type in inventorySettings.productTypes" :key="type" class="tag">
+                                {{ type }}
+                                <button @click="removeProductType(type)" class="btn-remove-tag">×</button>
+                            </span>
+                        </div>
+                        <button @click="addProductType()" class="btn-add-tag">+ Produktart hinzufügen</button>
+                        <p class="field-hint">Diese Produktarten können bei neuen Produkten ausgewählt werden</p>
+                    </div>
+
+                    <div class="form-group">
                         <label>Trocknungsgrade verwalten</label>
                         <div class="tag-list">
                             <span v-for="level in inventorySettings.drynessLevels" :key="level.key" class="tag">
@@ -1070,6 +1082,17 @@
                             <label>Produktname</label>
                             <input type="text" v-model="newProduct.name" required placeholder="z.B. Buche Premium">
                         </div>
+                        <div class="form-group">
+                            <label>Produktart</label>
+                            <select v-model="newProduct.productType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
+                            </select>
+                            <p class="field-hint" v-if="inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Menge</label>
                             <div class="input-group-inline">
@@ -1191,6 +1214,17 @@
                             <label>Produktname</label>
                             <input type="text" v-model="editingProduct.name" required placeholder="z.B. Buche Premium">
                         </div>
+                        <div class="form-group">
+                            <label>Produktart</label>
+                            <select v-model="editingProduct.productType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
+                            </select>
+                            <p class="field-hint" v-if="inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Menge</label>
                             <div class="input-group-inline">

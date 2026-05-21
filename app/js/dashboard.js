@@ -33,6 +33,7 @@ createApp({
             // Inventar-Einstellungen
             inventorySettings: {
                 woodTypes: ['Buche', 'Eiche', 'Birke', 'Fichte', 'Kiefer', 'Esche', 'Ahorn', 'Gemischt'],
+                productTypes: ['Brennholz', 'Anzündholz'],
                 drynessLevels: [
                     { key: 'frisch', label: 'Frisch (< 1 Jahr)' },
                     { key: 'lufttrocken', label: 'Lufttrocken (1-2 Jahre)' },
@@ -51,6 +52,7 @@ createApp({
             editingProduct: null,
             newProduct: {
                 name: '',
+                productType: 'Brennholz',
                 quantity: 0,
                 unit: 'FM',
                 woodType: '',
@@ -1190,6 +1192,25 @@ createApp({
 
         removeWoodType(woodType) {
             this.inventorySettings.woodTypes = this.inventorySettings.woodTypes.filter(w => w !== woodType);
+            this.saveInventorySettings();
+        },
+
+        addProductType() {
+            const newType = prompt('Neue Produktart eingeben:', '');
+            if (newType && newType.trim()) {
+                const trimmed = newType.trim();
+                if (!this.inventorySettings.productTypes.includes(trimmed)) {
+                    this.inventorySettings.productTypes.push(trimmed);
+                    this.saveInventorySettings();
+                    alert('✓ Produktart "' + trimmed + '" hinzugefügt!');
+                } else {
+                    alert('Diese Produktart existiert bereits.');
+                }
+            }
+        },
+
+        removeProductType(productType) {
+            this.inventorySettings.productTypes = this.inventorySettings.productTypes.filter(t => t !== productType);
             this.saveInventorySettings();
         },
 
@@ -2454,6 +2475,7 @@ createApp({
                 // Produkt erstellen
                 const product = {
                     name: this.newProduct.name.trim(),
+                    product_type: this.newProduct.productType || 'Brennholz',
                     quantity: parseFloat(this.newProduct.quantity) || 0,
                     unit: this.newProduct.unit,
                     wood_type: this.newProduct.woodType,
@@ -2511,6 +2533,7 @@ createApp({
                 this.showAddProduct = false;
                 this.newProduct = {
                     name: '',
+                    productType: 'Brennholz',
                     quantity: 0,
                     unit: 'RM',
                     woodType: '',
@@ -2535,6 +2558,7 @@ createApp({
             // Produkt zum Bearbeiten laden
             this.editingProduct = { 
                 ...product,
+                productType: product.product_type || 'Brennholz',
                 woodType: product.wood_type,
                 logLength: product.log_length,
                 priceLengths: product.price_lengths || {}
@@ -2583,6 +2607,7 @@ createApp({
                 // Aktualisiertes Produkt vorbereiten
                 const updatedProductData = {
                     name: this.editingProduct.name.trim(),
+                    product_type: this.editingProduct.productType || 'Brennholz',
                     quantity: parseFloat(this.editingProduct.quantity) || 0,
                     unit: this.editingProduct.unit,
                     wood_type: this.editingProduct.woodType,
@@ -3096,6 +3121,7 @@ createApp({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
                 productName: product.name,
+                productType: product.product_type || 'Brennholz',
                 woodType: product.woodType || '',
                 logLength: logLength,
                 quantity: quantity,
@@ -3407,9 +3433,12 @@ createApp({
             if (!customer) return '';
 
             // Bestell-Details formatieren
-            const itemsText = order.items.map(item => 
-                `• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)`
-            ).join('\n');
+            const itemsText = order.items.map(item => {
+                const productType = item.productType || 'Brennholz';
+                const woodType = item.woodType || '';
+                const productNameDisplay = woodType ? `${productType} ${woodType}` : productType;
+                return `• ${item.quantity} ${item.unit} ${productNameDisplay} (${item.logLength}cm)`;
+            }).join('\n');
 
             const deliveryDateStr = this.formatDeliveryDate(order.deliveryDate, order.deliveryTime);
             const totalText = this.formatCurrency(order.total);
@@ -3468,8 +3497,8 @@ createApp({
                 deliveryCosts: 35.50,
                 total: 485.00,
                 items: [
-                    { quantity: 5, unit: 'RM', productName: 'Eiche', logLength: 50 },
-                    { quantity: 2, unit: 'RM', productName: 'Buche', logLength: 33 }
+                    { quantity: 5, unit: 'RM', productType: 'Brennholz', woodType: 'Eiche', logLength: 50 },
+                    { quantity: 2, unit: 'RM', productType: 'Brennholz', woodType: 'Buche', logLength: 33 }
                 ]
             };
 
