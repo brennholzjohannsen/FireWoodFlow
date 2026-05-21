@@ -1805,6 +1805,28 @@ createApp({
             }
         },
 
+        // Spezielle Funktion um nur den Status einer Bestellung zu aktualisieren (mit status_updated_at Tracking)
+        async updateOrderStatusInSupabase(orderId, newStatus, userId) {
+            try {
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .update({ 
+                        status: newStatus,
+                        status_updated_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', orderId)
+                    .eq('user_id', userId);
+                
+                if (error) throw error;
+                
+                return true;
+            } catch (error) {
+                console.error('Fehler beim Aktualisieren des Bestellstatus:', error);
+                throw error;
+            }
+        },
+
         async deleteFromSupabase(table, id, userId) {
             try {
                 const { error } = await supabaseClient
@@ -3430,6 +3452,15 @@ createApp({
                     updatedOrder.deliveryDate = updatedOrder.delivery_date;
                     updatedOrder.deliveryTime = updatedOrder.delivery_time;
                     
+                    // Statusänderung für Activity-Feed protokollieren (wenn sich Status geändert hat)
+                    const previousOrder = this.orders[index];
+                    if (previousOrder.status !== updatedOrder.status) {
+                        updatedOrder.statusUpdatedAt = new Date().toISOString();
+                    } else if (previousOrder.statusUpdatedAt) {
+                        // Bestehenden Wert behalten
+                        updatedOrder.statusUpdatedAt = previousOrder.statusUpdatedAt;
+                    }
+                    
                     const updatedOrders = [...this.orders];
                     updatedOrders[index] = updatedOrder;
                     this.orders = updatedOrders;
@@ -3516,8 +3547,21 @@ createApp({
 
         updateOrderStatus(order, newStatus) {
             const index = this.orders.findIndex(o => o.id === order.id);
-            if (index !== -1) {
+            if (index !== -1 && newStatus) {
                 this.orders[index].status = newStatus;
+                // Statusänderung für Activity-Feed protokollieren
+                const now = new Date().toISOString();
+                this.orders[index].statusUpdatedAt = now;
+                
+                // In Supabase speichern wenn User eingeloggt ist
+                const { data: { user } } = supabaseClient.auth.getUser();
+                if (user && order.id && !order.id.includes('.')) {
+                    // Echte UUID = Supabase Bestellung
+                    this.updateOrderStatusInSupabase(order.id, newStatus, user.id)
+                        .then(() => console.log('✓ Status in Supabase aktualisiert'))
+                        .catch(err => console.error('❌ Fehler beim Speichern des Status:', err));
+                }
+                
                 alert('✓ Status aktualisiert: ' + newStatus);
             }
         },
