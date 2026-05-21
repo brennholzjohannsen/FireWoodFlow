@@ -1087,6 +1087,12 @@
                         <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
                     </div>
 
+                    <div class="form-group">
+                        <label>Datum des Wareneinkaufs</label>
+                        <input type="date" v-model="newProduct.purchaseDate" required>
+                        <p class="field-hint">Dieses Datum wird für die Ausgabenübersicht verwendet</p>
+                    </div>
+
                     <!-- Preistabelle für Scheitholz -->
                     <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct.unit)">
                         <label>Verkaufspreise nach Scheitlänge</label>
@@ -1198,6 +1204,10 @@
                         <div class="form-group">
                             <label>Einkaufspreis pro {{ editingProduct.unit || 'Einheit' }} (€)</label>
                             <input type="number" step="0.01" v-model.number="editingProduct.price" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Datum des Wareneinkaufs</label>
+                            <input type="date" v-model="editingProduct.purchaseDate" required>
                         </div>
                     </div>
 

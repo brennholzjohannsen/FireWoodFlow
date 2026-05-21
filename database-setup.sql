@@ -13,7 +13,11 @@ CREATE TABLE IF NOT EXISTS products (
     dryness TEXT NOT NULL,
     quantity NUMERIC NOT NULL DEFAULT 0,
     unit TEXT NOT NULL DEFAULT 'RM',
+    price NUMERIC DEFAULT 0,
+    price_unit TEXT DEFAULT 'RM',
     price_lengths JSONB, -- { "25": { "srm": 100, "rm": 142 }, "33": { "srm": 110, "rm": 156 } }
+    storage_location_index INTEGER,
+    purchase_date DATE,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -58,6 +58,8 @@ createApp({
                 dryness: 'frisch',
                 price: 0,
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
+                storageLocationIndex: '',
+                purchaseDate: new Date().toISOString().split('T')[0],
                 notes: ''
             },
             
@@ -1601,7 +1603,8 @@ createApp({
                         logLength: product.log_length,
                         priceLengths: product.price_lengths || {},
                         priceUnit: product.price_unit,
-                        storageLocationIndex: product.storage_location_index !== undefined ? product.storage_location_index : null
+                        storageLocationIndex: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                        purchaseDate: product.purchase_date || new Date().toISOString().split('T')[0]
                     }));
                     console.log('✓ Produkte geladen:', this.products.length);
                 }
@@ -2325,6 +2328,7 @@ createApp({
                     price: parseFloat(this.newProduct.price) || 0,
                     price_lengths: this.newProduct.priceLengths || {},
                     storage_location_index: this.newProduct.storageLocationIndex !== undefined ? this.newProduct.storageLocationIndex : null,
+                    purchase_date: this.newProduct.purchaseDate || new Date().toISOString().split('T')[0],
                     notes: (this.newProduct.notes || '').trim()
                 };
                 
@@ -2345,6 +2349,9 @@ createApp({
                         product.updated_at = product.created_at;
                         this.products.push(product);
                         console.log('✓ Produkt in Supabase gespeichert');
+                        
+                        // Automatisch Ausgabe für Wareneinkauf erstellen
+                        await this.createInventoryExpense(product, user.id);
                     } catch (saveError) {
                         console.error('Speichern in Supabase fehlgeschlagen:', saveError);
                         console.error('Fehlerdetails:', JSON.stringify(saveError, null, 2));
@@ -2355,6 +2362,9 @@ createApp({
                     product.id = Date.now().toString();
                     product.createdAt = new Date().toISOString();
                     this.products.push(product);
+                    
+                    // Auch in localStorage Ausgabe erstellen
+                    this.createInventoryExpenseLocal(product);
                 }
                 
                 this.inventoryCount = this.products.length;
@@ -2375,6 +2385,7 @@ createApp({
                     price: 0,
                     priceLengths: {},
                     storageLocationIndex: '',
+                    purchaseDate: new Date().toISOString().split('T')[0],
                     notes: ''
                 };
                 
@@ -2435,19 +2446,20 @@ createApp({
                 const index = this.products.findIndex(p => p.id === this.editingProduct.id);
                 
                 if (index !== -1) {
-                    // Aktualisiertes Produkt vorbereiten
-                    const updatedProductData = {
-                        name: this.editingProduct.name.trim(),
-                        quantity: parseFloat(this.editingProduct.quantity) || 0,
-                        unit: this.editingProduct.unit,
-                        wood_type: this.editingProduct.woodType,
-                        log_length: parseInt(this.editingProduct.logLength) || 25,
-                        dryness: this.editingProduct.dryness,
-                        price: parseFloat(this.editingProduct.price) || 0,
-                        price_lengths: this.editingProduct.priceLengths || {},
-                        storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
-                        notes: (this.editingProduct.notes || '').trim()
-                    };
+                // Aktualisiertes Produkt vorbereiten
+                const updatedProductData = {
+                    name: this.editingProduct.name.trim(),
+                    quantity: parseFloat(this.editingProduct.quantity) || 0,
+                    unit: this.editingProduct.unit,
+                    wood_type: this.editingProduct.woodType,
+                    log_length: parseInt(this.editingProduct.logLength) || 25,
+                    dryness: this.editingProduct.dryness,
+                    price: parseFloat(this.editingProduct.price) || 0,
+                    price_lengths: this.editingProduct.priceLengths || {},
+                    storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
+                    purchase_date: this.editingProduct.purchaseDate || this.editingProduct.purchase_date || new Date().toISOString().split('T')[0],
+                    notes: (this.editingProduct.notes || '').trim()
+                };
 
                     // In Supabase speichern wenn User eingeloggt ist
                     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -3734,6 +3746,73 @@ createApp({
 
         saveExpenses() {
             localStorage.setItem('firewoodflow_expenses', JSON.stringify(this.expenses));
+        },
+
+        async createInventoryExpense(product, userId) {
+            // Erstellt automatisch eine Ausgabe beim Anlegen eines Produkts
+            const totalValue = (parseFloat(product.quantity) || 0) * (parseFloat(product.price) || 0);
+            
+            if (totalValue <= 0) return; // Keine Ausgabe bei Wert 0
+            
+            const expense = {
+                id: 'inv-' + Date.now().toString(),
+                amount: totalValue,
+                category: 'material',
+                description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
+                date: product.purchase_date || new Date().toISOString().split('T')[0],
+                notes: `Automatisch erstellt beim Anlegen von Produkt "${product.name}"`,
+                storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                is_inventory_purchase: true,
+                product_id: product.id
+            };
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('expenses')
+                    .insert({
+                        id: expense.id,
+                        user_id: userId,
+                        amount: expense.amount,
+                        category: expense.category,
+                        description: expense.description,
+                        date: expense.date,
+                        notes: expense.notes,
+                        storage_location_index: expense.storage_location_index,
+                        is_inventory_purchase: true,
+                        product_id: product.id
+                    });
+                
+                if (!error) {
+                    this.expenses.push(expense);
+                    this.saveExpenses();
+                    console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt:', expense.description);
+                }
+            } catch (error) {
+                console.warn('Konnte automatische Ausgabe nicht in Supabase speichern:', error.message);
+            }
+        },
+
+        createInventoryExpenseLocal(product) {
+            // Lokale Version für Offline/LocalStorage-Modus
+            const totalValue = (parseFloat(product.quantity) || 0) * (parseFloat(product.price) || 0);
+            
+            if (totalValue <= 0) return;
+            
+            const expense = {
+                id: 'inv-' + Date.now().toString(),
+                amount: totalValue,
+                category: 'material',
+                description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
+                date: product.purchase_date || new Date().toISOString().split('T')[0],
+                notes: `Automatisch erstellt beim Anlegen von Produkt "${product.name}"`,
+                storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                is_inventory_purchase: true,
+                product_id: product.id
+            };
+            
+            this.expenses.push(expense);
+            this.saveExpenses();
+            console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt (local):', expense.description);
         },
 
         getCategoryName(category) {
