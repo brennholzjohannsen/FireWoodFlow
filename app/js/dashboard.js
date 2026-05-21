@@ -1567,6 +1567,9 @@ createApp({
             // Rückwirkend Wareneinkäufe für bestehende Produkte erstellen
             await this.createMissingInventoryExpenses();
             
+            // Bestehtehende Wareneinkäufe mit Lagerorten reparieren
+            await this.repairInventoryExpenseStorageLocations();
+            
             // Heute Bestellungen berechnen (Array mit allen Aufträgen heute)
             const today = new Date().toISOString().split('T')[0];
             this.todayOrders = this.orders.filter(o => {
@@ -3871,6 +3874,44 @@ createApp({
                 
                 // UI aktualisieren
                 alert(`ℹ️ ${createdCount} Wareneinkäufe für bestehende Produkte wurden nachträglich als Ausgaben erfasst.`);
+            }
+        },
+
+        async repairInventoryExpenseStorageLocations() {
+            // Repariert bestehende Wareneinkäufe ohne oder mit falschem Lagerort
+            let repairedCount = 0;
+            
+            for (const expense of this.expenses) {
+                // Nur Wareneinkäufe prüfen
+                if (expense.is_inventory_purchase !== true && !expense.product_id) {
+                    continue;
+                }
+                
+                // Produkt finden das zu dieser Ausgabe gehört
+                const product = this.products.find(p => p.id === expense.product_id || p.id === expense.productId);
+                
+                if (product) {
+                    // Lagerort aus Produkt lesen (beide Varianten prüfen)
+                    const correctStorageLoc = product.storageLocationIndex !== undefined ? product.storageLocationIndex : 
+                                              product.storage_location_index !== undefined ? product.storage_location_index : null;
+                    
+                    // Aktuelle Lagerorte der Ausgabe prüfen (beide Varianten)
+                    const currentStorageLoc = expense.storageLocationIndex !== undefined ? expense.storageLocationIndex : 
+                                              expense.storage_location_index !== undefined ? expense.storage_location_index : null;
+                    
+                    // Reparieren wenn Lagerort fehlt oder falsch ist
+                    if (correctStorageLoc !== null && correctStorageLoc !== undefined && currentStorageLoc !== correctStorageLoc) {
+                        expense.storageLocationIndex = correctStorageLoc;
+                        expense.storage_location_index = correctStorageLoc;
+                        repairedCount++;
+                        console.log(`✓ Wareneinkauf repariert: "${expense.description}" - Lagerort: ${correctStorageLoc}`);
+                    }
+                }
+            }
+            
+            if (repairedCount > 0) {
+                this.saveExpenses();
+                console.log(`✅ ${repairedCount} Wareneinkäufe mit Lagerorten repariert`);
             }
         },
 
