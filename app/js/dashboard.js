@@ -337,7 +337,9 @@ createApp({
             
             if (this.selectedStorageLocation !== null) {
                 filtered = filtered.filter(e => {
-                    const expenseLoc = e.storageLocationIndex !== undefined ? e.storageLocationIndex : null;
+                    // Beide Varianten prüfen: camelCase und snake_case
+                    const expenseLoc = e.storageLocationIndex !== undefined ? e.storageLocationIndex : 
+                                       e.storage_location_index !== undefined ? e.storage_location_index : null;
                     return expenseLoc === this.selectedStorageLocation;
                 });
             }
@@ -3764,7 +3766,8 @@ createApp({
                 description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
                 date: product.purchase_date || new Date().toISOString().split('T')[0],
                 notes: `Automatisch erstellt beim Anlegen von Produkt "${product.name}"`,
-                storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                storageLocationIndex: product.storageLocationIndex !== undefined ? product.storageLocationIndex : null,
+                storage_location_index: product.storageLocationIndex !== undefined ? product.storageLocationIndex : null,
                 is_inventory_purchase: true,
                 product_id: product.id
             };
@@ -3814,6 +3817,7 @@ createApp({
                 description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
                 date: product.purchase_date || new Date().toISOString().split('T')[0],
                 notes: `Automatisch erstellt beim Anlegen von Produkt "${product.name}"`,
+                storageLocationIndex: product.storage_location_index !== undefined ? product.storage_location_index : null,
                 storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
                 is_inventory_purchase: true,
                 product_id: product.id
@@ -3838,6 +3842,10 @@ createApp({
                     // Keine Ausgabe vorhanden → erstellen
                     const totalValue = parseFloat(product.quantity) * parseFloat(product.price);
                     
+                    // Lagerort-Index aus Produkt lesen (beide Varianten prüfen)
+                    const storageLoc = product.storageLocationIndex !== undefined ? product.storageLocationIndex : 
+                                       product.storage_location_index !== undefined ? product.storage_location_index : null;
+                    
                     const expense = {
                         id: 'inv-missing-' + product.id + '-' + Date.now().toString(),
                         amount: totalValue,
@@ -3845,14 +3853,15 @@ createApp({
                         description: `Wareneinkauf (nachgetragen): ${product.name} (${product.quantity} ${product.unit})`,
                         date: product.purchase_date || product.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
                         notes: `Rückwirkend erstellt für bestehendes Produkt "${product.name}"`,
-                        storage_location_index: product.storage_location_index !== undefined ? product.storage_location_index : null,
+                        storageLocationIndex: storageLoc,
+                        storage_location_index: storageLoc,
                         is_inventory_purchase: true,
                         product_id: product.id
                     };
                     
                     this.expenses.push(expense);
                     createdCount++;
-                    console.log('✓ Nachgetragener Wareneinkauf:', expense.description);
+                    console.log('✓ Nachgetragener Wareneinkauf:', expense.description, 'Lagerort:', storageLoc);
                 }
             }
             
