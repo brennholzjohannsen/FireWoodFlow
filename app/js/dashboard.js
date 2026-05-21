@@ -1925,6 +1925,16 @@ createApp({
             }).format(value);
         },
 
+        getStorageLocationName(index) {
+            // Gibt den Lagerort-Namen mit eckigen Klammern zurück, z.B. "[Lager Nord] "
+            if (index === undefined || index === null || !this.storageLocations[index]) {
+                return '';
+            }
+            const location = this.storageLocations[index];
+            const name = location.name || `Lager ${index + 1}`;
+            return `[${name}] `;
+        },
+
         formatDate(dateString) {
             if (!dateString) return '-';
             return new Date(dateString).toLocaleDateString('de-DE', {

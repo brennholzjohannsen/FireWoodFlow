@@ -1310,7 +1310,7 @@
                             <select id="orderProductSelect" class="select-input" style="width: 100%;">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
+                                    {{ getStorageLocationName(p.storage_location_index) }}{{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
                             <div class="quantity-unit-row-mobile">
@@ -1480,7 +1480,7 @@
                             <select id="editOrderProductSelect" class="select-input" style="width: 100%;">
                                 <option value="">Produkt wählen...</option>
                                 <option v-for="p in products" :key="p.id" :value="p.id">
-                                    {{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
+                                    {{ getStorageLocationName(p.storage_location_index) }}{{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
                                 </option>
                             </select>
                             <div class="quantity-unit-row">
