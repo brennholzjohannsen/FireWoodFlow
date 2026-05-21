@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS products (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users NOT NULL,
     name TEXT NOT NULL,
+    product_type TEXT DEFAULT 'Brennholz',
     wood_type TEXT NOT NULL,
     log_length INTEGER NOT NULL,
     dryness TEXT NOT NULL,
