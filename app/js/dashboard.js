@@ -3425,6 +3425,9 @@ createApp({
             message = message.replace(/{delivery_date}/g, deliveryDateStr);
             message = message.replace(/{delivery_time}/g, order.deliveryTime || '');
             message = message.replace(/{delivery_address}/g, deliveryAddress);
+            // Firmennamen einsetzen (aus Einstellungen oder Fallback)
+            const companyName = this.settings?.companyName || 'FireWoodFlow';
+            message = message.replace(/FireWoodFlow/g, companyName);
 
             return message;
         },
