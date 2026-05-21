@@ -2043,6 +2043,70 @@
 
         <!-- Delivery Cost Modal -->
         <div class="modal-overlay" v-if="showDeliveryModal" @click="showDeliveryModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showDeliveryModal = false">&times;</button>
+                <h2>🚚 Lieferkosten berechnen</h2>
+                
+                <div v-if="selectedCustomer" class="delivery-info">
+                    <div class="customer-header-small">
+                        <h3>{{ selectedCustomer.name }}</h3>
+                    </div>
+                    
+                    <div class="address-box">
+                        <div class="address-item">
+                            <strong>📍 Von:</strong>
+                            <p>{{ deliveryFromAddress || 'Adresse nicht eingetragen' }}</p>
+                        </div>
+                        <div class="address-arrow">↓</div>
+                        <div class="address-item">
+                            <strong>📍 Nach:</strong>
+                            <p>{{ selectedCustomer.address || 'Kundenadresse nicht eingetragen' }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="loadingDistance" class="loading-state">
+                        <span class="loading-spinner">⏳</span>
+                        <p>Berechne Entfernung...</p>
+                    </div>
+
+                    <div v-else-if="distanceError" class="error-state">
+                        <span class="error-icon">⚠️</span>
+                        <p>{{ distanceError }}</p>
+                    </div>
+
+                    <div v-else-if="distanceResult" class="result-box">
+                        <div class="result-row">
+                            <span class="result-label">Entfernung (einfach):</span>
+                            <span class="result-value">{{ distanceResult.distance.toFixed(1) }} km</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Fahrzeit (ca.):</span>
+                            <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
+                        </div>
+                        <div v-if="distanceResult.isFallback" class="fallback-hint">
+                            ⚠️ Berechnung basiert auf Luftlinien-Entfernung (keine Straßenroute verfügbar)
+                        </div>
+                        <div class="result-row highlight">
+                            <span class="result-label">Lieferkosten pro km (einfach):</span>
+                            <span class="result-value">{{ formatCurrency(costPerKm) }}</span>
+                        </div>
+                        <div class="result-row total">
+                            <span class="result-label">Lieferkosten (einfach):</span>
+                            <span class="result-value price">{{ formatCurrency(deliveryCost) }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="!loadingDistance && !distanceError && distanceResult" class="delivery-actions">
+                        <a :href="distanceResult.mapsUrl" target="_blank" class="btn-maps">
+                            🗺️ Route auf Google Maps
+                        </a>
+                        <button @click="saveDeliveryCosts()" class="btn-save-costs">
+                            ✓ Lieferkosten übernehmen ({{ formatCurrency(deliveryCost) }})
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Quick Order Modal (Schnellbestellung) -->
         <div class="modal-overlay modal-large" v-if="showQuickOrderModal" @click="showQuickOrderModal = false">
@@ -2184,72 +2248,6 @@
                             ✅ Bestellung speichern
                         </button>
                         <button @click="resetQuickOrder" class="btn-action btn-action-secondary">Abbrechen</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Delivery Cost Modal -->
-            <div class="modal-content" @click.stop>
-                <button class="modal-close" @click="showDeliveryModal = false">&times;</button>
-                <h2>🚚 Lieferkosten berechnen</h2>
-                
-                <div v-if="selectedCustomer" class="delivery-info">
-                    <div class="customer-header-small">
-                        <h3>{{ selectedCustomer.name }}</h3>
-                    </div>
-                    
-                    <div class="address-box">
-                        <div class="address-item">
-                            <strong>📍 Von:</strong>
-                            <p>{{ deliveryFromAddress || 'Adresse nicht eingetragen' }}</p>
-                        </div>
-                        <div class="address-arrow">↓</div>
-                        <div class="address-item">
-                            <strong>📍 Nach:</strong>
-                            <p>{{ selectedCustomer.address || 'Kundenadresse nicht eingetragen' }}</p>
-                        </div>
-                    </div>
-
-                    <div v-if="loadingDistance" class="loading-state">
-                        <span class="loading-spinner">⏳</span>
-                        <p>Berechne Entfernung...</p>
-                    </div>
-
-                    <div v-else-if="distanceError" class="error-state">
-                        <span class="error-icon">⚠️</span>
-                        <p>{{ distanceError }}</p>
-                    </div>
-
-                    <div v-else-if="distanceResult" class="result-box">
-                        <div class="result-row">
-                            <span class="result-label">Entfernung (einfach):</span>
-                            <span class="result-value">{{ distanceResult.distance.toFixed(1) }} km</span>
-                        </div>
-                        <div class="result-row">
-                            <span class="result-label">Fahrzeit (ca.):</span>
-                            <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
-                        </div>
-                        <div v-if="distanceResult.isFallback" class="fallback-hint">
-                            ⚠️ Berechnung basiert auf Luftlinien-Entfernung (keine Straßenroute verfügbar)
-                        </div>
-                        <div class="result-row highlight">
-                            <span class="result-label">Lieferkosten pro km (einfach):</span>
-                            <span class="result-value">{{ formatCurrency(costPerKm) }}</span>
-                        </div>
-                        <div class="result-row total">
-                            <span class="result-label">Lieferkosten (einfach):</span>
-                            <span class="result-value price">{{ formatCurrency(deliveryCost) }}</span>
-                        </div>
-                    </div>
-
-                    <div v-if="!loadingDistance && !distanceError && distanceResult" class="delivery-actions">
-                        <a :href="distanceResult.mapsUrl" target="_blank" class="btn-maps">
-                            🗺️ Route auf Google Maps
-                        </a>
-                        <button @click="saveDeliveryCosts()" class="btn-save-costs">
-                            ✓ Lieferkosten übernehmen ({{ formatCurrency(deliveryCost) }})
-                        </button>
                     </div>
                 </div>
             </div>
