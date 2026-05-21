@@ -407,6 +407,72 @@ createApp({
             return this.periodRevenue / this.periodOrderCount;
         },
 
+        // Letzte Aktivitäten – zeigt die 10 neuesten Ereignisse
+        recentActivities() {
+            const activities = [];
+            
+            // 1. Bestellungen (Statusänderungen & neue Bestellungen)
+            this.orders.forEach(order => {
+                // Neue Bestellung erstellt
+                if (order.createdAt) {
+                    activities.push({
+                        type: 'order_created',
+                        title: 'Bestellung erstellt',
+                        description: `${order.orderNumber || 'Bestellung'} von ${order.customerName}`,
+                        date: order.createdAt,
+                        icon: '📦',
+                        color: '#4CAF50'
+                    });
+                }
+                
+                // Statusänderung (wenn statusUpdatedAt vorhanden)
+                if (order.status && order.statusUpdatedAt) {
+                    activities.push({
+                        type: 'status_changed',
+                        title: `Status: ${this.getStatusLabel(order.status)}`,
+                        description: `${order.orderNumber || 'Bestellung'} von ${order.customerName}`,
+                        date: order.statusUpdatedAt,
+                        icon: '🔄',
+                        color: '#2196F3'
+                    });
+                }
+            });
+            
+            // 2. Neue Kunden
+            this.customers.forEach(customer => {
+                if (customer.createdAt) {
+                    activities.push({
+                        type: 'customer_added',
+                        title: 'Neuer Kunde',
+                        description: customer.name,
+                        date: customer.createdAt,
+                        icon: '👤',
+                        color: '#FF9800'
+                    });
+                }
+            });
+            
+            // 3. Neue Produkte
+            this.products.forEach(product => {
+                if (product.createdAt || product.purchaseDate) {
+                    activities.push({
+                        type: 'product_added',
+                        title: 'Produkt ins Lager aufgenommen',
+                        description: `${product.name} (${product.quantity} ${product.unit})`,
+                        date: product.createdAt || product.purchaseDate,
+                        icon: '🪵',
+                        color: '#795548'
+                    });
+                }
+            });
+            
+            // Nach Datum sortieren (neueste zuerst)
+            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // Nur die 10 neuesten zurückgeben
+            return activities.slice(0, 10);
+        },
+
         revenueChartData() {
             const data = [];
             const now = new Date();

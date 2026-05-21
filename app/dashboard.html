@@ -160,11 +160,23 @@
                     </div>
                 </section>
 
-                <!-- Recent Activity Placeholder -->
+                <!-- Recent Activity -->
                 <section class="recent-activity">
                     <h2>Letzte Aktivitäten</h2>
-                    <div class="empty-state">
+                    <div v-if="recentActivities.length === 0" class="empty-state">
                         <p>Noch keine Aktivitäten vorhanden.</p>
+                    </div>
+                    <div v-else class="activity-list">
+                        <div v-for="(activity, idx) in recentActivities" :key="idx" class="activity-item">
+                            <div class="activity-icon" :style="{ backgroundColor: activity.color + '20' }">
+                                {{ activity.icon }}
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">{{ activity.title }}</div>
+                                <div class="activity-description">{{ activity.description }}</div>
+                                <div class="activity-date">{{ formatDateGerman(activity.date) }}</div>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
