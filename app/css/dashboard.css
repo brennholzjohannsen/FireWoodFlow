@@ -560,6 +560,19 @@ body {
     font-weight: 600;
 }
 
+.storage-location-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #8b6f47, #A68B6C);
+    color: var(--white);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-right: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .product-stock {
     background: var(--success-color);
     color: var(--white);

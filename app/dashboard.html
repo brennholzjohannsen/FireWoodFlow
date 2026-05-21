@@ -211,7 +211,12 @@
 
                     <div v-for="product in filteredProducts" :key="product.id" class="product-card">
                         <div class="product-header">
-                            <h3>{{ product.name }}</h3>
+                            <h3>
+                                <span v-if="product.storageLocationIndex !== null && product.storageLocationIndex !== undefined && storageLocations[product.storageLocationIndex]" class="storage-location-badge">
+                                    {{ storageLocations[product.storageLocationIndex].name || 'Lager ' + (product.storageLocationIndex + 1) }}
+                                </span>
+                                {{ product.name }}
+                            </h3>
                             <span class="product-stock" :class="{ low: product.quantity < 10 }">
                                 {{ product.quantity.toFixed(1) }} {{ product.unit }}
                             </span>
