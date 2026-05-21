@@ -3766,6 +3766,12 @@ createApp({
                 product_id: product.id
             };
             
+            // IMMER zuerst lokal speichern (für sofortige UI-Aktualisierung)
+            this.expenses.push(expense);
+            this.saveExpenses();
+            console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt (local):', expense.description);
+            
+            // Dann versuchen in Supabase zu speichern (wenn verfügbar)
             try {
                 const { error } = await supabaseClient
                     .from('expenses')
@@ -3782,13 +3788,13 @@ createApp({
                         product_id: product.id
                     });
                 
-                if (!error) {
-                    this.expenses.push(expense);
-                    this.saveExpenses();
-                    console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt:', expense.description);
+                if (error) {
+                    console.warn('Supabase konnte Wareneinkauf nicht speichern (fehlende Spalten?). Lokale Kopie bleibt erhalten:', error.message);
+                } else {
+                    console.log('✓ Automatische Ausgabe auch in Supabase gespeichert');
                 }
             } catch (error) {
-                console.warn('Konnte automatische Ausgabe nicht in Supabase speichern:', error.message);
+                console.warn('Supabase-Fehler bei Wareneinkauf (lokale Kopie bleibt):', error.message);
             }
         },
 
