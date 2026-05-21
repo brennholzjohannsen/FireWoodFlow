@@ -963,6 +963,29 @@
                     </select>
                     <p class="field-hint">Beispiel: €22.93 → €22.90 / €23.00 / €23.00</p>
                 </div>
+
+                <div class="form-group">
+                    <label>WhatsApp Bestätigungstext</label>
+                    <textarea 
+                        v-model="whatsappConfirmationTemplate" 
+                        rows="6" 
+                        placeholder="Nachrichtenvorlage für WhatsApp-Bestätigungen..."
+                        class="whatsapp-template-input"
+                    ></textarea>
+                    <p class="field-hint">
+                        Verfügbare Platzhalter:<br>
+                        <code>{customer_name}</code> – Kundenname<br>
+                        <code>{items}</code> – Bestellpositionen (je eine Zeile)<br>
+                        <code>{total}</code> – Gesamtsumme inkl. Lieferkosten<br>
+                        <code>{delivery_costs}</code> – Lieferkosten<br>
+                        <code>{delivery_date}</code> – Lieferdatum<br>
+                        <code>{delivery_time}</code> – Lieferzeit<br>
+                        <code>{delivery_address}</code> – Lieferadresse
+                    </p>
+                    <button type="button" @click="testWhatsAppTemplate" class="btn-test-whatsapp-template">
+                        📱 Vorlage testen (öffnet WhatsApp mit Beispiel)
+                    </button>
+                </div>
             </section>
 
                 <section class="settings-section">

@@ -26,9 +26,9 @@ createApp({
             companyName: 'FireWoodFlow',
             companyLogo: null,
             companyAddress: '',
-            storageLocation: '',
-            costPerKm: 0,
+            costPerKm: 1.50,
             roundingMode: 'exact',
+            whatsappConfirmationTemplate: `Hallo {customer_name},\n\nvielen Dank für Ihre Bestellung bei FireWoodFlow!\n\n📦 **Bestellübersicht**:\n{items}\n\n💰 **Gesamtsumme**: {total} (inkl. {delivery_costs} Lieferkosten)\n\n📅 **Lieferdatum**: {delivery_date}\n📍 **Lieferadresse**: {delivery_address}\n\nBei Fragen antworten Sie einfach auf diese Nachricht.\n\nMit freundlichen Grüßen,\nIhr FireWoodFlow Team`,
             
             // Inventar-Einstellungen
             inventorySettings: {
@@ -1062,6 +1062,7 @@ createApp({
                 // storageLocations werden jetzt aus Supabase geladen!
                 this.costPerKm = data.costPerKm || 1.50;
                 this.roundingMode = data.roundingMode || 'exact';
+                this.whatsappConfirmationTemplate = data.whatsappConfirmationTemplate || `Hallo {customer_name},\n\nvielen Dank für Ihre Bestellung bei FireWoodFlow!\n\n📦 **Bestellübersicht**:\n{items}\n\n💰 **Gesamtsumme**: {total} (inkl. {delivery_costs} Lieferkosten)\n\n📅 **Lieferdatum**: {delivery_date}\n📍 **Lieferadresse**: {delivery_address}\n\nBei Fragen antworten Sie einfach auf diese Nachricht.\n\nMit freundlichen Grüßen,\nIhr FireWoodFlow Team`;
             }
             
             // Inventar-Einstellungen laden
@@ -1259,6 +1260,7 @@ createApp({
                 // storageLocations werden jetzt in Supabase gespeichert!
                 costPerKm: this.costPerKm,
                 roundingMode: this.roundingMode,
+                whatsappConfirmationTemplate: this.whatsappConfirmationTemplate,
                 googleCalendarConnected: this.googleCalendarConnected,
                 googleCalendarId: this.googleCalendarId
             };
@@ -3399,6 +3401,34 @@ createApp({
             return customer ? customer.phone : null;
         },
 
+        buildWhatsAppMessage(order, template) {
+            // Kunden-Informationen holen
+            const customer = this.customers.find(c => c.id === order.customerId);
+            if (!customer) return '';
+
+            // Bestell-Details formatieren
+            const itemsText = order.items.map(item => 
+                `• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)`
+            ).join('\n');
+
+            const deliveryDateStr = this.formatDeliveryDate(order.deliveryDate, order.deliveryTime);
+            const totalText = this.formatCurrency(order.total);
+            const deliveryCostsText = this.formatCurrency(order.deliveryCosts);
+            const deliveryAddress = order.deliveryAddress || customer.address || '';
+
+            // Platzhalter ersetzen
+            let message = template;
+            message = message.replace(/{customer_name}/g, customer.name);
+            message = message.replace(/{items}/g, itemsText);
+            message = message.replace(/{total}/g, totalText);
+            message = message.replace(/{delivery_costs}/g, deliveryCostsText);
+            message = message.replace(/{delivery_date}/g, deliveryDateStr);
+            message = message.replace(/{delivery_time}/g, order.deliveryTime || '');
+            message = message.replace(/{delivery_address}/g, deliveryAddress);
+
+            return message;
+        },
+
         sendWhatsAppConfirmation(order) {
             // Kunden-Informationen holen
             const customer = this.customers.find(c => c.id === order.customerId);
@@ -3407,15 +3437,8 @@ createApp({
                 return;
             }
 
-            // Bestell-Details formatieren
-            const itemsText = order.items.map(item => 
-                `• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)`
-            ).join('\n');
-
-            const totalText = `${this.formatCurrency(order.total)} (inkl. ${this.formatCurrency(order.deliveryCosts)} Lieferkosten)`;
-
-            // WhatsApp Nachricht zusammenbauen
-            const message = `Hallo ${customer.name},\n\nvielen Dank für Ihre Bestellung bei FireWoodFlow!\n\n📦 **Bestellübersicht**:\n${itemsText}\n\n💰 **Gesamtsumme**: ${totalText}\n\n📅 **Lieferdatum**: ${this.formatDeliveryDate(order.deliveryDate, order.deliveryTime)}\n📍 **Lieferadresse**: ${order.deliveryAddress || customer.address}\n\nBei Fragen antworten Sie einfach auf diese Nachricht.\n\nMit freundlichen Grüßen,\nIhr FireWoodFlow Team`;
+            // Nachricht mit Template bauen
+            const message = this.buildWhatsAppMessage(order, this.whatsappConfirmationTemplate);
 
             // URL encoden für WhatsApp
             const encodedMessage = encodeURIComponent(message);
@@ -3429,6 +3452,38 @@ createApp({
             window.open(whatsappUrl, '_blank');
             
             console.log('WhatsApp Bestätigung geöffnet für:', customer.name, '-', customer.phone);
+        },
+
+        testWhatsAppTemplate() {
+            // Test-Bestellung für Vorschau erstellen
+            const testOrder = {
+                customerId: 'test',
+                customerName: 'Max Mustermann',
+                deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                deliveryTime: '14:00',
+                deliveryAddress: 'Musterstraße 123, 12345 Musterstadt',
+                deliveryCosts: 35.50,
+                total: 485.00,
+                items: [
+                    { quantity: 5, unit: 'RM', productName: 'Eiche', logLength: 50 },
+                    { quantity: 2, unit: 'RM', productName: 'Buche', logLength: 33 }
+                ]
+            };
+
+            // Mock customer for test
+            this.customers = [{ id: 'test', name: 'Max Mustermann', phone: '+49123456789' }];
+
+            // Nachricht mit Template bauen
+            const message = this.buildWhatsAppMessage(testOrder, this.whatsappConfirmationTemplate);
+
+            // URL encoden für WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/49123456789?text=${encodedMessage}`;
+
+            // In neuem Tab öffnen
+            window.open(whatsappUrl, '_blank');
+
+            console.log('WhatsApp Template Test geöffnet');
         },
 
         editOrder(order) {
