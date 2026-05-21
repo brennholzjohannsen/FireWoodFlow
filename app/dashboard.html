@@ -603,6 +603,15 @@
                     </div>
                 </div>
 
+                <div class="revenue-stat-card inventory-cost">
+                    <div class="stat-icon">🪵</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Wareneinsatz</div>
+                        <div class="stat-value">{{ formatCurrency(periodInventoryCost) }}</div>
+                        <div class="stat-sub">{{ periodInventoryCostCount }} Produkte verkauft</div>
+                    </div>
+                </div>
+
                 <div class="revenue-stat-card profit" :class="{ 'is-negative': periodProfit < 0 }">
                     <div class="stat-icon">📊</div>
                     <div class="stat-content">

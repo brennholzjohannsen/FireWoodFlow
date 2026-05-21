@@ -352,7 +352,45 @@ createApp({
         },
 
         periodProfit() {
-            return this.periodRevenue - this.periodExpenses;
+            return this.periodRevenue - this.periodExpenses - this.periodInventoryCost;
+        },
+
+        periodInventoryCost() {
+            // Berechnet die Wareneinsatzkosten (Einkaufspreis der verkauften Produkte)
+            const toRM = {
+                'FM': 1.42,
+                'RM': 1,
+                'SRM': 1 / 1.42
+            };
+            
+            let totalCost = 0;
+            
+            this.filteredPeriodOrders.forEach(order => {
+                if (order.items) {
+                    order.items.forEach(item => {
+                        const product = this.products.find(p => p.id === item.productId);
+                        if (product) {
+                            // Verkaufte Menge in Produkteinheit umrechnen
+                            const quantityInProductUnit = (parseFloat(item.quantity) || 0) * toRM[item.unit] / toRM[product.unit];
+                            // Mit Einkaufspreis multiplizieren
+                            totalCost += quantityInProductUnit * (parseFloat(product.price) || 0);
+                        }
+                    });
+                }
+            });
+            
+            return totalCost;
+        },
+
+        periodInventoryCostCount() {
+            // Anzahl der verkauften Produkte mit Wareneinsatz
+            let count = 0;
+            this.filteredPeriodOrders.forEach(order => {
+                if (order.items) {
+                    count += order.items.length;
+                }
+            });
+            return count;
         },
 
         profitMargin() {

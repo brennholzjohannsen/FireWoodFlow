@@ -2852,6 +2852,10 @@ body {
     border-left-color: var(--danger-color);
 }
 
+.revenue-stat-card.inventory-cost {
+    border-left-color: #8b6f47;
+}
+
 .stat-icon {
     font-size: 2.5em;
     flex-shrink: 0;
