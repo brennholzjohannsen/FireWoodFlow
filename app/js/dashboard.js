@@ -59,6 +59,8 @@ createApp({
                 logLength: 100,
                 dryness: 'frisch',
                 price: 0,
+                totalPrice: 0, // Gesamtpreis (wird aus price × quantity berechnet oder umgekehrt)
+                priceInputMode: 'unit', // 'unit' = Preis/Einheit eingeben, 'total' = Gesamtpreis eingeben
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
                 storageLocationIndex: '',
                 purchaseDate: new Date().toISOString().split('T')[0],
@@ -1640,6 +1642,101 @@ createApp({
             this.editingProduct = { ...this.editingProduct, priceLengths: { ...this.editingProduct.priceLengths } };
         },
 
+        // Automatische Berechnung: Preis/Einheit ↔ Gesamtpreis
+        onPriceUnitChange() {
+            // Wenn Modus 'unit': Gesamtpreis aus Menge × Preis berechnen
+            if (this.newProduct.priceInputMode === 'unit') {
+                const qty = parseFloat(this.newProduct.quantity) || 0;
+                const price = parseFloat(this.newProduct.price) || 0;
+                this.newProduct.totalPrice = (qty * price).toFixed(2);
+            }
+            this.newProduct = { ...this.newProduct };
+        },
+
+        onTotalPriceChange() {
+            // Wenn Modus 'total': Preis/Einheit aus Gesamtpreis ÷ Menge berechnen
+            if (this.newProduct.priceInputMode === 'total') {
+                const qty = parseFloat(this.newProduct.quantity) || 0;
+                const total = parseFloat(this.newProduct.totalPrice) || 0;
+                if (qty > 0) {
+                    this.newProduct.price = (total / qty).toFixed(2);
+                } else {
+                    this.newProduct.price = 0;
+                }
+            }
+            this.newProduct = { ...this.newProduct };
+        },
+
+        onQuantityChange() {
+            // Bei Mengenänderung den jeweils anderen Wert neu berechnen
+            const qty = parseFloat(this.newProduct.quantity) || 0;
+            if (this.newProduct.priceInputMode === 'unit') {
+                const price = parseFloat(this.newProduct.price) || 0;
+                this.newProduct.totalPrice = (qty * price).toFixed(2);
+            } else {
+                const total = parseFloat(this.newProduct.totalPrice) || 0;
+                if (qty > 0) {
+                    this.newProduct.price = (total / qty).toFixed(2);
+                } else {
+                    this.newProduct.price = 0;
+                }
+            }
+            this.newProduct = { ...this.newProduct };
+        },
+
+        // Editing Product: Automatische Berechnung: Preis/Einheit ↔ Gesamtpreis
+        onEditPriceUnitChange() {
+            // Wenn Modus 'unit': Gesamtpreis aus Menge × Preis berechnen
+            if (this.editingProduct.priceInputMode === 'unit') {
+                const qty = parseFloat(this.editingProduct.quantity) || 0;
+                const price = parseFloat(this.editingProduct.price) || 0;
+                this.editingProduct.totalPrice = (qty * price).toFixed(2);
+            }
+            this.editingProduct = { ...this.editingProduct };
+        },
+
+        onEditTotalPriceChange() {
+            // Wenn Modus 'total': Preis/Einheit aus Gesamtpreis ÷ Menge berechnen
+            if (this.editingProduct.priceInputMode === 'total') {
+                const qty = parseFloat(this.editingProduct.quantity) || 0;
+                const total = parseFloat(this.editingProduct.totalPrice) || 0;
+                if (qty > 0) {
+                    this.editingProduct.price = (total / qty).toFixed(2);
+                } else {
+                    this.editingProduct.price = 0;
+                }
+            }
+            this.editingProduct = { ...this.editingProduct };
+        },
+
+        onEditQuantityChange() {
+            // Bei Mengenänderung den jeweils anderen Wert neu berechnen
+            const qty = parseFloat(this.editingProduct.quantity) || 0;
+            if (this.editingProduct.priceInputMode === 'unit') {
+                const price = parseFloat(this.editingProduct.price) || 0;
+                this.editingProduct.totalPrice = (qty * price).toFixed(2);
+            } else {
+                const total = parseFloat(this.editingProduct.totalPrice) || 0;
+                if (qty > 0) {
+                    this.editingProduct.price = (total / qty).toFixed(2);
+                } else {
+                    this.editingProduct.price = 0;
+                }
+            }
+            this.editingProduct = { ...this.editingProduct };
+        },
+
+        // Modal öffnen und priceLengths initialisieren
+        openAddProductModal() {
+            this.newProduct.priceLengths = {};
+            this.inventorySettings.logLengths.forEach(length => {
+                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
+            });
+            this.newProduct.priceInputMode = 'unit';
+            this.newProduct.totalPrice = 0;
+            this.showAddProduct = true;
+        },
+
         async loadData() {
             // Zuerst versuchen, Daten von Supabase zu laden
             await this.loadFromSupabase();
@@ -2556,12 +2653,16 @@ createApp({
 
         editProduct(product) {
             // Produkt zum Bearbeiten laden
+            const qty = parseFloat(product.quantity) || 0;
+            const price = parseFloat(product.price) || 0;
             this.editingProduct = { 
                 ...product,
                 productType: product.product_type || 'Brennholz',
                 woodType: product.wood_type,
                 logLength: product.log_length,
-                priceLengths: product.price_lengths || {}
+                priceLengths: product.price_lengths || {},
+                totalPrice: (qty * price).toFixed(2),
+                priceInputMode: 'unit'
             };
             
             // priceLengths für alle Scheitlängen initialisieren
