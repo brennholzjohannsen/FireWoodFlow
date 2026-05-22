@@ -33,7 +33,6 @@ createApp({
             // Inventar-Einstellungen
             inventorySettings: {
                 woodTypes: ['Buche', 'Eiche', 'Birke', 'Fichte', 'Kiefer', 'Esche', 'Ahorn', 'Gemischt'],
-                productTypes: ['Brennholz', 'Anzündholz'],
                 drynessLevels: [
                     { key: 'frisch', label: 'Frisch (< 1 Jahr)' },
                     { key: 'lufttrocken', label: 'Lufttrocken (1-2 Jahre)' },
@@ -52,17 +51,13 @@ createApp({
             editingProduct: null,
             newProduct: {
                 name: '',
-                productType: 'Brennholz',
                 quantity: 0,
                 unit: 'FM',
                 woodType: '',
                 logLength: 100,
                 dryness: 'frisch',
                 price: 0,
-                totalPrice: 0, // Gesamtpreis (wird aus price × quantity berechnet oder umgekehrt)
-                priceInputMode: 'unit', // 'unit' = Preis/Einheit eingeben, 'total' = Gesamtpreis eingeben
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
-                quantitySplits: {}, // { "100": { quantity: 8, unit: "FM" }, "33": { quantity: 1, unit: "FM" } }
                 storageLocationIndex: '',
                 purchaseDate: new Date().toISOString().split('T')[0],
                 notes: ''
@@ -128,9 +123,6 @@ createApp({
             
             // Storage Locations (Lagerplätze)
             storageLocations: [],
-            
-            // Scheitlängen-Aufteilung (Quantity Splits)
-            selectedLogLengthForSplit: '',
             
             // Bestellungen
             orders: [],
@@ -1201,25 +1193,6 @@ createApp({
             this.saveInventorySettings();
         },
 
-        addProductType() {
-            const newType = prompt('Neue Produktart eingeben:', '');
-            if (newType && newType.trim()) {
-                const trimmed = newType.trim();
-                if (!this.inventorySettings.productTypes.includes(trimmed)) {
-                    this.inventorySettings.productTypes.push(trimmed);
-                    this.saveInventorySettings();
-                    alert('✓ Produktart "' + trimmed + '" hinzugefügt!');
-                } else {
-                    alert('Diese Produktart existiert bereits.');
-                }
-            }
-        },
-
-        removeProductType(productType) {
-            this.inventorySettings.productTypes = this.inventorySettings.productTypes.filter(t => t !== productType);
-            this.saveInventorySettings();
-        },
-
         toggleDrynessLevel(key) {
             // Trocknungsgrad aktivieren/deaktivieren
             const level = this.inventorySettings.drynessLevels.find(l => l.key === key);
@@ -1644,204 +1617,6 @@ createApp({
             
             // Vue 3 reactivity trigger
             this.editingProduct = { ...this.editingProduct, priceLengths: { ...this.editingProduct.priceLengths } };
-        },
-
-        // Automatische Berechnung: Preis/Einheit ↔ Gesamtpreis
-        onPriceUnitChange() {
-            // Wenn Modus 'unit': Gesamtpreis aus Menge × Preis berechnen
-            if (this.newProduct.priceInputMode === 'unit') {
-                const qty = parseFloat(this.newProduct.quantity) || 0;
-                const price = parseFloat(this.newProduct.price) || 0;
-                this.newProduct.totalPrice = (qty * price).toFixed(2);
-            }
-            this.newProduct = { ...this.newProduct };
-        },
-
-        onTotalPriceChange() {
-            // Wenn Modus 'total': Preis/Einheit aus Gesamtpreis ÷ Menge berechnen
-            if (this.newProduct.priceInputMode === 'total') {
-                const qty = parseFloat(this.newProduct.quantity) || 0;
-                const total = parseFloat(this.newProduct.totalPrice) || 0;
-                if (qty > 0) {
-                    this.newProduct.price = (total / qty).toFixed(2);
-                } else {
-                    this.newProduct.price = 0;
-                }
-            }
-            this.newProduct = { ...this.newProduct };
-        },
-
-        onQuantityChange() {
-            // Bei Mengenänderung den jeweils anderen Wert neu berechnen
-            const qty = parseFloat(this.newProduct.quantity) || 0;
-            if (this.newProduct.priceInputMode === 'unit') {
-                const price = parseFloat(this.newProduct.price) || 0;
-                this.newProduct.totalPrice = (qty * price).toFixed(2);
-            } else {
-                const total = parseFloat(this.newProduct.totalPrice) || 0;
-                if (qty > 0) {
-                    this.newProduct.price = (total / qty).toFixed(2);
-                } else {
-                    this.newProduct.price = 0;
-                }
-            }
-            this.newProduct = { ...this.newProduct };
-        },
-
-        // Editing Product: Automatische Berechnung: Preis/Einheit ↔ Gesamtpreis
-        onEditPriceUnitChange() {
-            // Wenn Modus 'unit': Gesamtpreis aus Menge × Preis berechnen
-            if (this.editingProduct.priceInputMode === 'unit') {
-                const qty = parseFloat(this.editingProduct.quantity) || 0;
-                const price = parseFloat(this.editingProduct.price) || 0;
-                this.editingProduct.totalPrice = (qty * price).toFixed(2);
-            }
-            this.editingProduct = { ...this.editingProduct };
-        },
-
-        onEditTotalPriceChange() {
-            // Wenn Modus 'total': Preis/Einheit aus Gesamtpreis ÷ Menge berechnen
-            if (this.editingProduct.priceInputMode === 'total') {
-                const qty = parseFloat(this.editingProduct.quantity) || 0;
-                const total = parseFloat(this.editingProduct.totalPrice) || 0;
-                if (qty > 0) {
-                    this.editingProduct.price = (total / qty).toFixed(2);
-                } else {
-                    this.editingProduct.price = 0;
-                }
-            }
-            this.editingProduct = { ...this.editingProduct };
-        },
-
-        onEditQuantityChange() {
-            // Bei Mengenänderung den jeweils anderen Wert neu berechnen
-            const qty = parseFloat(this.editingProduct.quantity) || 0;
-            if (this.editingProduct.priceInputMode === 'unit') {
-                const price = parseFloat(this.editingProduct.price) || 0;
-                this.editingProduct.totalPrice = (qty * price).toFixed(2);
-            } else {
-                const total = parseFloat(this.editingProduct.totalPrice) || 0;
-                if (qty > 0) {
-                    this.editingProduct.price = (total / qty).toFixed(2);
-                } else {
-                    this.editingProduct.price = 0;
-                }
-            }
-            this.editingProduct = { ...this.editingProduct };
-        },
-
-        // Modal öffnen und priceLengths initialisieren
-        openAddProductModal() {
-            this.newProduct.priceLengths = {};
-            this.inventorySettings.logLengths.forEach(length => {
-                this.newProduct.priceLengths[length] = { srm: '', rm: '' };
-            });
-            this.newProduct.priceInputMode = 'unit';
-            this.newProduct.totalPrice = 0;
-            this.newProduct.quantitySplits = {};
-            // Initiale Aufteilung: gesamte Menge auf primäre Scheitlänge
-            const primaryLength = String(this.newProduct.logLength);
-            this.newProduct.quantitySplits[primaryLength] = {
-                quantity: parseFloat(this.newProduct.quantity) || 0,
-                unit: this.newProduct.unit
-            };
-            this.showAddProduct = true;
-        },
-
-        // Menge für eine Scheitlänge hinzufügen/aktualisieren
-        addQuantitySplit(length) {
-            if (!this.newProduct.quantitySplits[length]) {
-                this.newProduct.quantitySplits[length] = {
-                    quantity: 0,
-                    unit: this.newProduct.unit
-                };
-            }
-        },
-
-        // Menge für eine Scheitlänge entfernen
-        removeQuantitySplit(length) {
-            delete this.newProduct.quantitySplits[length];
-            this.newProduct = { ...this.newProduct, quantitySplits: { ...this.newProduct.quantitySplits } };
-            this.calculateTotalQuantityFromSplits();
-        },
-
-        // Gesamtmenge aus allen Teilmengen berechnen
-        calculateTotalQuantityFromSplits() {
-            let total = 0;
-            Object.values(this.newProduct.quantitySplits).forEach(split => {
-                total += parseFloat(split.quantity) || 0;
-            });
-            this.newProduct.quantity = parseFloat(total.toFixed(2));
-            // Auch Gesamtpreis neu berechnen wenn im 'total' Modus
-            if (this.newProduct.priceInputMode === 'total') {
-                this.onEditQuantityChange(); // Trigger recalc
-            } else {
-                this.onPriceUnitChange();
-            }
-        },
-
-        // Summe aller Teilmengen berechnen (für Validierung)
-        calculateSplitSum() {
-            let total = 0;
-            Object.values(this.newProduct.quantitySplits).forEach(split => {
-                total += parseFloat(split.quantity) || 0;
-            });
-            return parseFloat(total.toFixed(2));
-        },
-
-        // Editing Product: Menge für eine Scheitlänge hinzufügen
-        addEditQuantitySplit(length) {
-            if (!this.editingProduct.quantitySplits[length]) {
-                this.editingProduct.quantitySplits[length] = {
-                    quantity: 0,
-                    unit: this.editingProduct.unit
-                };
-            }
-            this.editingProduct = { ...this.editingProduct, quantitySplits: { ...this.editingProduct.quantitySplits } };
-        },
-
-        // Editing Product: Menge für eine Scheitlänge entfernen
-        removeEditQuantitySplit(length) {
-            delete this.editingProduct.quantitySplits[length];
-            this.editingProduct = { ...this.editingProduct, quantitySplits: { ...this.editingProduct.quantitySplits } };
-            this.calculateEditTotalQuantityFromSplits();
-        },
-
-        // Editing Product: Gesamtmenge aus allen Teilmengen berechnen
-        calculateEditTotalQuantityFromSplits() {
-            let total = 0;
-            Object.values(this.editingProduct.quantitySplits).forEach(split => {
-                total += parseFloat(split.quantity) || 0;
-            });
-            this.editingProduct.quantity = parseFloat(total.toFixed(2));
-            // Auch Gesamtpreis neu berechnen wenn im 'total' Modus
-            if (this.editingProduct.priceInputMode === 'total') {
-                this.onEditQuantityChange();
-            } else {
-                this.onEditPriceUnitChange();
-            }
-        },
-
-        // Editing Product: Summe aller Teilmengen berechnen
-        calculateEditSplitSum() {
-            let total = 0;
-            Object.values(this.editingProduct.quantitySplits).forEach(split => {
-                total += parseFloat(split.quantity) || 0;
-            });
-            return parseFloat(total.toFixed(2));
-        },
-
-        // Primäre Scheitlänge ändern
-        onPrimaryLogLengthChange() {
-            const newLength = String(this.newProduct.logLength);
-            if (!this.newProduct.quantitySplits[newLength]) {
-                // Neue primäre Länge existiert noch nicht → mit 0 initialisieren
-                this.newProduct.quantitySplits[newLength] = {
-                    quantity: 0,
-                    unit: this.newProduct.unit
-                };
-            }
-            this.newProduct = { ...this.newProduct };
         },
 
         async loadData() {
@@ -2679,7 +2454,6 @@ createApp({
                 // Produkt erstellen
                 const product = {
                     name: this.newProduct.name.trim(),
-                    product_type: this.newProduct.productType || 'Brennholz',
                     quantity: parseFloat(this.newProduct.quantity) || 0,
                     unit: this.newProduct.unit,
                     wood_type: this.newProduct.woodType,
@@ -2687,7 +2461,6 @@ createApp({
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
                     price_lengths: this.newProduct.priceLengths || {},
-                    quantity_splits: this.newProduct.quantitySplits || {},
                     storage_location_index: this.newProduct.storageLocationIndex !== undefined ? this.newProduct.storageLocationIndex : null,
                     purchase_date: this.newProduct.purchaseDate || new Date().toISOString().split('T')[0],
                     notes: (this.newProduct.notes || '').trim()
@@ -2738,17 +2511,13 @@ createApp({
                 this.showAddProduct = false;
                 this.newProduct = {
                     name: '',
-                    productType: 'Brennholz',
                     quantity: 0,
                     unit: 'RM',
                     woodType: '',
                     logLength: 25,
                     dryness: 'lufttrocken',
                     price: 0,
-                    totalPrice: 0,
-                    priceInputMode: 'unit',
                     priceLengths: {},
-                    quantitySplits: {},
                     storageLocationIndex: '',
                     purchaseDate: new Date().toISOString().split('T')[0],
                     notes: ''
@@ -2764,17 +2533,11 @@ createApp({
 
         editProduct(product) {
             // Produkt zum Bearbeiten laden
-            const qty = parseFloat(product.quantity) || 0;
-            const price = parseFloat(product.price) || 0;
             this.editingProduct = { 
                 ...product,
-                productType: product.product_type || 'Brennholz',
                 woodType: product.wood_type,
                 logLength: product.log_length,
-                priceLengths: product.price_lengths || {},
-                quantitySplits: product.quantity_splits || {},
-                totalPrice: (qty * price).toFixed(2),
-                priceInputMode: 'unit'
+                priceLengths: product.price_lengths || {}
             };
             
             // priceLengths für alle Scheitlängen initialisieren
@@ -2794,16 +2557,6 @@ createApp({
                     }
                 }
             });
-            
-            // quantitySplits initialisieren falls leer
-            if (!this.editingProduct.quantitySplits || Object.keys(this.editingProduct.quantitySplits).length === 0) {
-                const primaryLength = String(this.editingProduct.logLength);
-                this.editingProduct.quantitySplits = {};
-                this.editingProduct.quantitySplits[primaryLength] = {
-                    quantity: qty,
-                    unit: this.editingProduct.unit
-                };
-            }
             
             this.showEditProduct = true;
         },
@@ -2830,7 +2583,6 @@ createApp({
                 // Aktualisiertes Produkt vorbereiten
                 const updatedProductData = {
                     name: this.editingProduct.name.trim(),
-                    product_type: this.editingProduct.productType || 'Brennholz',
                     quantity: parseFloat(this.editingProduct.quantity) || 0,
                     unit: this.editingProduct.unit,
                     wood_type: this.editingProduct.woodType,
@@ -2838,7 +2590,6 @@ createApp({
                     dryness: this.editingProduct.dryness,
                     price: parseFloat(this.editingProduct.price) || 0,
                     price_lengths: this.editingProduct.priceLengths || {},
-                    quantity_splits: this.editingProduct.quantitySplits || {},
                     storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
                     purchase_date: this.editingProduct.purchaseDate || this.editingProduct.purchase_date || new Date().toISOString().split('T')[0],
                     notes: (this.editingProduct.notes || '').trim()
@@ -3345,7 +3096,6 @@ createApp({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
                 productName: product.name,
-                productType: product.product_type || 'Brennholz',
                 woodType: product.woodType || '',
                 logLength: logLength,
                 quantity: quantity,
@@ -3657,12 +3407,9 @@ createApp({
             if (!customer) return '';
 
             // Bestell-Details formatieren
-            const itemsText = order.items.map(item => {
-                const productType = item.productType || 'Brennholz';
-                const woodType = item.woodType || '';
-                const productNameDisplay = woodType ? `${productType} ${woodType}` : productType;
-                return `• ${item.quantity} ${item.unit} ${productNameDisplay} (${item.logLength}cm)`;
-            }).join('\n');
+            const itemsText = order.items.map(item => 
+                `• ${item.quantity} ${item.unit} ${item.productName} (${item.logLength}cm)`
+            ).join('\n');
 
             const deliveryDateStr = this.formatDeliveryDate(order.deliveryDate, order.deliveryTime);
             const totalText = this.formatCurrency(order.total);
@@ -3721,8 +3468,8 @@ createApp({
                 deliveryCosts: 35.50,
                 total: 485.00,
                 items: [
-                    { quantity: 5, unit: 'RM', productType: 'Brennholz', woodType: 'Eiche', logLength: 50 },
-                    { quantity: 2, unit: 'RM', productType: 'Brennholz', woodType: 'Buche', logLength: 33 }
+                    { quantity: 5, unit: 'RM', productName: 'Eiche', logLength: 50 },
+                    { quantity: 2, unit: 'RM', productName: 'Buche', logLength: 33 }
                 ]
             };
 
