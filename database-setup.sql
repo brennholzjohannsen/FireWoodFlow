@@ -10,13 +10,14 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT NOT NULL,
     product_type TEXT DEFAULT 'Brennholz',
     wood_type TEXT NOT NULL,
-    log_length INTEGER NOT NULL,
+    log_length INTEGER NOT NULL, -- Primäre Scheitlänge (Referenz)
     dryness TEXT NOT NULL,
-    quantity NUMERIC NOT NULL DEFAULT 0,
+    quantity NUMERIC NOT NULL DEFAULT 0, -- Gesamtmenge
     unit TEXT NOT NULL DEFAULT 'RM',
     price NUMERIC DEFAULT 0,
     price_unit TEXT DEFAULT 'RM',
     price_lengths JSONB, -- { "25": { "srm": 100, "rm": 142 }, "33": { "srm": 110, "rm": 156 } }
+    quantity_splits JSONB DEFAULT '{}', -- { "100": { "quantity": 8, "unit": "FM" }, "33": { "quantity": 1, "unit": "FM" } }
     storage_location_index INTEGER,
     purchase_date DATE,
     notes TEXT,

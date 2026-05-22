@@ -1177,6 +1177,47 @@
                         <p class="field-hint">Dieses Datum wird für die Ausgabenübersicht verwendet</p>
                     </div>
 
+                    <!-- Scheitlängen-Aufteilung -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct.unit)">
+                        <label>Menge nach Scheitlängen aufteilen</label>
+                        <p class="field-hint">Gesamtmenge: {{ newProduct.quantity }} {{ newProduct.unit }} (Summe aller Teilmengen)</p>
+                        
+                        <div class="quantity-splits-container">
+                            <div v-for="(split, length) in newProduct.quantitySplits" :key="length" class="quantity-split-row">
+                                <div class="split-length-label">{{ length }} cm:</div>
+                                <input type="number" step="0.01" 
+                                       v-model.number="split.quantity" 
+                                       @input="calculateTotalQuantityFromSplits"
+                                       placeholder="0.00"
+                                       style="flex: 1; min-width: 80px;">
+                                <span class="split-unit">{{ newProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(newProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="newProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ newProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <p class="field-hint" v-if="Math.abs(calculateSplitSum() - newProduct.quantity) > 0.001">
+                            ⚠️ Die Summe der Teilmengen ({{ calculateSplitSum().toFixed(2) }} {{ newProduct.unit }}) weicht von der Gesamtmenge ab
+                        </p>
+                    </div>
+
                     <!-- Preistabelle für Scheitholz -->
                     <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct.unit)">
                         <label>Verkaufspreise nach Scheitlänge</label>
@@ -1322,6 +1363,47 @@
                             <label>Datum des Wareneinkaufs</label>
                             <input type="date" v-model="editingProduct.purchaseDate" required>
                         </div>
+                    </div>
+
+                    <!-- Scheitlängen-Aufteilung (Bearbeiten) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(editingProduct.unit)">
+                        <label>Menge nach Scheitlängen aufteilen</label>
+                        <p class="field-hint">Gesamtmenge: {{ editingProduct.quantity }} {{ editingProduct.unit }} (Summe aller Teilmengen)</p>
+                        
+                        <div class="quantity-splits-container">
+                            <div v-for="(split, length) in editingProduct.quantitySplits" :key="length" class="quantity-split-row">
+                                <div class="split-length-label">{{ length }} cm:</div>
+                                <input type="number" step="0.01" 
+                                       v-model.number="split.quantity" 
+                                       @input="calculateEditTotalQuantityFromSplits"
+                                       placeholder="0.00"
+                                       style="flex: 1; min-width: 80px;">
+                                <span class="split-unit">{{ editingProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeEditQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(editingProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addEditQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="editingProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ editingProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <p class="field-hint" v-if="Math.abs(calculateEditSplitSum() - editingProduct.quantity) > 0.001">
+                            ⚠️ Die Summe der Teilmengen ({{ calculateEditSplitSum().toFixed(2) }} {{ editingProduct.unit }}) weicht von der Gesamtmenge ab
+                        </p>
                     </div>
 
                     <!-- Preistabelle für Scheitholz -->

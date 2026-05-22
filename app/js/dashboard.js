@@ -62,6 +62,7 @@ createApp({
                 totalPrice: 0, // Gesamtpreis (wird aus price × quantity berechnet oder umgekehrt)
                 priceInputMode: 'unit', // 'unit' = Preis/Einheit eingeben, 'total' = Gesamtpreis eingeben
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
+                quantitySplits: {}, // { "100": { quantity: 8, unit: "FM" }, "33": { quantity: 1, unit: "FM" } }
                 storageLocationIndex: '',
                 purchaseDate: new Date().toISOString().split('T')[0],
                 notes: ''
@@ -127,6 +128,9 @@ createApp({
             
             // Storage Locations (Lagerplätze)
             storageLocations: [],
+            
+            // Scheitlängen-Aufteilung (Quantity Splits)
+            selectedLogLengthForSplit: '',
             
             // Bestellungen
             orders: [],
@@ -1734,7 +1738,110 @@ createApp({
             });
             this.newProduct.priceInputMode = 'unit';
             this.newProduct.totalPrice = 0;
+            this.newProduct.quantitySplits = {};
+            // Initiale Aufteilung: gesamte Menge auf primäre Scheitlänge
+            const primaryLength = String(this.newProduct.logLength);
+            this.newProduct.quantitySplits[primaryLength] = {
+                quantity: parseFloat(this.newProduct.quantity) || 0,
+                unit: this.newProduct.unit
+            };
             this.showAddProduct = true;
+        },
+
+        // Menge für eine Scheitlänge hinzufügen/aktualisieren
+        addQuantitySplit(length) {
+            if (!this.newProduct.quantitySplits[length]) {
+                this.newProduct.quantitySplits[length] = {
+                    quantity: 0,
+                    unit: this.newProduct.unit
+                };
+            }
+        },
+
+        // Menge für eine Scheitlänge entfernen
+        removeQuantitySplit(length) {
+            delete this.newProduct.quantitySplits[length];
+            this.newProduct = { ...this.newProduct, quantitySplits: { ...this.newProduct.quantitySplits } };
+            this.calculateTotalQuantityFromSplits();
+        },
+
+        // Gesamtmenge aus allen Teilmengen berechnen
+        calculateTotalQuantityFromSplits() {
+            let total = 0;
+            Object.values(this.newProduct.quantitySplits).forEach(split => {
+                total += parseFloat(split.quantity) || 0;
+            });
+            this.newProduct.quantity = parseFloat(total.toFixed(2));
+            // Auch Gesamtpreis neu berechnen wenn im 'total' Modus
+            if (this.newProduct.priceInputMode === 'total') {
+                this.onEditQuantityChange(); // Trigger recalc
+            } else {
+                this.onPriceUnitChange();
+            }
+        },
+
+        // Summe aller Teilmengen berechnen (für Validierung)
+        calculateSplitSum() {
+            let total = 0;
+            Object.values(this.newProduct.quantitySplits).forEach(split => {
+                total += parseFloat(split.quantity) || 0;
+            });
+            return parseFloat(total.toFixed(2));
+        },
+
+        // Editing Product: Menge für eine Scheitlänge hinzufügen
+        addEditQuantitySplit(length) {
+            if (!this.editingProduct.quantitySplits[length]) {
+                this.editingProduct.quantitySplits[length] = {
+                    quantity: 0,
+                    unit: this.editingProduct.unit
+                };
+            }
+            this.editingProduct = { ...this.editingProduct, quantitySplits: { ...this.editingProduct.quantitySplits } };
+        },
+
+        // Editing Product: Menge für eine Scheitlänge entfernen
+        removeEditQuantitySplit(length) {
+            delete this.editingProduct.quantitySplits[length];
+            this.editingProduct = { ...this.editingProduct, quantitySplits: { ...this.editingProduct.quantitySplits } };
+            this.calculateEditTotalQuantityFromSplits();
+        },
+
+        // Editing Product: Gesamtmenge aus allen Teilmengen berechnen
+        calculateEditTotalQuantityFromSplits() {
+            let total = 0;
+            Object.values(this.editingProduct.quantitySplits).forEach(split => {
+                total += parseFloat(split.quantity) || 0;
+            });
+            this.editingProduct.quantity = parseFloat(total.toFixed(2));
+            // Auch Gesamtpreis neu berechnen wenn im 'total' Modus
+            if (this.editingProduct.priceInputMode === 'total') {
+                this.onEditQuantityChange();
+            } else {
+                this.onEditPriceUnitChange();
+            }
+        },
+
+        // Editing Product: Summe aller Teilmengen berechnen
+        calculateEditSplitSum() {
+            let total = 0;
+            Object.values(this.editingProduct.quantitySplits).forEach(split => {
+                total += parseFloat(split.quantity) || 0;
+            });
+            return parseFloat(total.toFixed(2));
+        },
+
+        // Primäre Scheitlänge ändern
+        onPrimaryLogLengthChange() {
+            const newLength = String(this.newProduct.logLength);
+            if (!this.newProduct.quantitySplits[newLength]) {
+                // Neue primäre Länge existiert noch nicht → mit 0 initialisieren
+                this.newProduct.quantitySplits[newLength] = {
+                    quantity: 0,
+                    unit: this.newProduct.unit
+                };
+            }
+            this.newProduct = { ...this.newProduct };
         },
 
         async loadData() {
@@ -2580,6 +2687,7 @@ createApp({
                     dryness: this.newProduct.dryness,
                     price: parseFloat(this.newProduct.price) || 0,
                     price_lengths: this.newProduct.priceLengths || {},
+                    quantity_splits: this.newProduct.quantitySplits || {},
                     storage_location_index: this.newProduct.storageLocationIndex !== undefined ? this.newProduct.storageLocationIndex : null,
                     purchase_date: this.newProduct.purchaseDate || new Date().toISOString().split('T')[0],
                     notes: (this.newProduct.notes || '').trim()
@@ -2637,7 +2745,10 @@ createApp({
                     logLength: 25,
                     dryness: 'lufttrocken',
                     price: 0,
+                    totalPrice: 0,
+                    priceInputMode: 'unit',
                     priceLengths: {},
+                    quantitySplits: {},
                     storageLocationIndex: '',
                     purchaseDate: new Date().toISOString().split('T')[0],
                     notes: ''
@@ -2661,6 +2772,7 @@ createApp({
                 woodType: product.wood_type,
                 logLength: product.log_length,
                 priceLengths: product.price_lengths || {},
+                quantitySplits: product.quantity_splits || {},
                 totalPrice: (qty * price).toFixed(2),
                 priceInputMode: 'unit'
             };
@@ -2682,6 +2794,16 @@ createApp({
                     }
                 }
             });
+            
+            // quantitySplits initialisieren falls leer
+            if (!this.editingProduct.quantitySplits || Object.keys(this.editingProduct.quantitySplits).length === 0) {
+                const primaryLength = String(this.editingProduct.logLength);
+                this.editingProduct.quantitySplits = {};
+                this.editingProduct.quantitySplits[primaryLength] = {
+                    quantity: qty,
+                    unit: this.editingProduct.unit
+                };
+            }
             
             this.showEditProduct = true;
         },
@@ -2716,6 +2838,7 @@ createApp({
                     dryness: this.editingProduct.dryness,
                     price: parseFloat(this.editingProduct.price) || 0,
                     price_lengths: this.editingProduct.priceLengths || {},
+                    quantity_splits: this.editingProduct.quantitySplits || {},
                     storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
                     purchase_date: this.editingProduct.purchaseDate || this.editingProduct.purchase_date || new Date().toISOString().split('T')[0],
                     notes: (this.editingProduct.notes || '').trim()
