@@ -33,6 +33,7 @@ createApp({
             // Inventar-Einstellungen
             inventorySettings: {
                 woodTypes: ['Buche', 'Eiche', 'Birke', 'Fichte', 'Kiefer', 'Esche', 'Ahorn', 'Gemischt'],
+                productTypes: ['Brennholz', 'Anzündholz'],
                 drynessLevels: [
                     { key: 'frisch', label: 'Frisch (< 1 Jahr)' },
                     { key: 'lufttrocken', label: 'Lufttrocken (1-2 Jahre)' },
