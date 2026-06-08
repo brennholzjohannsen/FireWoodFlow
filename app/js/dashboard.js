@@ -1655,7 +1655,11 @@ createApp({
                         priceLengths: product.price_lengths || {},
                         priceUnit: product.price_unit,
                         storageLocationIndex: product.storage_location_index !== undefined ? product.storage_location_index : null,
-                        purchaseDate: product.purchase_date || new Date().toISOString().split('T')[0]
+                        purchaseDate: product.purchase_date || new Date().toISOString().split('T')[0],
+                        // Neue Felder
+                        productType: product.product_type || 'Brennholz',
+                        purchasePrice: product.purchase_price || 0,
+                        priceInputMode: product.price_input_mode || 'unit'
                     }));
                     console.log('✓ Produkte geladen:', this.products.length);
                 }
@@ -2418,7 +2422,11 @@ createApp({
                     price_lengths: this.newProduct.priceLengths || {},
                     storage_location_index: this.newProduct.storageLocationIndex !== undefined ? this.newProduct.storageLocationIndex : null,
                     purchase_date: this.newProduct.purchaseDate || new Date().toISOString().split('T')[0],
-                    notes: (this.newProduct.notes || '').trim()
+                    notes: (this.newProduct.notes || '').trim(),
+                    // Neue Felder
+                    product_type: this.newProduct.productType || 'Brennholz',
+                    purchase_price: parseFloat(this.newProduct.purchasePrice) || 0,
+                    price_input_mode: this.newProduct.priceInputMode || 'unit'
                 };
                 
                 console.log('Erstelle Produkt:', product);
@@ -2526,7 +2534,11 @@ createApp({
                 ...product,
                 woodType: product.wood_type || '',
                 logLength: product.log_length || 25,
-                priceLengths: priceLengths  // ← Bereits vollständig initialisiert
+                priceLengths: priceLengths,  // ← Bereits vollständig initialisiert
+                // Felder aus Datenbank-Schema mappingen
+                productType: product.product_type || 'Brennholz',
+                purchasePrice: product.purchase_price || 0,
+                priceInputMode: product.price_input_mode || 'unit'
             };
             
             this.showEditProduct = true;
@@ -2563,7 +2575,11 @@ createApp({
                     price_lengths: this.editingProduct.priceLengths || {},
                     storage_location_index: this.editingProduct.storageLocationIndex !== undefined ? this.editingProduct.storageLocationIndex : null,
                     purchase_date: this.editingProduct.purchaseDate || this.editingProduct.purchase_date || new Date().toISOString().split('T')[0],
-                    notes: (this.editingProduct.notes || '').trim()
+                    notes: (this.editingProduct.notes || '').trim(),
+                    // Neue Felder
+                    product_type: this.editingProduct.productType || 'Brennholz',
+                    purchase_price: parseFloat(this.editingProduct.purchasePrice) || 0,
+                    price_input_mode: this.editingProduct.priceInputMode || 'unit'
                 };
 
                     // In Supabase speichern wenn User eingeloggt ist
