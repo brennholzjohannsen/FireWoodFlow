@@ -2490,9 +2490,9 @@ createApp({
             // Produkt zum Bearbeiten laden
             this.editingProduct = { 
                 ...product,
-                woodType: product.wood_type,
-                logLength: product.log_length,
-                priceLengths: product.price_lengths || {}
+                woodType: product.wood_type || '',
+                logLength: product.log_length || 25,
+                priceLengths: {}
             };
             
             // Sicherstellen dass inventorySettings vollständig initialisiert ist
@@ -2509,26 +2509,15 @@ createApp({
                     { key: 'ofentrocken', label: 'Ofentrocken' }
                 ];
             }
-            if (!this.inventorySettings.logLengths) {
-                this.inventorySettings.logLengths = [25, 33, 50, 100];
-            }
+            const logLengths = this.inventorySettings.logLengths || [25, 33, 50, 100];
             
             // priceLengths für alle Scheitlängen initialisieren
-            if (!this.editingProduct.priceLengths) {
-                this.editingProduct.priceLengths = {};
-            }
-            this.inventorySettings.logLengths.forEach(length => {
-                if (!this.editingProduct.priceLengths[length]) {
-                    this.editingProduct.priceLengths[length] = { srm: '', rm: '' };
-                } else {
-                    // Ensure both srm and rm exist
-                    if (this.editingProduct.priceLengths[length].srm === undefined) {
-                        this.editingProduct.priceLengths[length].srm = '';
-                    }
-                    if (this.editingProduct.priceLengths[length].rm === undefined) {
-                        this.editingProduct.priceLengths[length].rm = '';
-                    }
-                }
+            logLengths.forEach(length => {
+                const existingPrice = product.price_lengths && product.price_lengths[length];
+                this.editingProduct.priceLengths[length] = {
+                    srm: existingPrice?.srm ?? '',
+                    rm: existingPrice?.rm ?? ''
+                };
             });
             
             this.showEditProduct = true;
