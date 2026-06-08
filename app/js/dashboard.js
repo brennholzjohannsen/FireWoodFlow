@@ -2487,14 +2487,6 @@ createApp({
         },
 
         editProduct(product) {
-            // Produkt zum Bearbeiten laden
-            this.editingProduct = { 
-                ...product,
-                woodType: product.wood_type || '',
-                logLength: product.log_length || 25,
-                priceLengths: {}
-            };
-            
             // Sicherstellen dass inventorySettings vollständig initialisiert ist
             if (!this.inventorySettings.productTypes) {
                 this.inventorySettings.productTypes = ['Brennholz', 'Anzündholz'];
@@ -2511,14 +2503,23 @@ createApp({
             }
             const logLengths = this.inventorySettings.logLengths || [25, 33, 50, 100];
             
-            // priceLengths für alle Scheitlängen initialisieren
+            // priceLengths VORBEREITEN bevor wir editingProduct setzen
+            const priceLengths = {};
             logLengths.forEach(length => {
                 const existingPrice = product.price_lengths && product.price_lengths[length];
-                this.editingProduct.priceLengths[length] = {
+                priceLengths[length] = {
                     srm: existingPrice?.srm ?? '',
                     rm: existingPrice?.rm ?? ''
                 };
             });
+            
+            // Produkt zum Bearbeiten laden - ALLES auf einmal um Vue Reaktivität korrekt zu triggeren
+            this.editingProduct = { 
+                ...product,
+                woodType: product.wood_type || '',
+                logLength: product.log_length || 25,
+                priceLengths: priceLengths  // ← Bereits vollständig initialisiert
+            };
             
             this.showEditProduct = true;
         },
