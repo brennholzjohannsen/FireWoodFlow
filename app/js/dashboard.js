@@ -1088,7 +1088,9 @@ createApp({
                     const { data, error } = await supabaseClient
                         .from('inventory_settings')
                         .select('*')
-                        .single();
+                        .single()
+                        .then(res => res)
+                        .catch(() => ({ data: null, error: { message: 'Tabelle existiert nicht' } })); // Fehler schlucken
                     
                     if (!error && data) {
                         // JSONB Arrays parsen
