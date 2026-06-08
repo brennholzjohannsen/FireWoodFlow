@@ -1082,30 +1082,32 @@ createApp({
         },
 
         async loadInventorySettingsFromSupabase() {
+            // Hinweis: inventory_settings Tabelle ist optional
+            // Wenn nicht vorhanden, wird localStorage verwendet (kein Fehler loggen)
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                    const { data, error } = await supabaseClient
-                        .from('inventory_settings')
-                        .select('*')
-                        .single()
-                        .then(res => res)
-                        .catch(() => ({ data: null, error: { message: 'Tabelle existiert nicht' } })); // Fehler schlucken
-                    
-                    if (!error && data) {
-                        // JSONB Arrays parsen
-                        this.inventorySettings = {
-                            woodTypes: data.wood_types || [],
-                            productTypes: data.product_types || ['Brennholz', 'Anzündholz'],
-                            drynessLevels: data.dryness_levels || [],
-                            logLengths: data.log_lengths || []
-                        };
-                        console.log('✓ Inventar-Einstellungen aus Supabase geladen');
-                        return;
-                    }
+                if (!user) return;
+                
+                const { data, error } = await supabaseClient
+                    .from('inventory_settings')
+                    .select('*')
+                    .single()
+                    .then(res => res)
+                    .catch(() => ({ data: null, error: null })); // Fehler komplett schlucken
+                
+                if (!error && data) {
+                    // JSONB Arrays parsen
+                    this.inventorySettings = {
+                        woodTypes: data.wood_types || [],
+                        productTypes: data.product_types || ['Brennholz', 'Anzündholz'],
+                        drynessLevels: data.dryness_levels || [],
+                        logLengths: data.log_lengths || []
+                    };
+                    console.log('✓ Inventar-Einstellungen aus Supabase geladen');
+                    return;
                 }
             } catch (error) {
-                console.warn('Konnte Inventar-Einstellungen nicht aus Supabase laden:', error.message);
+                // Ignorieren - Fallback auf localStorage
             }
             
             // Fallback: Aus localStorage laden
@@ -1124,46 +1126,56 @@ createApp({
 
         async saveInventorySettings() {
             // In Supabase speichern (wenn verfügbar)
+            // Hinweis: inventory_settings Tabelle ist optional - Fehler werden ignoriert
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                    // Prüfen ob Eintrag existiert
-                    const { data: existing } = await supabaseClient
+                if (!user) return;
+                
+                // Prüfen ob Eintrag existiert
+                const { data: existing, error: checkError } = await supabaseClient
+                    .from('inventory_settings')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .single()
+                    .then(res => ({ data: res.data, error: res.error }))
+                    .catch(() => ({ data: null, error: { message: 'Tabelle nicht vorhanden' } }));
+                
+                // Wenn Tabelle nicht existiert, einfach lokal speichern
+                if (checkError || !existing) {
+                    localStorage.setItem('firewoodflow_inventory_settings', JSON.stringify(this.inventorySettings));
+                    console.log('✓ Inventar-Einstellungen lokal gespeichert');
+                    return;
+                }
+                
+                let error;
+                if (existing) {
+                    // Update
+                    ({ error } = await supabaseClient
                         .from('inventory_settings')
-                        .select('id')
-                        .eq('user_id', user.id)
-                        .single();
-                    
-                    let error;
-                    if (existing) {
-                        // Update
-                        ({ error } = await supabaseClient
-                            .from('inventory_settings')
-                            .update({
-                                wood_types: this.inventorySettings.woodTypes,
-                                dryness_levels: this.inventorySettings.drynessLevels,
-                                log_lengths: this.inventorySettings.logLengths
-                            })
-                            .eq('user_id', user.id));
-                    } else {
-                        // Insert
-                        ({ error } = await supabaseClient
-                            .from('inventory_settings')
-                            .insert({
-                                user_id: user.id,
-                                wood_types: this.inventorySettings.woodTypes,
-                                dryness_levels: this.inventorySettings.drynessLevels,
-                                log_lengths: this.inventorySettings.logLengths
-                            }));
-                    }
-                    
-                    if (!error) {
-                        console.log('✓ Inventar-Einstellungen in Supabase gespeichert');
-                        return;
-                    }
+                        .update({
+                            wood_types: this.inventorySettings.woodTypes,
+                            dryness_levels: this.inventorySettings.drynessLevels,
+                            log_lengths: this.inventorySettings.logLengths
+                        })
+                        .eq('user_id', user.id));
+                } else {
+                    // Insert
+                    ({ error } = await supabaseClient
+                        .from('inventory_settings')
+                        .insert({
+                            user_id: user.id,
+                            wood_types: this.inventorySettings.woodTypes,
+                            dryness_levels: this.inventorySettings.drynessLevels,
+                            log_lengths: this.inventorySettings.logLengths
+                        }));
+                }
+                
+                if (!error) {
+                    console.log('✓ Inventar-Einstellungen in Supabase gespeichert');
+                    return;
                 }
             } catch (error) {
-                console.warn('Konnte Inventar-Einstellungen nicht in Supabase speichern:', error.message);
+                // Ignorieren - Fallback auf localStorage
             }
             
             // Fallback: Nur lokal speichern
