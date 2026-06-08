@@ -2508,9 +2508,12 @@ createApp({
                 this.inventorySettings.logLengths = [25, 33, 50, 100];
             }
             
+            // LOKALE KOPIE von logLengths für die Iteration (vermeidet Vue Reaktivitäts-Probleme)
+            const logLengths = [...this.inventorySettings.logLengths];
+            
             // priceLengths VORBEREITEN bevor wir editingProduct setzen
             const priceLengths = {};
-            (this.inventorySettings.logLengths || []).forEach(length => {
+            logLengths.forEach(length => {
                 const existingPrice = product.price_lengths && product.price_lengths[length];
                 priceLengths[length] = {
                     srm: existingPrice?.srm ?? '',
