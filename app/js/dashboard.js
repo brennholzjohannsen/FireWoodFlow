@@ -2487,7 +2487,10 @@ createApp({
         },
 
         editProduct(product) {
-            // Sicherstellen dass inventorySettings vollständig initialisiert ist
+            // Sicherstellen dass inventorySettings VOLLSTÄNDIG initialisiert ist BEVOR wir editingProduct setzen
+            if (!this.inventorySettings) {
+                this.inventorySettings = {};
+            }
             if (!this.inventorySettings.productTypes) {
                 this.inventorySettings.productTypes = ['Brennholz', 'Anzündholz'];
             }
@@ -2501,11 +2504,13 @@ createApp({
                     { key: 'ofentrocken', label: 'Ofentrocken' }
                 ];
             }
-            const logLengths = this.inventorySettings.logLengths || [25, 33, 50, 100];
+            if (!this.inventorySettings.logLengths || this.inventorySettings.logLengths.length === 0) {
+                this.inventorySettings.logLengths = [25, 33, 50, 100];
+            }
             
             // priceLengths VORBEREITEN bevor wir editingProduct setzen
             const priceLengths = {};
-            logLengths.forEach(length => {
+            (this.inventorySettings.logLengths || []).forEach(length => {
                 const existingPrice = product.price_lengths && product.price_lengths[length];
                 priceLengths[length] = {
                     srm: existingPrice?.srm ?? '',

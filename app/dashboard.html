@@ -1218,8 +1218,8 @@
                         </p>
                     </div>
 
-                    <!-- Preistabelle für Scheitholz -->
-                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct.unit)">
+                    <!-- Preistabelle für Scheitholz (Neu) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct?.unit) && newProduct?.priceLengths">
                         <label>Verkaufspreise nach Scheitlänge</label>
                         <table class="price-table">
                             <thead>
@@ -1230,7 +1230,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="length in inventorySettings.logLengths" :key="length">
+                                <tr v-for="length in (inventorySettings.logLengths || [])" :key="length">
                                     <td>{{ length }} cm</td>
                                     <td>
                                         <input type="number" step="0.01" 
@@ -1406,8 +1406,8 @@
                         </p>
                     </div>
 
-                    <!-- Preistabelle für Scheitholz -->
-                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(editingProduct.unit)">
+                    <!-- Preistabelle für Scheitholz (Bearbeiten) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(editingProduct?.unit) && editingProduct?.priceLengths">
                         <label>Verkaufspreise nach Scheitlänge</label>
                         <table class="price-table">
                             <thead>
@@ -1418,7 +1418,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="length in inventorySettings.logLengths" :key="length">
+                                <tr v-for="length in (inventorySettings.logLengths || [])" :key="length">
                                     <td>{{ length }} cm</td>
                                     <td>
                                         <input type="number" step="0.01" 
