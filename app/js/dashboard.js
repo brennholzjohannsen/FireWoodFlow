@@ -77,7 +77,6 @@ createApp({
             // Customer Details Modal (neu)
             showCustomerDetailsModal: false,
             customerOrdersFilter: 'all',
-            selectedSeasonYear: null,
             
             // Reminder & WhatsApp Settings
             reminderSettings: {
@@ -993,6 +992,11 @@ createApp({
             const now = new Date();
             let startDate = null;
             
+            // Fallback wenn expenses nicht geladen wurden
+            if (!this.expenses || !Array.isArray(this.expenses)) {
+                return categoryMap;
+            }
+            
             switch(this.revenuePeriod) {
                 case 'today':
                     startDate = now.toISOString().split('T')[0];
@@ -1090,6 +1094,7 @@ createApp({
                         // JSONB Arrays parsen
                         this.inventorySettings = {
                             woodTypes: data.wood_types || [],
+                            productTypes: data.product_types || ['Brennholz', 'Anzündholz'],
                             drynessLevels: data.dryness_levels || [],
                             logLengths: data.log_lengths || []
                         };
@@ -1107,6 +1112,7 @@ createApp({
                 const data = JSON.parse(saved);
                 this.inventorySettings = {
                     woodTypes: data.woodTypes || this.inventorySettings.woodTypes,
+                    productTypes: data.productTypes || this.inventorySettings.productTypes,
                     drynessLevels: data.drynessLevels || this.inventorySettings.drynessLevels,
                     logLengths: data.logLengths || this.inventorySettings.logLengths
                 };
@@ -1751,11 +1757,13 @@ createApp({
                 const { data: expensesData, error: expensesError } = await supabaseClient
                     .from('expenses')
                     .select('*')
-                    .order('date DESC');
+                    .order('created_at', { ascending: false })
+                    .then(res => res)
+                    .catch(() => ({ data: null, error: null })); // Fehler schlucken wenn Tabelle nicht existiert
                 
                 if (expensesError) {
                     console.warn('Ausgaben konnten nicht geladen werden:', expensesError.message);
-                } else {
+                } else if (expensesData) {
                     // snake_case zu camelCase konvertieren
                     this.expenses = (expensesData || []).map(expense => ({
                         ...expense,
@@ -1785,6 +1793,7 @@ createApp({
                     if (settingsData.inventory_settings) {
                         this.inventorySettings = {
                             woodTypes: settingsData.inventory_settings.woodTypes || this.inventorySettings.woodTypes,
+                            productTypes: settingsData.inventory_settings.productTypes || this.inventorySettings.productTypes,
                             drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
                             logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
                         };
@@ -2540,6 +2549,24 @@ createApp({
                 logLength: product.log_length,
                 priceLengths: product.price_lengths || {}
             };
+            
+            // Sicherstellen dass inventorySettings vollständig initialisiert ist
+            if (!this.inventorySettings.productTypes) {
+                this.inventorySettings.productTypes = ['Brennholz', 'Anzündholz'];
+            }
+            if (!this.inventorySettings.woodTypes) {
+                this.inventorySettings.woodTypes = ['Buche', 'Eiche', 'Birke', 'Fichte', 'Kiefer', 'Esche', 'Ahorn', 'Gemischt'];
+            }
+            if (!this.inventorySettings.drynessLevels) {
+                this.inventorySettings.drynessLevels = [
+                    { key: 'frisch', label: 'Frisch (< 1 Jahr)' },
+                    { key: 'lufttrocken', label: 'Lufttrocken (1-2 Jahre)' },
+                    { key: 'ofentrocken', label: 'Ofentrocken' }
+                ];
+            }
+            if (!this.inventorySettings.logLengths) {
+                this.inventorySettings.logLengths = [25, 33, 50, 100];
+            }
             
             // priceLengths für alle Scheitlängen initialisieren
             if (!this.editingProduct.priceLengths) {

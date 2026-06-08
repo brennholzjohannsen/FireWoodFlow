@@ -1088,7 +1088,7 @@
                                 <option value="">Bitte wählen...</option>
                                 <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
                             </select>
-                            <p class="field-hint" v-if="inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                            <p class="field-hint" v-if="!inventorySettings.productTypes || inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
                         </div>
                     </div>
 
@@ -1279,7 +1279,7 @@
                                 <option value="">Bitte wählen...</option>
                                 <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
                             </select>
-                            <p class="field-hint" v-if="inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                            <p class="field-hint" v-if="!inventorySettings.productTypes || inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
                         </div>
                     </div>
 
