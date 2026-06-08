@@ -52,12 +52,16 @@ createApp({
             editingProduct: null,
             newProduct: {
                 name: '',
+                productType: 'Brennholz',
                 quantity: 0,
                 unit: 'FM',
                 woodType: '',
                 logLength: 100,
                 dryness: 'frisch',
                 price: 0,
+                totalPrice: 0,
+                priceInputMode: 'unit',
+                quantitySplits: {},
                 priceLengths: {}, // { 25: { srm: 0, rm: 0 }, 33: { srm: 0, rm: 0 }, ... }
                 storageLocationIndex: '',
                 purchaseDate: new Date().toISOString().split('T')[0],
