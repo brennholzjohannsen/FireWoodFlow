@@ -1601,17 +1601,15 @@ createApp({
             }
             this.ordersCount = this.orders.length;
             
-            // Expenses laden
+            // Expenses laden - ABER erst NACHDEM alle Daten von Supabase geladen wurden
+            // Lokale Expenses nur als Fallback wenn Supabase nicht verfügbar ist
             const savedExpenses = localStorage.getItem('firewoodflow_expenses');
             if (savedExpenses) {
                 this.expenses = JSON.parse(savedExpenses);
             }
             
-            // Rückwirkend Wareneinkäufe für bestehende Produkte erstellen
-            await this.createMissingInventoryExpenses();
-            
-            // Bestehtehende Wareneinkäufe mit Lagerorten reparieren
-            await this.repairInventoryExpenseStorageLocations();
+            // Rückwirkend Wareneinkäufe für bestehende Produkte erstellen wird SPÄTER gemacht
+            // nachdem ALLE Daten (inkl. Supabase) geladen wurden - siehe Ende von loadData()
             
             // Heute Bestellungen berechnen (Array mit allen Aufträgen heute)
             const today = new Date().toISOString().split('T')[0];
@@ -1716,7 +1714,9 @@ createApp({
                     // snake_case zu camelCase konvertieren
                     this.expenses = (expensesData || []).map(expense => ({
                         ...expense,
-                        userId: expense.user_id
+                        userId: expense.user_id,
+                        productId: expense.product_id,
+                        isInventoryPurchase: expense.is_inventory_purchase
                     }));
                     console.log('✓ Ausgaben geladen:', this.expenses.length);
                 }
@@ -1745,15 +1745,21 @@ createApp({
                             productTypes: settingsData.inventory_settings.productTypes || this.inventorySettings.productTypes,
                             drynessLevels: settingsData.inventory_settings.drynessLevels || this.inventorySettings.drynessLevels,
                             logLengths: settingsData.inventory_settings.logLengths || this.inventorySettings.logLengths
-                        };
                     }
-                    console.log('✓ Firmeneinstellungen geladen');
                 }
-                
-            } catch (error) {
-                console.error('Fehler beim Laden von Supabase:', error);
+                console.log('✓ Firmeneinstellungen geladen');
             }
-        },
+            
+            // NACHDEM alle Daten von Supabase geladen wurden: Fehlende Wareneinkäufe erstellen
+            await this.createMissingInventoryExpenses();
+            
+            // Bestehtehende Wareneinkäufe mit Lagerorten reparieren
+            await this.repairInventoryExpenseStorageLocations();
+            
+        } catch (error) {
+            console.error('Fehler beim Laden von Supabase:', error);
+        }
+    },
 
         async saveToSupabase(table, data, userId) {
             try {
@@ -4336,9 +4342,10 @@ createApp({
             let createdCount = 0;
             
             for (const product of this.products) {
-                // Prüfen ob bereits eine Wareneinkauf-Ausgabe existiert
+                // Prüfen ob bereits eine Wareneinkauf-Ausgabe existiert (beide Feldnamen prüfen)
                 const existingExpense = this.expenses.find(e => 
-                    e.product_id === product.id && e.is_inventory_purchase === true
+                    (e.product_id === product.id || e.productId === product.id) && 
+                    (e.is_inventory_purchase === true || e.isInventoryPurchase === true)
                 );
                 
                 if (!existingExpense && product.quantity > 0 && product.price > 0) {
