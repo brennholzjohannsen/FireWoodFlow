@@ -1190,10 +1190,27 @@
                                        placeholder="0.00"
                                        style="flex: 1; min-width: 80px;">
                                 <span class="split-unit">{{ newProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(newProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
                             </div>
                         </div>
                         
-                        <!-- Mengen-Warnung entfernt - Funktion existiert nicht -->
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="newProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ newProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Preistabelle für Scheitholz (Neu) -->
@@ -1356,10 +1373,27 @@
                                        placeholder="0.00"
                                        style="flex: 1; min-width: 80px;">
                                 <span class="split-unit">{{ editingProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeEditQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(editingProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
                             </div>
                         </div>
                         
-                        <!-- Mengen-Warnung entfernt - Funktion existiert nicht -->
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addEditQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="editingProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ editingProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Preistabelle für Scheitholz (Bearbeiten) -->

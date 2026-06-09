@@ -140,6 +140,10 @@ createApp({
             editOrderItemUnit: 'RM',
             newOrderItemLogLength: 100,
             editOrderItemLogLength: 100,
+            
+            // Scheitlängen-Aufteilung
+            selectedLogLengthForSplit: '',
+            
             newOrder: {
                 customerId: '',
                 customerName: '',
@@ -1657,7 +1661,8 @@ createApp({
                         // Neue Felder
                         productType: product.product_type || 'Brennholz',
                         purchasePrice: product.purchase_price || 0,
-                        priceInputMode: product.price_input_mode || 'unit'
+                        priceInputMode: product.price_input_mode || 'unit',
+                        quantitySplits: product.quantity_splits || {}
                     }));
                     console.log('✓ Produkte geladen:', this.products.length);
                 }
@@ -2432,7 +2437,8 @@ createApp({
                     // Neue Felder
                     product_type: this.newProduct.productType || 'Brennholz',
                     purchase_price: parseFloat(this.newProduct.purchasePrice) || 0,
-                    price_input_mode: this.newProduct.priceInputMode || 'unit'
+                    price_input_mode: this.newProduct.priceInputMode || 'unit',
+                    quantity_splits: this.newProduct.quantitySplits || {}
                 };
                 
                 console.log('Erstelle Produkt:', product);
@@ -2535,12 +2541,31 @@ createApp({
                 };
             });
             
+            // quantitySplits VORBEREITEN (bereits vorhandene Scheitlängen laden)
+            const quantitySplits = {};
+            if (product.quantity_splits) {
+                // Von Datenbank (snake_case)
+                Object.keys(product.quantity_splits).forEach(length => {
+                    quantitySplits[length] = {
+                        quantity: product.quantity_splits[length].quantity || 0
+                    };
+                });
+            } else if (product.quantitySplits) {
+                // Von localStorage (camelCase)
+                Object.keys(product.quantitySplits).forEach(length => {
+                    quantitySplits[length] = {
+                        quantity: product.quantitySplits[length].quantity || 0
+                    };
+                });
+            }
+            
             // Produkt zum Bearbeiten laden - ALLES auf einmal um Vue Reaktivität korrekt zu triggeren
             this.editingProduct = { 
                 ...product,
                 woodType: product.wood_type || '',
                 logLength: product.log_length || 25,
                 priceLengths: priceLengths,  // ← Bereits vollständig initialisiert
+                quantitySplits: quantitySplits,  // ← Bereits vollständig initialisiert
                 // Felder aus Datenbank-Schema mappingen
                 productType: product.product_type || 'Brennholz',
                 purchasePrice: product.purchase_price || 0,
@@ -2585,7 +2610,8 @@ createApp({
                     // Neue Felder
                     product_type: this.editingProduct.productType || 'Brennholz',
                     purchase_price: parseFloat(this.editingProduct.purchasePrice) || 0,
-                    price_input_mode: this.editingProduct.priceInputMode || 'unit'
+                    price_input_mode: this.editingProduct.priceInputMode || 'unit',
+                    quantity_splits: this.editingProduct.quantitySplits || {}
                 };
 
                     // In Supabase speichern wenn User eingeloggt ist
@@ -2657,6 +2683,49 @@ createApp({
         
         saveProducts() {
             localStorage.setItem('firewoodflow_products', JSON.stringify(this.products));
+        },
+        
+        // Scheitlängen-Aufteilung Methoden (NEU)
+        addQuantitySplit(length) {
+            if (!length || this.newProduct.quantitySplits[length]) return;
+            
+            // Neue Scheitlänge mit 0 Menge hinzufügen
+            this.newProduct.quantitySplits[length] = {
+                quantity: 0
+            };
+            
+            console.log('Scheitlänge hinzugefügt:', length, 'cm');
+        },
+        
+        removeQuantitySplit(length) {
+            if (Object.keys(this.newProduct.quantitySplits).length <= 1) {
+                alert('Mindestens eine Scheitlänge muss vorhanden sein.');
+                return;
+            }
+            
+            delete this.newProduct.quantitySplits[length];
+            console.log('Scheitlänge entfernt:', length, 'cm');
+        },
+        
+        addEditQuantitySplit(length) {
+            if (!length || this.editingProduct.quantitySplits[length]) return;
+            
+            // Neue Scheitlänge mit 0 Menge hinzufügen
+            this.editingProduct.quantitySplits[length] = {
+                quantity: 0
+            };
+            
+            console.log('Scheitlänge hinzugefügt:', length, 'cm');
+        },
+        
+        removeEditQuantitySplit(length) {
+            if (Object.keys(this.editingProduct.quantitySplits).length <= 1) {
+                alert('Mindestens eine Scheitlänge muss vorhanden sein.');
+                return;
+            }
+            
+            delete this.editingProduct.quantitySplits[length];
+            console.log('Scheitlänge entfernt:', length, 'cm');
         },
 
         // Kunden Methoden
