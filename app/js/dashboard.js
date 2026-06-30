@@ -4448,8 +4448,14 @@ createApp({
                 this.saveExpenses();
                 console.log(`✅ ${createdCount} Wareneinkäufe nachträglich erstellt`);
                 
-                // UI aktualisieren
-                alert(`ℹ️ ${createdCount} Wareneinkäufe für bestehende Produkte wurden nachträglich als Ausgaben erfasst.`);
+                // Prüfen ob Meldung schon angezeigt wurde (localStorage Flag)
+                const alreadyShown = localStorage.getItem('firewoodflow_missing_expenses_shown');
+                
+                if (!alreadyShown) {
+                    // Nur einmalig anzeigen
+                    localStorage.setItem('firewoodflow_missing_expenses_shown', 'true');
+                    alert(`ℹ️ ${createdCount} Wareneinkäufe für bestehende Produkte wurden nachträglich als Ausgaben erfasst.`);
+                }
             }
         },
 
