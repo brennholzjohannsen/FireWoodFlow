@@ -1,0 +1,599 @@
+/* Insights Section - Redesign */
+.insights-section {
+    margin-bottom: 32px;
+}
+
+.insights-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.3em;
+    color: var(--primary-color);
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.insight-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0e6d9;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f8f5f0;
+}
+
+.card-icon {
+    font-size: 1.5em;
+}
+
+.card-title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #4a3728;
+}
+
+/* Season Comparison Card */
+.comparison-main {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.revenue-change {
+    display: inline-block;
+    padding: 16px 24px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.revenue-change.positive {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border: 2px solid #81c784;
+}
+
+.revenue-change.negative {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+    border: 2px solid #e57373;
+}
+
+.change-percent {
+    display: block;
+    font-size: 2em;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.positive .change-percent {
+    color: #2e7d32;
+}
+
+.negative .change-percent {
+    color: #c62828;
+}
+
+.change-label {
+    display: block;
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.revenue-details {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95em;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.detail-label {
+    font-size: 0.8em;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.detail-value {
+    font-weight: 700;
+    color: #4a3728;
+}
+
+.detail-arrow {
+    color: #ccc;
+    font-size: 1.2em;
+}
+
+.quantity-breakdown {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0e6d9;
+}
+
+.breakdown-title {
+    font-size: 0.85em;
+    color: #888;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #faf8f5;
+    border-radius: 8px;
+}
+
+.length-badge {
+    font-weight: 700;
+    color: #8b6f47;
+    font-size: 0.9em;
+}
+
+.change-value {
+    font-weight: 700;
+    font-size: 0.95em;
+}
+
+.change-value.up {
+    color: #2e7d32;
+}
+
+.change-value.down {
+    color: #c62828;
+}
+
+/* Prediction Card */
+.prediction-content {
+    margin-bottom: 20px;
+}
+
+.prediction-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.prediction-row:last-child {
+    border-bottom: none;
+}
+
+.prediction-row.highlight {
+    background: linear-gradient(135deg, #fff8f0, #fff3e0);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 12px 0;
+}
+
+.prediction-label {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: 500;
+}
+
+.prediction-value {
+    font-weight: 700;
+    color: #4a3728;
+}
+
+.prediction-value.past {
+    color: #888;
+}
+
+.prediction-value.future {
+    color: var(--primary-color);
+}
+
+.prediction-meta {
+    margin-top: 12px;
+}
+
+.meta-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #f0e6d9;
+    border-radius: 20px;
+    font-size: 0.85em;
+    color: #8b6f47;
+    font-weight: 600;
+}
+
+/* Loyalty Card */
+.loyalty-content {
+    margin-bottom: 20px;
+}
+
+.tier-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tier-badge {
+    padding: 8px 20px;
+    border-radius: 24px;
+    font-weight: 700;
+    font-size: 0.95em;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tier-platin {
+    background: linear-gradient(135deg, #e5e4e2, #a8a8a8);
+    color: #333;
+}
+
+.tier-gold {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #333;
+}
+
+.tier-silber {
+    background: linear-gradient(135deg, #c0c0c0, #888);
+}
+
+.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32, #a0522d);
+}
+
+.tier-standard {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.tier-info {
+    font-size: 0.9em;
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.progress-section {
+    margin-bottom: 16px;
+}
+
+.progress-track {
+    height: 16px;
+    background: #f0e6d9;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6f47, #A68B6C);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+}
+
+.progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 600;
+}
+
+.loyalty-code {
+    background: linear-gradient(135deg, #fff8e1, #ffecb3);
+    border: 2px dashed #ffb74d;
+    padding: 12px 16px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 12px;
+}
+
+.code-label {
+    display: block;
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.code-value {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #f57c00;
+    background: white;
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+
+/* Card Actions */
+.card-actions {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0e6d9;
+}
+
+.btn-action {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.95em;
+}
+
+.btn-whatsapp {
+    background: linear-gradient(135deg, #25D366, #128C7E);
+    color: white;
+}
+
+.btn-whatsapp:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+}
+
+.btn-icon {
+    font-size: 1.1em;
+}
+
+/* Reminder Settings */
+.reminder-settings-section {
+    margin-bottom: 32px;
+    padding: 24px;
+    background: linear-gradient(135deg, #faf8f5, #f5f0e8);
+    border-radius: 16px;
+    border: 2px solid #e8dcc8;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #4a3728;
+}
+
+.toggle-switch-inline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.toggle-checkbox {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.toggle-slider {
+    width: 52px;
+    height: 28px;
+    background: #ccc;
+    border-radius: 14px;
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+.toggle-checkbox:checked + .toggle-slider {
+    background: var(--primary-color);
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-checkbox:checked + .toggle-slider::after {
+    transform: translateX(24px);
+}
+
+.toggle-label-text {
+    font-weight: 600;
+    color: #4a3728;
+    font-size: 0.95em;
+}
+
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.setting-label {
+    font-weight: 600;
+    color: #4a3728;
+    font-size: 0.95em;
+}
+
+.setting-select {
+    padding: 10px 14px;
+    border: 2px solid #e0d4c5;
+    border-radius: 10px;
+    font-size: 0.95em;
+    background: white;
+    cursor: pointer;
+    max-width: 250px;
+    transition: border-color 0.2s ease;
+}
+
+.setting-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.channel-options {
+    display: flex;
+    gap: 12px;
+}
+
+.channel-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border: 2px solid #e0d4c5;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.channel-option.selected {
+    border-color: var(--primary-color);
+    background: #fff8f0;
+}
+
+.channel-option.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.channel-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+}
+
+.channel-icon {
+    font-size: 1.2em;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-test {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    background: linear-gradient(135deg, #25D366, #128C7E);
+    color: white;
+}
+
+.btn-test.secondary {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.btn-test:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .insights-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .insight-card {
+        padding: 20px;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .revenue-details {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .tier-display {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .channel-options {
+        flex-direction: column;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-test {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .breakdown-item {
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+}

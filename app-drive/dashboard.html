@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <title>FireWoodFlow Drive Edition - Dashboard</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="apple-touch-icon" href="../assets/icon-192.png">
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Google Identity Services (für Drive-OAuth) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Drive Sync Layer -->
+    <script src="js/drive-sync.js"></script>
+    
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/customer-insights.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation Bar (Mobile Bottom, Desktop Top) -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <img v-if="companyLogo" :src="companyLogo" alt="Logo" class="brand-logo">
+                <span v-else class="brand-emoji">🔥</span>
+                <span class="brand-name">{{ companyName }}</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="#" 
+                   :class="{ active: currentView === 'dashboard' }" 
+                   @click.prevent="currentView = 'dashboard'">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Übersicht</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'delivery-planning' }" 
+                   @click.prevent="currentView = 'delivery-planning'">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-text">Lieferplanung</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'revenue' }" 
+                   @click.prevent="currentView = 'revenue'">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Umsatz</span>
+                </a>
+                <a href="#" 
+                   :class="{ active: currentView === 'settings' }" 
+                   @click.prevent="currentView = 'settings'">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Einstellungen</span>
+                </a>
+            </div>
+
+            <div class="nav-user">
+                <button @click="handleLogout" class="btn-logout" title="Abmelden">
+                    <span>🚪</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- DASHBOARD VIEW -->
+            <div v-if="currentView === 'dashboard'" class="view-dashboard">
+                <header class="page-header">
+                    <h1>Willkommen zurück!</h1>
+                    <p class="subtitle">Hier ist dein Überblick für heute</p>
+                </header>
+
+                <!-- Quick Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card stat-card-wide next-order-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-info">
+                            <div v-if="todayOrders.length > 0" class="next-order-details">
+                                <div class="next-order-title">
+                                    Aufträge heute ({{ todayOrders.length }})
+                                </div>
+                                <div class="orders-list">
+                                    <div v-for="(order, idx) in todayOrders" :key="idx" class="order-item" @click="viewOrder(order)" style="cursor: pointer;">
+                                        <div class="order-meta">
+                                            <span>{{ formatTime(order.deliveryTime) }}</span>
+                                            <span>•</span>
+                                            <span class="order-customer">{{ order.customerName }}</span>
+                                        </div>
+                                        <div class="order-items">
+                                            <span v-for="(item, itemIdx) in order.items" :key="itemIdx">
+                                                {{ item.quantity }} {{ item.unit }} ({{ item.logLength }}cm)
+                                                <span v-if="order.items.length > 1 && itemIdx < order.items.length - 1">, </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else-if="nextOrder" class="next-order-details">
+                                <div class="next-order-title">Nächster Auftrag</div>
+                                <div class="next-order-meta">
+                                    <span>{{ formatDateGerman(nextOrder.deliveryDate) }}</span>
+                                    <span>•</span>
+                                    <span>{{ formatTime(nextOrder.deliveryTime) }}</span>
+                                </div>
+                                <div class="next-order-items">
+                                    <span v-for="(item, idx) in nextOrder.items" :key="idx">
+                                        {{ item.quantity }} {{ item.unit }} ({{ item.logLength }}cm)
+                                        <span v-if="nextOrder.items.length > 1 && idx < nextOrder.items.length - 1">, </span>
+                                    </span>
+                                </div>
+                                <div class="next-order-customer" @click="viewOrder(nextOrder)" style="cursor: pointer;">{{ nextOrder.customerName }}</div>
+                            </div>
+                            <div v-else class="no-orders">
+                                <div class="no-orders-title">Keine ausstehenden Aufträge</div>
+                                <div class="no-orders-subtitle">Alle Bestellungen erledigt</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <section class="quick-actions">
+                    <h2>Schnellaktionen</h2>
+                    <div class="action-buttons">
+                        <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
+                            <span class="action-icon">📦</span>
+                            <span>Neue Bestellung</span>
+                        </button>
+                        <button @click="showQuickOrderModal = true; loadQuickOrderCustomers()" class="btn-action btn-action-highlight">
+                            <span class="action-icon">⚡</span>
+                            <span>Schnellbestellung</span>
+                        </button>
+                        <button @click="currentView = 'customers'; action = 'add'" class="btn-action">
+                            <span class="action-icon">👤</span>
+                            <span>Neuer Kunde</span>
+                        </button>
+                        <button @click="currentView = 'inventory'; action = 'add'" class="btn-action">
+                            <span class="action-icon">🪵</span>
+                            <span>Neues Produkt</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Quick Navigation -->
+                <section class="quick-nav">
+                    <h2>Bereiche</h2>
+                    <div class="nav-tiles">
+                        <a href="#" @click.prevent="currentView = 'inventory'" class="nav-tile">
+                            <span class="tile-icon">🪵</span>
+                            <span class="tile-label">Inventar</span>
+                        </a>
+                        <a href="#" @click.prevent="currentView = 'customers'" class="nav-tile">
+                            <span class="tile-icon">👥</span>
+                            <span class="tile-label">Kunden</span>
+                        </a>
+                        <a href="#" @click.prevent="currentView = 'orders'" class="nav-tile">
+                            <span class="tile-icon">📦</span>
+                            <span class="tile-label">Bestellungen</span>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Recent Activity -->
+                <section class="recent-activity">
+                    <h2>Letzte Aktivitäten</h2>
+                    <div v-if="recentActivities.length === 0" class="empty-state">
+                        <p>Noch keine Aktivitäten vorhanden.</p>
+                    </div>
+                    <div v-else class="activity-list">
+                        <div v-for="(activity, idx) in recentActivities" :key="idx" class="activity-item">
+                            <div class="activity-icon" :style="{ backgroundColor: activity.color + '20' }">
+                                {{ activity.icon }}
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">{{ activity.title }}</div>
+                                <div class="activity-description">{{ activity.description }}</div>
+                                <div class="activity-date">{{ formatDateGerman(activity.date) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- INVENTORY VIEW -->
+            <div v-if="currentView === 'inventory'" class="view-inventory">
+                <header class="page-header">
+                    <h1>Inventar</h1>
+                    <p class="subtitle">Verwalte deine Holzprodukte</p>
+                </header>
+
+                <!-- Lagerwert Card -->
+                <div class="inventory-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon">💰</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Gesamt EK</div>
+                            <div class="summary-value">{{ formatCurrency(totalValue) }}</div>
+                            <div class="summary-sub">{{ inventoryCount }} Produkte im Lager</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery" 
+                        placeholder="Suchen..." 
+                        class="search-input"
+                    >
+                    <button @click="openAddProductModal" class="btn-add">
+                        <span>➕</span> Neues Produkt
+                    </button>
+                </div>
+
+                <!-- Product List -->
+                <div class="product-list">
+                    <div v-if="filteredProducts.length === 0" class="empty-state">
+                        <p>Noch keine Produkte vorhanden.</p>
+                        <button @click="openAddProductModal" class="btn-add-empty">
+                            Erstes Produkt anlegen
+                        </button>
+                    </div>
+
+                    <div v-for="product in filteredProducts" :key="product.id" class="product-card">
+                        <div class="product-header">
+                            <h3>
+                                <span v-if="product.storageLocationIndex !== null && product.storageLocationIndex !== undefined && storageLocations[product.storageLocationIndex]" class="storage-location-badge">
+                                    {{ storageLocations[product.storageLocationIndex].name || 'Lager ' + (product.storageLocationIndex + 1) }}
+                                </span>
+                                {{ product.name }}
+                            </h3>
+                            <span class="product-stock" :class="{ low: product.quantity < 10 }">
+                                {{ product.quantity.toFixed(1) }} {{ product.unit }}
+                            </span>
+                        </div>
+                        <div class="product-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Holzsorte:</span>
+                                <span class="detail-value">{{ product.woodType }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Scheitlänge:</span>
+                                <span class="detail-value">{{ product.logLength }} cm</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Trocknungsgrad:</span>
+                                <span class="detail-value">{{ product.dryness }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Einkaufspreis:</span>
+                                <span class="detail-value price">{{ formatCurrency(product.price) }} / {{ product.priceUnit || product.unit }}</span>
+                            </div>
+                        </div>
+                        <div class="product-actions">
+                            <button @click="editProduct(product)" class="btn-edit">Bearbeiten</button>
+                            <button @click="deleteProduct(product)" class="btn-delete">Löschen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CUSTOMERS VIEW -->
+            <div v-if="currentView === 'customers'" class="view-customers">
+                <header class="page-header">
+                    <h1>Kunden</h1>
+                    <p class="subtitle">Deine Kundenübersicht</p>
+                </header>
+
+                <div class="toolbar">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery" 
+                        placeholder="Kunde suchen..." 
+                        class="search-input"
+                    >
+                    <button @click="showAddCustomer = true" class="btn-add">
+                        <span>➕</span> Neuer Kunde
+                    </button>
+                </div>
+
+                <!-- Customer List -->
+                <div class="customer-list">
+                    <div v-if="filteredCustomers.length === 0" class="empty-state">
+                        <p>Noch keine Kunden vorhanden.</p>
+                        <button @click="showAddCustomer = true" class="btn-add-empty">
+                            Ersten Kunden anlegen
+                        </button>
+                    </div>
+
+                    <div v-for="customer in filteredCustomers" :key="customer.id" class="customer-card">
+                        <div class="customer-header">
+                            <h3>{{ customer.name }}</h3>
+                            <span class="customer-since">Seit {{ formatDate(customer.createdAt) }}</span>
+                        </div>
+                        <div class="customer-details">
+                            <div class="detail-item">
+                                <span class="detail-label">📍</span>
+                                <span class="detail-value">{{ customer.address || 'Keine Adresse' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📞</span>
+                                <span class="detail-value">{{ customer.phone || 'Kein Telefon' }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">✉️</span>
+                                <span class="detail-value">{{ customer.email || 'Keine E-Mail' }}</span>
+                            </div>
+                            <div v-if="customer.deliveryCosts > 0" class="detail-item delivery-costs-display">
+                                <span class="detail-label">🚚</span>
+                                <span class="detail-value price">{{ formatCurrency(customer.deliveryCosts) }} Lieferkosten</span>
+                            </div>
+                        </div>
+                        <div class="customer-actions">
+                            <button @click="editCustomer(customer)" class="btn-edit">Bearbeiten</button>
+                            <button @click="showDeliveryCost(customer)" class="btn-action-cost">🚚 Kosten</button>
+                            <button @click="showCustomerDetails(customer)" class="btn-action-details">📊 Details</button>
+                            <button @click="deleteCustomer(customer)" class="btn-delete">Löschen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- ORDERS VIEW -->
+        <div v-if="currentView === 'orders'" class="view-orders">
+            <header class="page-header">
+                <h1>Bestellungen</h1>
+                <p class="subtitle">Verwalte deine Aufträge</p>
+            </header>
+
+            <div class="toolbar">
+                <select v-model="orderStatusFilter" class="filter-select">
+                    <option value="alle">Alle Status</option>
+                    <option value="neu">🆕 Neu</option>
+                    <option value="bestaetigt">✓ Bestätigt</option>
+                    <option value="in_lieferung">🚚 In Lieferung</option>
+                    <option value="abgeschlossen">✅ Abgeschlossen</option>
+                    <option value="storniert">❌ Storniert</option>
+                </select>
+                <button @click="showAddOrder = true; calculateOrderTotals()" class="btn-add">
+                    <span>➕</span> Neue Bestellung
+                </button>
+            </div>
+
+            <!-- Order List -->
+            <div class="order-list">
+                <div v-if="filteredOrders.length === 0" class="empty-state">
+                    <p>Noch keine Bestellungen vorhanden.</p>
+                    <button @click="showAddOrder = true" class="btn-add-empty">
+                        Erste Bestellung anlegen
+                    </button>
+                </div>
+
+                <div v-for="order in filteredOrders" :key="order.id" class="order-card">
+                    <div class="order-header">
+                        <div class="order-number-date">
+                            <h3>{{ order.orderNumber }}</h3>
+                            <span class="order-date">{{ formatDate(order.createdAt) }}</span>
+                        </div>
+                        <span class="order-status status-{{ order.status }}">
+                            {{ getStatusLabel(order.status) }}
+                        </span>
+                    </div>
+                    
+                    <div class="order-customer">
+                        <strong>👤 {{ order.customerName }}</strong>
+                        <p>📍 {{ order.deliveryAddress }}</p>
+                    </div>
+
+                    <div class="order-items">
+                        <div v-for="item in order.items" :key="item.productId" class="order-item">
+                            <span class="item-quantity">{{ item.quantity }} {{ item.unit }}</span>
+                            <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
+                            <span class="item-price">{{ formatCurrency(item.total) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-totals">
+                        <div class="total-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(order.subtotal) }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(order.deliveryCosts) }}</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Gesamt:</span>
+                            <span>{{ formatCurrency(order.total) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-footer">
+                        <div class="order-payment">
+                            <span>💳 {{ getPaymentMethodLabel(order.paymentMethod) }} • {{ getPaymentStatusLabel(order.paymentStatus) }}</span>
+                        </div>
+                        <div class="order-delivery">
+                            <span>📅 {{ formatDeliveryDate(order.deliveryDate, order.deliveryTime) }}</span>
+                        </div>
+                    </div>
+
+                    <button @click="openOrderInMaps(order)" class="btn-maps" v-if="order.deliveryAddress && order.deliveryAddress.trim()">
+                        🗺️ Route mit Google Maps
+                    </button>
+
+                    <button @click="sendWhatsAppConfirmation(order)" class="btn-whatsapp" v-if="getCustomerPhone(order)">
+                        📱 WhatsApp Bestätigung
+                    </button>
+
+                    <div class="order-actions">
+                        <button @click="editOrder(order)" class="btn-edit">Bearbeiten</button>
+                        <select @change="updateOrderStatus(order, $event.target.value)" class="status-select">
+                            <option value="">Status ändern...</option>
+                            <option value="neu">🆕 Neu</option>
+                            <option value="bestaetigt">✓ Bestätigt</option>
+                            <option value="in_lieferung">🚚 In Lieferung</option>
+                            <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            <option value="storniert">❌ Storniert</option>
+                        </select>
+                        <button @click="deleteOrder(order)" class="btn-delete">Löschen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY PLANNING VIEW -->
+        <div v-if="currentView === 'delivery-planning'" class="view-delivery-planning">
+            <header class="page-header">
+                <h1>🗺️ Lieferplanung</h1>
+                <p class="subtitle">Plane und optimiere deine Liefertouren</p>
+            </header>
+
+            <!-- Week Selector -->
+            <div class="planning-controls">
+                <button @click="previousWeek" class="btn-nav-week">← Vorherige Woche</button>
+                <div class="week-display">
+                    <span>{{ formatWeekStart(currentWeekStart) }} - {{ formatWeekEnd(currentWeekStart) }}</span>
+                </div>
+                <button @click="nextWeek" class="btn-nav-week">Nächste Woche →</button>
+                <button @click="goToCurrentWeek" class="btn-nav-week btn-today">Diese Woche</button>
+            </div>
+
+            <!-- Week Overview Cards -->
+            <div class="week-overview-grid">
+                <div 
+                    v-for="(day, index) in weekDays" 
+                    :key="index" 
+                    :class="['day-card', { 'is-today': isToday(day.date), 'has-orders': day.orderCount > 0 }]"
+                    @click="selectDay(day.date)"
+                >
+                    <div class="day-header">
+                        <span class="day-name">{{ day.dayName }}</span>
+                        <span class="day-date">{{ day.dayNumber }}</span>
+                    </div>
+                    <div class="day-stats">
+                        <span class="order-count">{{ day.orderCount }} Lieferungen</span>
+                        <span class="total-distance" v-if="day.totalDistance">• {{ day.totalDistance.toFixed(1) }} km</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Day Details -->
+            <div v-if="selectedDayOrders.length > 0" class="day-details-section">
+                <div class="day-details-header">
+                    <h2>📦 Lieferungen am {{ formatFullDate(selectedDay) }}</h2>
+                    <div class="day-actions">
+                        <button @click="optimizeRoute" class="btn-optimize">
+                            🗺️ Route optimieren
+                        </button>
+                        <button @click="printDeliveryList" class="btn-print">
+                            🖨️ Liste drucken
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Delivery Stats -->
+                <div class="delivery-stats-bar">
+                    <div class="stat-item">
+                        <span class="stat-label">Lieferungen</span>
+                        <span class="stat-value">{{ selectedDayOrders.length }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Gesamt-Strecke</span>
+                        <span class="stat-value">{{ calculateTotalDistance().toFixed(1) }} km</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Fahrzeit (ca.)</span>
+                        <span class="stat-value">{{ calculateTotalDriveTime() }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Erster Start</span>
+                        <span class="stat-value">{{ earliestDeliveryTime() }}</span>
+                    </div>
+                </div>
+
+                <!-- Deliveries List -->
+                <div class="deliveries-list">
+                    <div 
+                        v-for="(order, idx) in selectedDayOrders" 
+                        :key="order.id" 
+                        class="delivery-item"
+                        :class="{ 'optimized': order.optimizedPosition }"
+                    >
+                        <div class="delivery-position" v-if="order.optimizedPosition">
+                            #{{ order.optimizedPosition }}
+                        </div>
+                        <div class="delivery-content">
+                            <div class="delivery-header">
+                                <span class="delivery-time">{{ formatTime(order.deliveryTime) }}</span>
+                                <span class="delivery-customer">{{ order.customerName }}</span>
+                                <span class="delivery-status" :class="'status-' + order.status">{{ getStatusLabel(order.status) }}</span>
+                            </div>
+                            <div class="delivery-address">
+                                📍 {{ order.deliveryAddress }}
+                            </div>
+                            <div class="delivery-items">
+                                <span v-for="(item, i) in order.items" :key="i">
+                                    {{ item.quantity }} {{ item.unit }} {{ item.productName }} ({{ item.logLength }}cm)
+                                    <span v-if="i < order.items.length - 1">, </span>
+                                </span>
+                            </div>
+                            <div class="delivery-footer">
+                                <span class="delivery-total">💶 {{ formatCurrency(order.total) }}</span>
+                                <div class="delivery-actions">
+                                    <a :href="getGoogleMapsLink(order.deliveryAddress)" target="_blank" class="btn-maps-small">
+                                        🗺️ Navigation
+                                    </a>
+                                    <button @click="callCustomer(order)" class="btn-call-small" v-if="order.customerPhone">
+                                        📞 Anrufen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Orders Message -->
+            <div v-else class="no-day-orders">
+                <div class="empty-state">
+                    <span class="empty-icon">📅</span>
+                    <h3>Keine Lieferungen an diesem Tag</h3>
+                    <p>Wähle einen anderen Tag oder erfasse neue Bestellungen.</p>
+                    <button @click="currentView = 'orders'; showAddOrder = true" class="btn-action">
+                        ➕ Neue Bestellung
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- REVENUE DASHBOARD VIEW -->
+        <div v-if="currentView === 'revenue'" class="view-revenue">
+            <header class="page-header">
+                <h1>💰 Umsatz & Finanzen</h1>
+                <p class="subtitle">Dein finanzieller Überblick</p>
+            </header>
+
+            <!-- Time Period Selector -->
+            <div class="period-selector">
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'today' }]" 
+                    @click="revenuePeriod = 'today'">
+                    Heute
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'week' }]" 
+                    @click="revenuePeriod = 'week'">
+                    Diese Woche
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'month' }]" 
+                    @click="revenuePeriod = 'month'">
+                    Dieser Monat
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'year' }]" 
+                    @click="revenuePeriod = 'year'">
+                    Dieses Jahr
+                </button>
+                <button 
+                    :class="['period-btn', { active: revenuePeriod === 'all' }]" 
+                    @click="revenuePeriod = 'all'">
+                    Gesamt
+                </button>
+            </div>
+
+            <!-- Storage Location Tabs (neu) -->
+            <div class="storage-location-tabs" v-if="storageLocations.length > 0">
+                <button 
+                    :class="['location-tab', { active: selectedStorageLocation === null }]" 
+                    @click="selectedStorageLocation = null">
+                    📊 Alle Lager
+                </button>
+                <button 
+                    v-for="(loc, index) in storageLocations" 
+                    :key="index"
+                    :class="['location-tab', { active: selectedStorageLocation === index }]" 
+                    @click="selectedStorageLocation = index">
+                    🪵 {{ loc.name || 'Lager ' + (index + 1) }}
+                </button>
+            </div>
+
+            <!-- Revenue Stats Cards -->
+            <div class="revenue-stats-grid">
+                <div class="revenue-stat-card primary">
+                    <div class="stat-icon">💶</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Umsatz</div>
+                        <div class="stat-value">{{ formatCurrency(periodRevenue) }}</div>
+                        <div class="stat-sub">{{ periodOrderCount }} Bestellungen</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card expense">
+                    <div class="stat-icon">💸</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Ausgaben</div>
+                        <div class="stat-value">{{ formatCurrency(periodExpenses) }}</div>
+                        <div class="stat-sub">{{ periodExpenseCount }} Ausgaben</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card inventory-cost">
+                    <div class="stat-icon">🪵</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Wareneinsatz</div>
+                        <div class="stat-value">{{ formatCurrency(periodInventoryCost) }}</div>
+                        <div class="stat-sub">{{ periodInventoryCostCount }} Produkte verkauft</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card profit" :class="{ 'is-negative': periodProfit < 0 }">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Gewinn</div>
+                        <div class="stat-value">{{ formatCurrency(periodProfit) }}</div>
+                        <div class="stat-sub">{{ profitMargin > 0 ? '+' : '' }}{{ profitMargin.toFixed(1) }}% Marge</div>
+                    </div>
+                </div>
+
+                <div class="revenue-stat-card">
+                    <div class="stat-icon">🛒</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Ø Bestellwert</div>
+                        <div class="stat-value">{{ formatCurrency(avgOrderValue) }}</div>
+                        <div class="stat-sub">Pro Bestellung</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Chart (Simple Bar Chart) -->
+            <div class="chart-section">
+                <h3>📈 Umsatzverlauf</h3>
+                <div class="revenue-chart">
+                    <div class="chart-bars">
+                        <div 
+                            v-for="(day, idx) in revenueChartData" 
+                            :key="idx" 
+                            class="chart-bar-container"
+                        >
+                            <div 
+                                class="chart-bar" 
+                                :style="{ height: day.height + '%' }"
+                                :title="day.label + ': ' + formatCurrency(day.value)"
+                            ></div>
+                            <div class="chart-label">{{ day.label }}</div>
+                            <div class="chart-value">{{ formatCurrency(day.value) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Customers & Products -->
+            <div class="top-section-grid">
+                <!-- Top Customers -->
+                <div class="top-section-card">
+                    <h3>🏆 Top Kunden</h3>
+                    <div class="top-list">
+                        <div 
+                            v-for="(customer, idx) in topCustomers" 
+                            :key="idx" 
+                            class="top-item"
+                        >
+                            <div class="top-rank">#{{ idx + 1 }}</div>
+                            <div class="top-content">
+                                <div class="top-name">{{ customer.name }}</div>
+                                <div class="top-detail">{{ customer.orderCount }} Bestellungen</div>
+                            </div>
+                            <div class="top-value">{{ formatCurrency(customer.total) }}</div>
+                        </div>
+                        <div v-if="topCustomers.length === 0" class="empty-list">
+                            Keine Bestellungen in diesem Zeitraum
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Products -->
+                <div class="top-section-card">
+                    <h3>🪵 Top Produkte</h3>
+                    <div class="top-list">
+                        <div 
+                            v-for="(product, idx) in topProducts" 
+                            :key="idx" 
+                            class="top-item"
+                        >
+                            <div class="top-rank">#{{ idx + 1 }}</div>
+                            <div class="top-content">
+                                <div class="top-name">{{ product.name }}</div>
+                                <div class="top-detail">{{ product.quantitySold }} {{ product.unit }} verkauft</div>
+                            </div>
+                            <div class="top-value">{{ formatCurrency(product.revenue) }}</div>
+                        </div>
+                        <div v-if="topProducts.length === 0" class="empty-list">
+                            Keine Verkäufe in diesem Zeitraum
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses Section -->
+            <div class="expenses-section">
+                <div class="section-header">
+                    <h3>💸 Ausgaben</h3>
+                    <button @click="showAddExpense = true" class="btn-add-expense">
+                        ➕ Neue Ausgabe
+                    </button>
+                </div>
+
+                <!-- Expense Categories Summary -->
+                <div class="expense-categories-summary">
+                    <div 
+                        v-for="(cat, key) in expensesByCategory" 
+                        :key="key" 
+                        class="expense-category-chip"
+                    >
+                        <span class="category-icon">{{ getCategoryIcon(key) }}</span>
+                        <span class="category-name">{{ getCategoryName(key) }}</span>
+                        <span class="category-amount">{{ formatCurrency(cat.total) }}</span>
+                    </div>
+                </div>
+
+                <!-- Recent Expenses List -->
+                <div class="expenses-list">
+                    <div 
+                        v-for="expense in recentExpenses" 
+                        :key="expense.id" 
+                        class="expense-item"
+                    >
+                        <div class="expense-icon">{{ getCategoryIcon(expense.category) }}</div>
+                        <div class="expense-content">
+                            <div class="expense-description">{{ expense.description }}</div>
+                            <div class="expense-meta">
+                                <span class="expense-category">{{ getCategoryName(expense.category) }}</span>
+                                <span class="expense-date">{{ formatDate(expense.date) }}</span>
+                            </div>
+                        </div>
+                        <div class="expense-amount">-{{ formatCurrency(expense.amount) }}</div>
+                        <button @click="deleteExpense(expense)" class="btn-delete-expense" title="Löschen">✕</button>
+                    </div>
+                    <div v-if="recentExpenses.length === 0" class="empty-list">
+                        Noch keine Ausgaben erfasst
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Expense Modal -->
+        <div v-if="showAddExpense" class="modal-overlay" @click.self="showAddExpense = false">
+            <div class="modal-content modal-medium">
+                <div class="modal-header">
+                    <h2>💸 Neue Ausgabe erfassen</h2>
+                    <button @click="showAddExpense = false" class="btn-close-modal">✕</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="expenseAmount">Betrag (€)</label>
+                        <input 
+                            type="number" 
+                            id="expenseAmount" 
+                            v-model="newExpense.amount" 
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            class="form-input-large"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseCategory">Kategorie</label>
+                        <select id="expenseCategory" v-model="newExpense.category" class="form-input">
+                            <option value="fuel">⛽ Sprit / Diesel</option>
+                            <option value="maintenance">🔧 Wartung / Reparatur</option>
+                            <option value="insurance">📋 Versicherung</option>
+                            <option value="material">🪵 Material / Einkauf</option>
+                            <option value="tools">🔨 Werkzeuge</option>
+                            <option value="office">📁 Büro / Verwaltung</option>
+                            <option value="other">📦 Sonstiges</option>
+                        </select>
+                    </div>
+
+                    <!-- Lagerplatz-Zuordnung (neu) -->
+                    <div class="form-group" v-if="storageLocations.length > 0">
+                        <label for="expenseStorageLocation">🪵 Lagerplatz zuordnen</label>
+                        <select id="expenseStorageLocation" v-model="newExpense.storageLocationIndex" class="form-input">
+                            <option value="">Allgemein / Alle Lager</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">
+                                {{ loc.name || 'Lager ' + (index + 1) }}
+                            </option>
+                        </select>
+                        <p class="field-hint">Welchem Lagerplatz wird diese Ausgabe zugeordnet? Allgemein = alle Lager.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDescription">Beschreibung</label>
+                        <input 
+                            type="text" 
+                            id="expenseDescription" 
+                            v-model="newExpense.description" 
+                            placeholder="z.B. Diesel getankt, Säge gekauft..."
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDate">Datum</label>
+                        <input 
+                            type="date" 
+                            id="expenseDate" 
+                            v-model="newExpense.date" 
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseNotes">Notizen (optional)</label>
+                        <textarea 
+                            id="expenseNotes" 
+                            v-model="newExpense.notes" 
+                            rows="3"
+                            placeholder="Weitere Details..."
+                            class="form-input"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button @click="showAddExpense = false" class="btn-secondary">Abbrechen</button>
+                    <button @click="addExpense" class="btn-primary">Ausgabe speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div v-if="currentView === 'settings'" class="view-settings">
+            <header class="page-header">
+                <h1>Einstellungen</h1>
+                <p class="subtitle">Passe die App an deine Bedürfnisse an</p>
+            </header>
+
+            <section class="settings-section">
+                <h2>Firma</h2>
+                <div class="form-group">
+                    <label for="companyName">Firmenname</label>
+                    <input 
+                        type="text" 
+                        id="companyName" 
+                        v-model="companyName" 
+                        @change="saveCompanySettings"
+                        placeholder="Dein Firmenname"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label>Firmenlogo</label>
+                    
+                    <!-- Aktuelle Logo-Vorschau -->
+                    <div v-if="companyLogo" class="logo-preview">
+                        <img :src="companyLogo" alt="Firmenlogo">
+                        <button @click="removeLogo" class="btn-remove-logo" title="Logo entfernen">
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <!-- Upload-Bereich -->
+                    <div class="logo-upload-area">
+                        <input 
+                            type="file" 
+                            id="logoUpload" 
+                            accept="image/*"
+                            @change="handleLogoUpload"
+                            ref="logoInput"
+                            style="display: none;"
+                        >
+                        <label for="logoUpload" class="btn-upload-logo">
+                            <span class="upload-icon">📷</span>
+                            <span>{{ companyLogo ? 'Logo ändern' : 'Logo hochladen' }}</span>
+                        </label>
+                        <p class="upload-hint">Unterstützt: JPG, PNG, GIF (max. 2MB)</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="companyAddress">Firmenadresse</label>
+                    <textarea 
+                        id="companyAddress" 
+                        v-model="companyAddress" 
+                        @change="saveCompanySettings"
+                        rows="3"
+                        placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Oder GPS-Koordinaten (z.B. 49.006930, 8.58789)"
+                    ></textarea>
+                    <button type="button" @click="previewLocation('companyAddress', 'companyMapPreview')" class="btn-map-preview">🗺️ Vorschau anzeigen</button>
+                    <div id="companyMapPreview" class="map-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Holzlagerplätze verwalten</label>
+                    <div class="tag-list">
+                        <span v-for="(loc, index) in storageLocations" :key="index" class="tag storage-location-tag">
+                            <span class="tag-text">{{ loc.name || 'Lager ' + (index + 1) }}</span>
+                            <span class="tag-address" v-if="loc.address">{{ loc.address }}</span>
+                            <button @click="editStorageLocation(index)" class="btn-edit-tag" title="Bearbeiten">✎</button>
+                            <button @click="previewStorageLocation(loc.address)" class="btn-map-preview-tag" title="Karte anzeigen" v-if="loc.address">🗺️</button>
+                            <button @click="removeStorageLocation(index)" class="btn-remove-tag">×</button>
+                        </span>
+                    </div>
+                    <button @click="addStorageLocation()" class="btn-add-tag">+ Lagerplatz hinzufügen</button>
+                    <p class="field-hint">📍 Mehrere Lagerplätze verwalten. Für Lieferung wird standardmäßig der erste Platz verwendet.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="costPerKm">Fahrtkosten pro km (einfach)</label>
+                    <div class="input-with-prefix">
+                        <span class="currency-prefix">€</span>
+                        <input 
+                            type="number" 
+                            id="costPerKm" 
+                            v-model.number="costPerKm" 
+                            @change="saveCompanySettings"
+                            step="0.01"
+                            min="0"
+                            placeholder="1.50"
+                        >
+                    </div>
+                    <p class="field-hint">Wird für die Berechnung der Lieferkosten verwendet</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="roundingMode">Lieferkosten aufrunden</label>
+                    <select 
+                        id="roundingMode" 
+                        v-model="roundingMode" 
+                        @change="saveCompanySettings"
+                        class="select-input"
+                    >
+                        <option value="exact">Exakter Preis (nicht runden)</option>
+                        <option value="10cent">Auf nächste 10 Cent (€0.10)</option>
+                        <option value="50cent">Auf nächste 50 Cent (€0.50)</option>
+                        <option value="1euro">Auf ganzen Euro (€1.00)</option>
+                    </select>
+                    <p class="field-hint">Beispiel: €22.93 → €22.90 / €23.00 / €23.00</p>
+                </div>
+
+                <div class="form-group">
+                    <label>WhatsApp Bestätigungstext</label>
+                    <textarea 
+                        v-model="whatsappConfirmationTemplate" 
+                        rows="6" 
+                        placeholder="Nachrichtenvorlage für WhatsApp-Bestätigungen..."
+                        class="whatsapp-template-input"
+                    ></textarea>
+                    <p class="field-hint">
+                        Verfügbare Platzhalter:<br>
+                        <code>{customer_name}</code> – Kundenname<br>
+                        <code>{items}</code> – Bestellpositionen (je eine Zeile)<br>
+                        <code>{total}</code> – Gesamtsumme inkl. Lieferkosten<br>
+                        <code>{delivery_costs}</code> – Lieferkosten<br>
+                        <code>{delivery_date}</code> – Lieferdatum<br>
+                        <code>{delivery_time}</code> – Lieferzeit<br>
+                        <code>{delivery_address}</code> – Lieferadresse
+                    </p>
+                    <button type="button" @click="testWhatsAppTemplate" class="btn-test-whatsapp-template">
+                        📱 Vorlage testen (öffnet WhatsApp mit Beispiel)
+                    </button>
+                </div>
+            </section>
+
+                <section class="settings-section">
+                    <h2>☁️ Google Drive Sync</h2>
+                    <div class="user-info" style="margin-bottom: 12px;">
+                        <p v-if="driveConnected">
+                            ✅ Verbunden mit <strong>{{ driveEmail }}</strong>
+                        </p>
+                        <p v-else-if="driveConfigured">
+                            ⚠️ Client-ID eingerichtet, aber noch nicht verbunden
+                        </p>
+                        <p v-else>
+                            ❌ Noch nicht eingerichtet
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="driveClientId">Google OAuth Client-ID</label>
+                        <input
+                            type="text"
+                            id="driveClientId"
+                            v-model="driveClientIdInput"
+                            placeholder="xxxx.apps.googleusercontent.com"
+                        >
+                        <p class="field-hint">
+                            Einmalig in der <a href="../docs/DRIVE_SETUP.md" target="_blank">Google Cloud Console</a> erstellen (siehe docs/DRIVE_SETUP.md).
+                            Die App darf dann NUR ihre eigene Datendatei in deinem Drive sehen/bearbeiten (Scope drive.file).
+                        </p>
+                    </div>
+
+                    <div class="danger-actions" style="flex-wrap: wrap; gap: 8px;">
+                        <button @click="saveDriveClientId" class="btn-secondary">Client-ID speichern</button>
+                        <button v-if="!driveConnected && driveConfigured" @click="connectDrive" class="btn-primary">
+                            🔗 Mit Google Drive verbinden
+                        </button>
+                        <button v-if="driveConnected" @click="syncDriveNow" class="btn-primary">
+                            🔄 Jetzt synchronisieren
+                        </button>
+                        <button v-if="driveConnected" @click="disconnectDrive" class="btn-danger">
+                            Verbindung trennen
+                        </button>
+                    </div>
+                    <p v-if="driveStatusMessage" class="field-hint" style="margin-top: 8px; font-weight: 600;">
+                        {{ driveStatusMessage }}
+                    </p>
+                    <p class="field-hint" style="margin-top: 8px;">
+                        ℹ️ Deine Daten liegen auf diesem Gerät. Änderungen werden automatisch (ca. 3 Sekunden nach der letzten Änderung) in den Ordner „FireWoodFlow" in deinem Google Drive geschrieben. Beim App-Start wird geprüft, ob die Cloud neuere Daten hat — dann werden sie geladen. Vor dem Überschreiben lokaler Daten wird automatisch ein Backup angelegt.
+                    </p>
+                </section>
+
+                <section class="settings-section">
+                    <h2>Gerät</h2>
+                    <div class="user-info">
+                        <p><strong>Drive Edition</strong> — Daten liegen lokal auf diesem Gerät, Sync über Google Drive. Keine Anmeldung nötig.</p>
+                    </div>
+                </section>
+
+                <section class="settings-section">
+                    <h2>Inventar</h2>
+                    
+                    <div class="form-group">
+                        <label>Holzsorten verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="wood in inventorySettings.woodTypes" :key="wood" class="tag">
+                                {{ wood }}
+                                <button @click="removeWoodType(wood)" class="btn-remove-tag">×</button>
+                            </span>
+                        </div>
+                        <button @click="addWoodType()" class="btn-add-tag">+ Holzsorte hinzufügen</button>
+                        <p class="field-hint">Alle aufgelisteten Holzsorten können bei neuen Produkten ausgewählt werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Produktarten verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="type in inventorySettings.productTypes" :key="type" class="tag">
+                                {{ type }}
+                                <button @click="removeProductType(type)" class="btn-remove-tag">×</button>
+                            </span>
+                        </div>
+                        <button @click="addProductType()" class="btn-add-tag">+ Produktart hinzufügen</button>
+                        <p class="field-hint">Diese Produktarten können bei neuen Produkten ausgewählt werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Trocknungsgrade verwalten</label>
+                        <div class="tag-list">
+                            <span v-for="level in inventorySettings.drynessLevels" :key="level.key" class="tag">
+                                {{ level.label }}
+                                <button @click="editDrynessLevel(level.key)" class="btn-edit-tag" title="Bearbeiten">✎</button>
+                                <button @click="removeDrynessLevel(level.key)" class="btn-remove-tag">×</button>
+                            </span>
+                        </div>
+                        <button @click="addDrynessLevel()" class="btn-add-tag">+ Trocknungsgrad hinzufügen</button>
+                        <p class="field-hint">Trocknungsgrade können bearbeitet und entfernt werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Scheitlängen (cm)</label>
+                        <div class="tag-list">
+                            <span v-for="length in inventorySettings.logLengths" :key="length" class="tag">
+                                {{ length }} cm
+                                <button @click="removeLogLength(length)" class="btn-remove-tag">×</button>
+                            </span>
+                        </div>
+                        <button @click="addLogLength()" class="btn-add-tag">+ Scheitlänge hinzufügen</button>
+                        <p class="field-hint">Diese Längen können bei neuen Produkten ausgewählt werden</p>
+                    </div>
+                </section>
+
+                <section class="settings-section danger-zone">
+                    <h2>Gefahrenzone</h2>
+                    <div class="danger-actions">
+                        <button @click="handleResetApp" class="btn-danger btn-reset">
+                            ⚠️ App auf Werkseinstellungen zurücksetzen
+                        </button>
+                    </div>
+                    <p class="field-hint danger-hint">
+                        Beim Zurücksetzen werden ALLE lokalen Daten gelöscht (Produkte, Kunden, Bestellungen). 
+                        Firmeneinstellungen bleiben erhalten. Diese Aktion kann nicht rückgängig gemacht werden!
+                    </p>
+                </section>
+            </div>
+
+        </main>
+
+        <!-- Add Product Modal -->
+        <div class="modal-overlay" v-if="showAddProduct" @click="showAddProduct = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddProduct = false">&times;</button>
+                <h2>Neues Produkt</h2>
+                
+                <form @submit.prevent="addProduct">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Produktname</label>
+                            <input type="text" v-model="newProduct.name" required placeholder="z.B. Buche Premium">
+                        </div>
+                        <div class="form-group">
+                            <label>Produktart</label>
+                            <select v-model="newProduct.productType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
+                            </select>
+                            <p class="field-hint" v-if="!inventorySettings.productTypes || inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Menge</label>
+                            <div class="input-group-inline">
+                                <input type="number" step="0.01" v-model.number="newProduct.quantity" required placeholder="Menge eingeben" style="flex: 1; min-width: 80px;">
+                                <select v-model="newProduct.unit" required class="unit-select">
+                                    <option value="">Einheit</option>
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                    <option value="kg">kg</option>
+                                    <option value="Sack">Sack</option>
+                                    <option value="Stück">Stück</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Holzsorte</label>
+                            <select v-model="newProduct.woodType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="wood in getActiveWoodTypes()" :key="wood" :value="wood">{{ wood }}</option>
+                            </select>
+                            <p class="field-hint" v-if="getActiveWoodTypes().length === 0">⚠️ Keine Holzsorten aktiviert - bitte in den Einstellungen aktivieren</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Scheitlänge (cm)</label>
+                            <select v-model.number="newProduct.logLength" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="length in inventorySettings.logLengths" :key="length" :value="length">{{ length }} cm</option>
+                            </select>
+                            <p class="field-hint" v-if="inventorySettings.logLengths.length === 0">⚠️ Keine Scheitlängen konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trocknungsgrad</label>
+                            <select v-model="newProduct.dryness" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="level in getActiveDrynessLevels()" :key="level.key" :value="level.key">{{ level.label }}</option>
+                            </select>
+                            <p class="field-hint" v-if="getActiveDrynessLevels().length === 0">⚠️ Keine Trocknungsgrade aktiviert - bitte in den Einstellungen aktivieren</p>
+                        </div>
+                    <div class="form-group">
+                        <label>Einkaufspreis</label>
+                            <div class="price-input-mode-selector">
+                                <label class="radio-label">
+                                    <input type="radio" v-model="newProduct.priceInputMode" value="unit">
+                                    <span>Preis pro {{ newProduct.unit || 'Einheit' }}</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" v-model="newProduct.priceInputMode" value="total">
+                                    <span>Gesamtpreis</span>
+                                </label>
+                            </div>
+                            <div v-if="newProduct.priceInputMode === 'unit'" class="input-group-inline" style="margin-top: 8px;">
+                                <input type="number" step="0.01" v-model.number="newProduct.price" required placeholder="0.00" style="flex: 1;">
+                                <span style="white-space: nowrap; margin-left: 8px;">€ / {{ newProduct.unit || 'Einheit' }}</span>
+                            </div>
+                            <div v-else class="input-group-inline" style="margin-top: 8px;">
+                                <input type="number" step="0.01" v-model.number="newProduct.totalPrice" required placeholder="0.00" style="flex: 1;">
+                                <span style="white-space: nowrap; margin-left: 8px;">€ gesamt</span>
+                            </div>
+                        <p class="field-hint">Menge: {{ newProduct.quantity }} {{ newProduct.unit || 'Einheit' }} | Automatischer Wechselkurs</p>
+                    </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lagerort</label>
+                        <select v-model="newProduct.storageLocationIndex" required>
+                            <option value="">Bitte wählen...</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Datum des Wareneinkaufs</label>
+                        <input type="date" v-model="newProduct.purchaseDate" required>
+                        <p class="field-hint">Dieses Datum wird für die Ausgabenübersicht verwendet</p>
+                    </div>
+
+                    <!-- Scheitlängen-Aufteilung (Neu) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct?.unit) && newProduct?.quantitySplits">
+                        <label>Menge nach Scheitlängen aufteilen</label>
+                        <p class="field-hint">Gesamtmenge: {{ newProduct.quantity }} {{ newProduct.unit }}</p>
+                        
+                        <div class="quantity-splits-container">
+                            <div v-for="(split, length) in newProduct.quantitySplits" :key="length" class="quantity-split-row">
+                                <div class="split-length-label">{{ length }} cm:</div>
+                                <input type="number" step="0.01" 
+                                       v-model.number="split.quantity" 
+                                       placeholder="0.00"
+                                       style="flex: 1; min-width: 80px;">
+                                <span class="split-unit">{{ newProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(newProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="newProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ newProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Preistabelle für Scheitholz (Neu) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(newProduct?.unit) && newProduct?.priceLengths">
+                        <label>Verkaufspreise nach Scheitlänge</label>
+                        <table class="price-table">
+                            <thead>
+                                <tr>
+                                    <th>Scheitlänge</th>
+                                    <th>Preis / SRM (€)</th>
+                                    <th>Preis / RM (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="length in (inventorySettings.logLengths || [])" :key="length">
+                                    <td>{{ length }} cm</td>
+                                    <td>
+                                        <input type="number" step="0.01" 
+                                               v-model.number="newProduct.priceLengths[length].srm"
+                                               @input="onSRMPriceChange(length, $event.target.value)"
+                                               placeholder="0.00"
+                                               style="width: 80px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" 
+                                               v-model.number="newProduct.priceLengths[length].rm"
+                                               placeholder="0.00"
+                                               style="width: 80px;">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="field-hint">Preis / RM wird automatisch aus Preis / SRM berechnet (× 1,42). Beide Werte können manuell überschrieben werden.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bemerkung (optional)</label>
+                        <textarea v-model="newProduct.notes" rows="2" placeholder="Zusätzliche Infos..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Produkt speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div class="modal-overlay" v-if="showEditProduct" @click="showEditProduct = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditProduct = false">&times;</button>
+                <h2>Produkt bearbeiten</h2>
+                
+                <form @submit.prevent="saveProduct">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Produktname</label>
+                            <input type="text" v-model="editingProduct.name" required placeholder="z.B. Buche Premium">
+                        </div>
+                        <div class="form-group">
+                            <label>Produktart</label>
+                            <select v-model="editingProduct.productType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="type in inventorySettings.productTypes" :key="type" :value="type">{{ type }}</option>
+                            </select>
+                            <p class="field-hint" v-if="!inventorySettings.productTypes || inventorySettings.productTypes.length === 0">⚠️ Keine Produktarten konfiguriert - bitte in den Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Menge</label>
+                            <div class="input-group-inline">
+                                <input type="number" step="0.01" v-model.number="editingProduct.quantity" required placeholder="Menge eingeben" style="flex: 1; min-width: 80px;">
+                                <select v-model="editingProduct.unit" required class="unit-select">
+                                    <option value="">Einheit</option>
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                    <option value="kg">kg</option>
+                                    <option value="Sack">Sack</option>
+                                    <option value="Stück">Stück</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Holzsorte</label>
+                            <select v-model="editingProduct.woodType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="wood in getActiveWoodTypes()" :key="wood" :value="wood">{{ wood }}</option>
+                            </select>
+                            <p class="field-hint" v-if="getActiveWoodTypes().length === 0">⚠️ Keine Holzsorten aktiviert - bitte in den Einstellungen aktivieren</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Scheitlänge (cm)</label>
+                            <select v-model.number="editingProduct.logLength" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="length in inventorySettings.logLengths" :key="length" :value="length">{{ length }} cm</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trocknungsgrad</label>
+                            <select v-model="editingProduct.dryness" required>
+                                <option v-for="level in getActiveDrynessLevels()" :key="level.key" :value="level.key">{{ level.label }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Lagerort</label>
+                            <select v-model="editingProduct.storageLocationIndex" required>
+                                <option value="">Bitte wählen...</option>
+                                <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                            </select>
+                            <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Einkaufspreis</label>
+                            <div class="price-input-mode-selector">
+                                <label class="radio-label">
+                                    <input type="radio" v-model="editingProduct.priceInputMode" value="unit">
+                                    <span>Preis pro {{ editingProduct.unit || 'Einheit' }}</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" v-model="editingProduct.priceInputMode" value="total">
+                                    <span>Gesamtpreis</span>
+                                </label>
+                            </div>
+                            <div v-if="editingProduct.priceInputMode === 'unit'" class="input-group-inline" style="margin-top: 8px;">
+                                <input type="number" step="0.01" v-model.number="editingProduct.price" required placeholder="0.00" style="flex: 1;">
+                                <span style="white-space: nowrap; margin-left: 8px;">€ / {{ editingProduct.unit || 'Einheit' }}</span>
+                            </div>
+                            <div v-else class="input-group-inline" style="margin-top: 8px;">
+                                <input type="number" step="0.01" v-model.number="editingProduct.totalPrice" required placeholder="0.00" style="flex: 1;">
+                                <span style="white-space: nowrap; margin-left: 8px;">€ gesamt</span>
+                            </div>
+                            <p class="field-hint">Menge: {{ editingProduct.quantity }} {{ editingProduct.unit || 'Einheit' }} | Automatischer Wechselkurs</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Datum des Wareneinkaufs</label>
+                            <input type="date" v-model="editingProduct.purchaseDate" required>
+                        </div>
+                    </div>
+
+                    <!-- Scheitlängen-Aufteilung (Bearbeiten) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(editingProduct?.unit) && editingProduct?.quantitySplits">
+                        <label>Menge nach Scheitlängen aufteilen</label>
+                        <p class="field-hint">Gesamtmenge: {{ editingProduct.quantity }} {{ editingProduct.unit }}</p>
+                        
+                        <div class="quantity-splits-container">
+                            <div v-for="(split, length) in editingProduct.quantitySplits" :key="length" class="quantity-split-row">
+                                <div class="split-length-label">{{ length }} cm:</div>
+                                <input type="number" step="0.01" 
+                                       v-model.number="split.quantity" 
+                                       placeholder="0.00"
+                                       style="flex: 1; min-width: 80px;">
+                                <span class="split-unit">{{ editingProduct.unit }}</span>
+                                <button type="button" 
+                                        @click="removeEditQuantitySplit(length)" 
+                                        class="btn-remove-split"
+                                        :disabled="Object.keys(editingProduct.quantitySplits).length <= 1"
+                                        title="Diese Scheitlänge entfernen">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-split-row">
+                            <select v-model="selectedLogLengthForSplit" @change="addEditQuantitySplit(selectedLogLengthForSplit); selectedLogLengthForSplit = ''" class="select-add-split">
+                                <option value="">+ Scheitlänge hinzufügen...</option>
+                                <option v-for="length in inventorySettings.logLengths" 
+                                        :key="length" 
+                                        :value="length"
+                                        :disabled="editingProduct.quantitySplits[length]">
+                                    {{ length }} cm {{ editingProduct.quantitySplits[length] ? '(bereits vorhanden)' : '' }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Preistabelle für Scheitholz (Bearbeiten) -->
+                    <div class="form-group" v-if="['FM', 'RM', 'SRM'].includes(editingProduct?.unit) && editingProduct?.priceLengths">
+                        <label>Verkaufspreise nach Scheitlänge</label>
+                        <table class="price-table">
+                            <thead>
+                                <tr>
+                                    <th>Scheitlänge</th>
+                                    <th>Preis / SRM (€)</th>
+                                    <th>Preis / RM (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="length in (inventorySettings.logLengths || [])" :key="length">
+                                    <td>{{ length }} cm</td>
+                                    <td>
+                                        <input type="number" step="0.01" 
+                                               v-model.number="editingProduct.priceLengths[length].srm"
+                                               placeholder="0.00"
+                                               style="width: 80px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" 
+                                               v-model.number="editingProduct.priceLengths[length].rm"
+                                               placeholder="0.00"
+                                               style="width: 80px;">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="field-hint">Preis / RM wird automatisch aus Preis / SRM berechnet (× 1,42). Beide Werte können manuell überschrieben werden.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bemerkung (optional)</label>
+                        <textarea v-model="editingProduct.notes" rows="2" placeholder="Zusätzliche Infos..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Order Modal -->
+        <div class="modal-overlay modal-large" v-if="showAddOrder" @click="showAddOrder = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddOrder = false">&times;</button>
+                <h2>Neue Bestellung</h2>
+                
+                <form @submit.prevent="addOrder">
+                    <!-- Kunde auswählen -->
+                    <div class="form-group">
+                        <label>Kunde *</label>
+                        <div class="customer-select-with-add">
+                            <select v-model="newOrder.customerId" required @change="selectCustomerForOrder(customers.find(c => c.id === newOrder.customerId))" class="select-input" style="flex: 1;">
+                                <option value="">Kunde wählen...</option>
+                                <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            </select>
+                            <button type="button" @click="showAddCustomerFromOrder = true" class="btn-add-customer-inline" title="Neuen Kunden anlegen">
+                                ➕ Neuer Kunde
+                            </button>
+                        </div>
+                        <p class="field-hint" v-if="!newOrder.customerId">⚠️ Bitte wähle einen Kunden aus oder lege einen neuen Kunden an</p>
+                    </div>
+
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="newOrder.deliveryAddress" required rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                        <p class="field-hint">Wird vom Kunden übernommen, kann aber angepasst werden</p>
+                    </div>
+
+                    <!-- Produkte hinzufügen -->
+                    <div class="form-group">
+                        <label>Produkte hinzufügen</label>
+                        <div class="product-selector-vertical">
+                            <select id="orderProductSelect" class="select-input" style="width: 100%;">
+                                <option value="">Produkt wählen...</option>
+                                <option v-for="p in products" :key="p.id" :value="p.id">
+                                    {{ getStorageLocationName(p.storage_location_index) }}{{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
+                                </option>
+                            </select>
+                            <div class="quantity-unit-row-mobile">
+                                <input type="number" id="orderProductQuantity" v-model.number="newOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="flex: 1;">
+                                <select v-model="newOrderItemUnit" class="select-input" style="flex: 1;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <select v-model="newOrderItemLogLength" class="select-input" style="flex: 1;" title="Scheitlänge">
+                                    <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
+                                </select>
+                            </div>
+                            <button type="button" @click="addProductToOrderWithQuantity()" class="btn-add-product-full">➕ Hinzufügen</button>
+                        </div>
+                        <p class="field-hint">Gib die Bestellmenge, Einheit und Scheitlänge ein. Der Preis wird automatisch aus dem Inventar geladen (je nach Scheitlänge und Einheit).</p>
+                    </div>
+
+                    <!-- Bestellpositionen -->
+                    <div class="form-group" v-if="newOrder.items.length > 0">
+                        <label>Bestellpositionen</label>
+                        <div class="order-items-editor">
+                            <div v-for="(item, index) in newOrder.items" :key="item.id" class="order-item-row">
+                                <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
+                                <div class="item-controls">
+                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input" title="Menge">
+                                    <span>{{ item.unit }}</span>
+                                    <input type="number" v-model.number="item.pricePerUnit" min="0" step="0.01" @change="calculateOrderTotals()" class="item-price-input" title="Preis pro Einheit anpassbar" style="width: 80px;">
+                                    <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
+                                    <button type="button" @click="removeProductFromOrder(item.id, false)" class="btn-remove-item">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lieferkosten -->
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <div class="input-group-inline">
+                            <input type="number" step="0.01" v-model.number="newOrder.deliveryCosts" @change="calculateOrderTotals()" placeholder="0.00" min="0" style="flex: 1;">
+                            <button type="button" @click="calculateDeliveryCostsForOrder" class="btn-calc-delivery">🚚 Berechnen</button>
+                        </div>
+                        <p class="field-hint">Automatisch berechnen oder manuell eingeben (wird auf 2 Dezimalstellen gerundet)</p>
+                    </div>
+
+                    <!-- Zahlungsart & Status -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zahlungsart</label>
+                            <select v-model="newOrder.paymentMethod" class="select-input">
+                                <option value="bar">Bar</option>
+                                <option value="ueberweisung">Überweisung</option>
+                                <option value="paypal">PayPal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select v-model="newOrder.status" class="select-input">
+                                <option value="neu">🆕 Neu</option>
+                                <option value="bestaetigt">✓ Bestätigt</option>
+                                <option value="in_lieferung">🚚 In Lieferung</option>
+                                <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum</label>
+                            <div class="input-with-calendar">
+                                <input type="date" v-model="newOrder.deliveryDate" class="date-input" style="flex: 1;">
+                                <button type="button" @click="openInCalendar('date')" class="btn-calendar" title="In Kalender öffnen">
+                                    📅 Kalender
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit (Uhrzeit)</label>
+                            <input type="time" v-model="newOrder.deliveryTime" class="date-input">
+                        </div>
+                    </div>
+
+                    <!-- Lagerplatz auswählen (neu) -->
+                    <div class="form-group" v-if="storageLocations.length > 0">
+                        <label>🪵 Lagerplatz</label>
+                        <select v-model="newOrder.storageLocationIndex" class="select-input">
+                            <option value="">Erster Lagerplatz (Standard)</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">
+                                {{ loc.name || 'Lager ' + (index + 1) }}
+                            </option>
+                        </select>
+                        <p class="field-hint">Welcher Lagerplatz liefert diese Bestellung? Wichtig für Gewinnberechnung pro Lager.</p>
+                    </div>
+                    
+                    <!-- Kalender Integration Hinweis -->
+                    <div class="calendar-integration-hint" v-if="newOrder.deliveryDate">
+                        <p>📅 <strong>Kalendereintrag erstellen:</strong></p>
+                        
+                        <div class="calendar-export-options">
+                            <button type="button" @click="exportOrderAsIcs" class="btn-calendar-ics">
+                                📥 Kalendereintrag herunterladen (.ics)
+                            </button>
+                            <p class="field-hint" style="margin-top: 8px;">
+                                💡 Die .ics Datei kannst du in jeden Kalender importieren (Google Calendar, Apple Kalender, Outlook)
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen / Sonderwünsche</label>
+                        <textarea v-model="newOrder.notes" rows="2" placeholder="z.B. Klingeln nicht möglich, bitte anrufen..."></textarea>
+                    </div>
+
+                    <!-- Summen -->
+                    <div class="order-summary-box">
+                        <div class="summary-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(newOrder.subtotal) }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(newOrder.deliveryCosts) }}</span>
+                        </div>
+                        <div class="summary-row discount-row">
+                            <label style="margin: 0;">Rabatt (€):</label>
+                            <input type="number" v-model.number="newOrder.discount" min="0" step="0.01" @change="calculateOrderTotals()" placeholder="0.00" style="width: 80px; text-align: right;">
+                        </div>
+                        <div class="summary-row grand-total">
+                            <span>Gesamtsumme:</span>
+                            <span>{{ formatCurrency(newOrder.total) }}</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Bestellung speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Order Modal -->
+        <div class="modal-overlay modal-large" v-if="showEditOrder" @click="showEditOrder = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditOrder = false">&times;</button>
+                <h2>Bestellung bearbeiten</h2>
+                
+                <form @submit.prevent="saveOrder">
+                    <!-- Kunde -->
+                    <div class="form-group">
+                        <label>Kunde *</label>
+                        <select v-model="editingOrder.customerId" required class="select-input">
+                            <option value="">Kunde wählen...</option>
+                            <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="editingOrder.deliveryAddress" required rows="2"></textarea>
+                    </div>
+
+                    <!-- Produkte -->
+                    <div class="form-group">
+                        <label>Produkte hinzufügen</label>
+                        <div class="product-selector-vertical">
+                            <select id="editOrderProductSelect" class="select-input" style="width: 100%;">
+                                <option value="">Produkt wählen...</option>
+                                <option v-for="p in products" :key="p.id" :value="p.id">
+                                    {{ getStorageLocationName(p.storage_location_index) }}{{ p.name }} | {{ p.woodType }} | {{ p.logLength }} cm - {{ formatCurrency(p.price) }}/{{ p.priceUnit || p.unit }} (Lager: {{ p.quantity.toFixed(1) }} {{ p.unit }})
+                                </option>
+                            </select>
+                            <div class="quantity-unit-row">
+                                <input type="number" id="editOrderProductQuantity" v-model.number="editOrderItemQuantity" min="0.01" step="0.01" placeholder="Menge" class="item-quantity-input" style="flex: 1;">
+                                <select v-model="editOrderItemUnit" class="select-input" style="flex: 1;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <button type="button" @click="addProductToOrderWithQuantity(true)" class="btn-add-mini">➕ Hinzufügen</button>
+                            </div>
+                        </div>
+                        <p class="field-hint">Gib die Bestellmenge und Einheit ein. Bei abweichender Einheit wird automatisch umgerechnet (1 FM = 1,42 RM = 2,02 SRM)</p>
+                    </div>
+
+                    <!-- Scheitlänge für Bestellung -->
+                    <div class="form-group" v-if="editingOrder.items && editingOrder.items.length > 0">
+                        <label>Scheitlänge für alle Produkte (cm)</label>
+                        <select v-model="editingOrder.logLength" class="select-input">
+                            <option value="" disabled>Bitte wählen...</option>
+                            <option v-for="len in inventorySettings.logLengths" :key="len" :value="len">{{ len }} cm</option>
+                        </select>
+                        <p class="field-hint">Diese Scheitlänge wird für alle Produkte der Bestellung verwendet</p>
+                    </div>
+
+                    <!-- Positionen -->
+                    <div class="form-group" v-if="editingOrder.items && editingOrder.items.length > 0">
+                        <label>Bestellpositionen</label>
+                        <div class="order-items-editor">
+                            <div v-for="item in editingOrder.items" :key="item.productId" class="order-item-row">
+                                <span class="item-name">{{ item.productName }} ({{ item.woodType }}, {{ item.logLength }} cm)</span>
+                                <div class="item-controls">
+                                    <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input">
+                                    <span>{{ item.unit }}</span>
+                                    <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
+                                    <button type="button" @click="removeProductFromOrder(item.productId, true)" class="btn-remove-item">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lieferkosten -->
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="editingOrder.deliveryCosts" @change="calculateOrderTotals()" min="0">
+                    </div>
+
+                    <!-- Zahlungsart & Status -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zahlungsart</label>
+                            <select v-model="editingOrder.paymentMethod" class="select-input">
+                                <option value="bar">Bar</option>
+                                <option value="ueberweisung">Überweisung</option>
+                                <option value="paypal">PayPal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Bezahlstatus</label>
+                            <select v-model="editingOrder.paymentStatus" class="select-input">
+                                <option value="offen">Offen</option>
+                                <option value="bezahlt">Bezahlt</option>
+                                <option value="teilweise">Teilweise bezahlt</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum</label>
+                            <div class="input-with-calendar">
+                                <input type="date" v-model="editingOrder.deliveryDate" class="date-input" style="flex: 1;">
+                                <button type="button" @click="openInCalendar('date')" class="btn-calendar" title="In Kalender öffnen">
+                                    📅 Kalender
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit (Uhrzeit)</label>
+                            <input type="time" v-model="editingOrder.deliveryTime" class="date-input">
+                        </div>
+                    </div>
+                    
+                    <!-- Kalender Integration Hinweis -->
+                    <div class="calendar-integration-hint" v-if="editingOrder.deliveryDate">
+                        <p>📅 <strong>Kalendereintrag erstellen:</strong></p>
+                        
+                        <div class="calendar-export-options">
+                            <button type="button" @click="exportOrderAsIcs" class="btn-calendar-ics">
+                                📥 Kalendereintrag herunterladen (.ics)
+                            </button>
+                            <p class="field-hint" style="margin-top: 8px;">
+                                💡 Die .ics Datei kannst du in jeden Kalender importieren (Google Calendar, Apple Kalender, Outlook)
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select v-model="editingOrder.status" class="select-input">
+                            <option value="neu">🆕 Neu</option>
+                            <option value="bestaetigt">✓ Bestätigt</option>
+                            <option value="in_lieferung">🚚 In Lieferung</option>
+                            <option value="abgeschlossen">✅ Abgeschlossen</option>
+                            <option value="storniert">❌ Storniert</option>
+                        </select>
+                    </div>
+
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="editingOrder.notes" rows="2"></textarea>
+                    </div>
+
+                    <!-- Summen -->
+                    <div class="order-summary-box">
+                        <div class="summary-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(editingOrder.subtotal) }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Lieferkosten:</span>
+                            <span>{{ formatCurrency(editingOrder.deliveryCosts) }}</span>
+                        </div>
+                        <div class="summary-row grand-total">
+                            <span>Gesamtsumme:</span>
+                            <span>{{ formatCurrency(editingOrder.total) }}</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Customer Modal -->
+        <div class="modal-overlay" v-if="showAddCustomer" @click="showAddCustomer = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showAddCustomer = false">&times;</button>
+                <h2>Neuer Kunde</h2>
+                
+                <form @submit.prevent="addCustomer">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" v-model="newCustomer.name" required placeholder="Vorname Nachname oder Firmenname">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse</label>
+                        <textarea v-model="newCustomer.address" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" v-model="newCustomer.phone" placeholder="+49 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>E-Mail</label>
+                            <input type="email" v-model="newCustomer.email" placeholder="email@beispiel.de">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="newCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="newCustomer.deliveryCosts" placeholder="0.00" min="0">
+                        <p class="field-hint">Kann später berechnet oder manuell angepasst werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="newCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Kunde speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Customer Modal (from Order) -->
+        <div class="modal-overlay" v-if="showAddCustomerFromOrder" @click="closeAddCustomerFromOrder">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="closeAddCustomerFromOrder">&times;</button>
+                <h2>Neuer Kunde für Bestellung</h2>
+                
+                <form @submit.prevent="addCustomerFromOrder">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" v-model="newCustomer.name" required placeholder="Vorname Nachname oder Firmenname">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse *</label>
+                        <textarea v-model="newCustomer.address" required rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                        <p class="field-hint">Wird als Lieferadresse übernommen</p>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" v-model="newCustomer.phone" placeholder="+49 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>E-Mail</label>
+                            <input type="email" v-model="newCustomer.email" placeholder="email@beispiel.de">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="newCustomer.notes" rows="2" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="newCustomer.deliveryCosts" placeholder="0.00" min="0">
+                        <p class="field-hint">Kann später berechnet werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="newCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Kunde speichern & für Bestellung verwenden</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Customer Modal -->
+        <div class="modal-overlay" v-if="showEditCustomer" @click="showEditCustomer = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showEditCustomer = false">&times;</button>
+                <h2>Kunde bearbeiten</h2>
+                
+                <form @submit.prevent="saveCustomer">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" v-model="editingCustomer.name" required placeholder="Vorname Nachname oder Firmenname">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse</label>
+                        <textarea v-model="editingCustomer.address" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Telefon</label>
+                            <input type="tel" v-model="editingCustomer.phone" placeholder="+49 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>E-Mail</label>
+                            <input type="email" v-model="editingCustomer.email" placeholder="email@beispiel.de">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="editingCustomer.notes" rows="3" placeholder="Besonderheiten, Vorlieben..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lieferkosten (€)</label>
+                        <input type="number" step="0.01" v-model.number="editingCustomer.deliveryCosts" placeholder="0.00" min="0">
+                        <p class="field-hint">Kann berechnet oder manuell angepasst werden</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bevorzugter Lagerort</label>
+                        <select v-model="editingCustomer.preferredStorageLocationIndex" class="select-input">
+                            <option value="">Kein bevorzugter Lagerort</option>
+                            <option v-for="(loc, index) in storageLocations" :key="index" :value="index">{{ loc.name || 'Lager ' + (index + 1) }}</option>
+                        </select>
+                        <p class="field-hint" v-if="storageLocations.length === 0">⚠️ Keine Lagerplätze konfiguriert - bitte zuerst in Einstellungen hinzufügen</p>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Änderungen speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customer Details Modal (neu) -->
+        <div class="modal-overlay modal-large" v-if="showCustomerDetailsModal" @click="showCustomerDetailsModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showCustomerDetailsModal = false">&times;</button>
+                
+                <div class="customer-details-header" v-if="selectedCustomer">
+                    <h2>📊 {{ selectedCustomer.name }}</h2>
+                    <p class="subtitle">{{ selectedCustomer.address || 'Keine Adresse' }}</p>
+                    <div class="customer-contact-info">
+                        <span v-if="selectedCustomer.phone">📞 {{ selectedCustomer.phone }}</span>
+                        <span v-if="selectedCustomer.email">✉️ {{ selectedCustomer.email }}</span>
+                    </div>
+                </div>
+
+                <div class="customer-stats-grid" v-if="selectedCustomer">
+                    <div class="stat-card">
+                        <div class="stat-label">Gesamtumsatz</div>
+                        <div class="stat-value primary">{{ formatCurrency(customerLifetimeRevenue) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Bestellungen</div>
+                        <div class="stat-value">{{ customerOrderCount }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Ø Bestellwert</div>
+                        <div class="stat-value">{{ formatCurrency(customerAvgOrderValue) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Letzte Bestellung</div>
+                        <div class="stat-value small">{{ customerLastOrderDate || 'Keine' }}</div>
+                    </div>
+                </div>
+
+                <!-- Saison-Statistiken -->
+                <div class="season-stats-section" v-if="selectedCustomer && currentSeasonStats.length > 0">
+                    <h3>🪵 Durchschnitt pro Saison (Juli–Juni)</h3>
+                    
+                    <div class="season-selector">
+                        <select v-model="selectedSeasonYear" class="select-input">
+                            <option v-for="year in availableSeasonYears" :key="year" :value="year">
+                                Saison {{ year }}/{{ (year + 1) % 100 }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="season-averages-grid" v-if="currentSeasonStats.length > 0">
+                        <div v-for="stat in currentSeasonStats" :key="stat.logLength" class="avg-stat-card">
+                            <div class="avg-stat-header">
+                                <span class="log-length-badge">{{ stat.logLength }} cm</span>
+                            </div>
+                            <div class="avg-stat-body">
+                                <div class="avg-stat-value">{{ stat.avgQuantity.toFixed(2) }}</div>
+                                <div class="avg-stat-unit">{{ stat.unit }}</div>
+                                <div class="avg-stat-total">Gesamt: {{ stat.totalQuantity.toFixed(2) }} {{ stat.unit }} ({{ stat.orderCount }} Best.)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="empty-state">
+                        <p>Keine Bestellungen in dieser Saison</p>
+                    </div>
+                </div>
+
+                <!-- Vorjahres-Vergleich & Treue-Rabatt (neu) -->
+                <div class="insights-section" v-if="selectedCustomer">
+                    <h3>📊 Kunden-Insights</h3>
+                    
+                    <div class="insights-grid">
+                        <!-- Vorjahres-Vergleich -->
+                        <div class="insight-card comparison" v-if="previousSeasonOrders.length > 0">
+                            <div class="card-header">
+                                <span class="card-icon">📊</span>
+                                <span class="card-title">Vergleich mit letzter Saison</span>
+                            </div>
+                            <div class="comparison-main">
+                                <div class="revenue-change" :class="seasonComparison.revenue.percentChange >= 0 ? 'positive' : 'negative'">
+                                    <span class="change-percent">
+                                        {{ seasonComparison.revenue.percentChange >= 0 ? '+' : '' }}{{ seasonComparison.revenue.percentChange.toFixed(1) }}%
+                                    </span>
+                                    <span class="change-label">{{ seasonComparison.revenue.percentChange >= 0 ? 'mehr' : 'weniger' }} Umsatz</span>
+                                </div>
+                                <div class="revenue-details">
+                                    <span class="detail-item">
+                                        <span class="detail-label">Vorher:</span>
+                                        <span class="detail-value">{{ formatCurrency(seasonComparison.revenue.previous) }}</span>
+                                    </span>
+                                    <span class="detail-arrow">→</span>
+                                    <span class="detail-item">
+                                        <span class="detail-label">Nachher:</span>
+                                        <span class="detail-value">{{ formatCurrency(seasonComparison.revenue.current) }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="quantity-breakdown" v-if="seasonComparison.quantities.length > 0">
+                                <div class="breakdown-title">Nach Scheitlänge:</div>
+                                <div class="breakdown-list">
+                                    <div v-for="comp in seasonComparison.quantities.slice(0, 3)" :key="comp.logLength" class="breakdown-item">
+                                        <span class="length-badge">{{ comp.logLength }} cm</span>
+                                        <span class="change-value" :class="comp.diff >= 0 ? 'up' : 'down'">
+                                            {{ comp.diff >= 0 ? '+' : '' }}{{ comp.diff.toFixed(1) }} {{ comp.unit }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nächste Bestellung vorhersagen -->
+                        <div class="insight-card prediction" v-if="nextOrderPrediction">
+                            <div class="card-header">
+                                <span class="card-icon">🔮</span>
+                                <span class="card-title">Nächste Bestellung</span>
+                            </div>
+                            <div class="prediction-content">
+                                <div class="prediction-row">
+                                    <span class="prediction-label">Letzte Bestellung:</span>
+                                    <span class="prediction-value past">{{ formatDate(nextOrderPrediction.lastOrderDate) }}</span>
+                                </div>
+                                <div class="prediction-row highlight">
+                                    <span class="prediction-label">Voraussichtlich nächste:</span>
+                                    <span class="prediction-value future">{{ formatDate(nextOrderPrediction.predictedDate) }}</span>
+                                </div>
+                                <div class="prediction-meta">
+                                    <span class="meta-badge">Ø {{ nextOrderPrediction.avgIntervalDays }} Tage zwischen Bestellungen</span>
+                                </div>
+                            </div>
+                            <div class="card-actions" v-if="selectedCustomer.phone">
+                                <button @click="openWhatsApp('reminder')" class="btn-action btn-whatsapp">
+                                    <span class="btn-icon">📱</span>
+                                    Erinnerung senden
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Treue-Rabatt -->
+                        <div class="insight-card loyalty" v-if="loyaltyDiscountRecommendation">
+                            <div class="card-header">
+                                <span class="card-icon">💎</span>
+                                <span class="card-title">Treue-Status</span>
+                            </div>
+                            <div class="loyalty-content">
+                                <div class="tier-display">
+                                    <span class="tier-badge" :class="'tier-' + loyaltyDiscountRecommendation.tier.toLowerCase()">
+                                        {{ loyaltyDiscountRecommendation.tier }}
+                                    </span>
+                                    <span class="tier-info" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0">
+                                        {{ loyaltyDiscountRecommendation.recommendedPercent }}% Rabatt möglich
+                                    </span>
+                                </div>
+                                <div class="progress-section">
+                                    <div class="progress-track">
+                                        <div class="progress-fill" :style="{ width: loyaltyDiscountRecommendation.progress + '%' }"></div>
+                                    </div>
+                                    <div class="progress-labels">
+                                        <span>€{{ loyaltyDiscountRecommendation.totalRevenue.toFixed(0) }}</span>
+                                        <span v-if="loyaltyDiscountRecommendation.nextTierThreshold > 0">
+                                            → €{{ loyaltyDiscountRecommendation.nextTierThreshold }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="loyalty-code" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0">
+                                    <span class="code-label">Code:</span>
+                                    <span class="code-value">LOYAL{{ loyaltyDiscountRecommendation.recommendedPercent }}</span>
+                                </div>
+                            </div>
+                            <div class="card-actions" v-if="loyaltyDiscountRecommendation.recommendedPercent > 0 && selectedCustomer.phone">
+                                <button @click="openWhatsApp('loyalty')" class="btn-action btn-whatsapp">
+                                    <span class="btn-icon">📱</span>
+                                    Rabatt anbieten
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reminder Einstellungen (neu) -->
+                <div class="reminder-settings-section" v-if="selectedCustomer">
+                    <div class="section-header">
+                        <h3>⏰ Erinnerungen</h3>
+                        <label class="toggle-switch-inline">
+                            <input type="checkbox" v-model="reminderSettings.enabled" class="toggle-checkbox">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label-text">{{ reminderSettings.enabled ? 'Aktiviert' : 'Deaktiviert' }}</span>
+                        </label>
+                    </div>
+                    
+                    <div class="settings-content" v-if="reminderSettings.enabled">
+                        <div class="setting-row">
+                            <label class="setting-label">Erinnerung senden</label>
+                            <select v-model.number="reminderSettings.daysBeforeReminder" class="setting-select">
+                                <option value="14">2 Wochen vorher</option>
+                                <option value="21">3 Wochen vorher</option>
+                                <option value="30">1 Monat vorher</option>
+                                <option value="45">6 Wochen vorher</option>
+                                <option value="60">2 Monate vorher</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-row">
+                            <label class="setting-label">Kanal</label>
+                            <div class="channel-options">
+                                <label class="channel-option selected">
+                                    <input type="checkbox" v-model="reminderSettings.viaWhatsApp" checked>
+                                    <span class="channel-icon">📱</span>
+                                    <span>WhatsApp</span>
+                                </label>
+                                <label class="channel-option disabled">
+                                    <input type="checkbox" v-model="reminderSettings.viaEmail" disabled>
+                                    <span class="channel-icon">✉️</span>
+                                    <span>E-Mail <small>(bald)</small></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" v-if="selectedCustomer.phone">
+                            <label class="setting-label">Testen</label>
+                            <div class="action-buttons">
+                                <button @click="openWhatsApp('reminder')" class="btn-test">
+                                    📱 Erinnerung
+                                </button>
+                                <button @click="openWhatsApp('seasonal')" class="btn-test secondary">
+                                    🍂 Saison-Start
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alle Bestellungen -->
+                <div class="customer-orders-section" v-if="selectedCustomer">
+                    <h3>📦 Alle Bestellungen</h3>
+                    
+                    <div class="orders-filter-bar">
+                        <select v-model="customerOrdersFilter" class="filter-select-small">
+                            <option value="all">Alle</option>
+                            <option value="this_year">Dieses Jahr</option>
+                            <option value="last_year">Letztes Jahr</option>
+                        </select>
+                        <span class="order-count-badge">{{ filteredCustomerOrders.length }} Bestellungen</span>
+                    </div>
+
+                    <div class="customer-orders-list">
+                        <div v-for="order in filteredCustomerOrders" :key="order.id" class="order-item">
+                            <div class="order-date">
+                                {{ formatDate(order.deliveryDate) }}
+                                <span v-if="order.deliveryTime" class="order-time">{{ order.deliveryTime }}</span>
+                            </div>
+                            <div class="order-items">
+                                <div v-for="item in order.items" :key="item.productId" class="order-item-detail">
+                                    {{ item.quantity.toFixed(2) }} {{ item.unit }} {{ item.productName }} ({{ item.logLength }} cm)
+                                </div>
+                            </div>
+                            <div class="order-total">{{ formatCurrency(order.total) }}</div>
+                            <div class="order-status" :class="'status-' + order.status">
+                                {{ getStatusLabel(order.status) }}
+                            </div>
+                        </div>
+                        <div v-if="filteredCustomerOrders.length === 0" class="empty-state">
+                            <p>Keine Bestellungen gefunden</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Cost Modal -->
+        <div class="modal-overlay" v-if="showDeliveryModal" @click="showDeliveryModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showDeliveryModal = false">&times;</button>
+                <h2>🚚 Lieferkosten berechnen</h2>
+                
+                <div v-if="selectedCustomer" class="delivery-info">
+                    <div class="customer-header-small">
+                        <h3>{{ selectedCustomer.name }}</h3>
+                    </div>
+                    
+                    <div class="address-box">
+                        <div class="address-item">
+                            <strong>📍 Von:</strong>
+                            <p>{{ deliveryFromAddress || 'Adresse nicht eingetragen' }}</p>
+                        </div>
+                        <div class="address-arrow">↓</div>
+                        <div class="address-item">
+                            <strong>📍 Nach:</strong>
+                            <p>{{ selectedCustomer.address || 'Kundenadresse nicht eingetragen' }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="loadingDistance" class="loading-state">
+                        <span class="loading-spinner">⏳</span>
+                        <p>Berechne Entfernung...</p>
+                    </div>
+
+                    <div v-else-if="distanceError" class="error-state">
+                        <span class="error-icon">⚠️</span>
+                        <p>{{ distanceError }}</p>
+                    </div>
+
+                    <div v-else-if="distanceResult" class="result-box">
+                        <div class="result-row">
+                            <span class="result-label">Entfernung (einfach):</span>
+                            <span class="result-value">{{ distanceResult.distance.toFixed(1) }} km</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Fahrzeit (ca.):</span>
+                            <span class="result-value">{{ formatDuration(distanceResult.duration) }}</span>
+                        </div>
+                        <div v-if="distanceResult.isFallback" class="fallback-hint">
+                            ⚠️ Berechnung basiert auf Luftlinien-Entfernung (keine Straßenroute verfügbar)
+                        </div>
+                        <div class="result-row highlight">
+                            <span class="result-label">Lieferkosten pro km (einfach):</span>
+                            <span class="result-value">{{ formatCurrency(costPerKm) }}</span>
+                        </div>
+                        <div class="result-row total">
+                            <span class="result-label">Lieferkosten (einfach):</span>
+                            <span class="result-value price">{{ formatCurrency(deliveryCost) }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="!loadingDistance && !distanceError && distanceResult" class="delivery-actions">
+                        <a :href="distanceResult.mapsUrl" target="_blank" class="btn-maps">
+                            🗺️ Route auf Google Maps
+                        </a>
+                        <button @click="saveDeliveryCosts()" class="btn-save-costs">
+                            ✓ Lieferkosten übernehmen ({{ formatCurrency(deliveryCost) }})
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Order Modal (Schnellbestellung) -->
+        <div class="modal-overlay modal-large" v-if="showQuickOrderModal" @click="showQuickOrderModal = false">
+            <div class="modal-content" @click.stop>
+                <button class="modal-close" @click="showQuickOrderModal = false">&times;</button>
+                <h2>⚡ Schnellbestellung</h2>
+                <p class="subtitle">Wähle einen Kunden und lade die letzte Bestellung – dann nur noch anpassen und fertig!</p>
+                
+                <!-- Schritt 1: Kunde auswählen -->
+                <div v-if="quickOrderStep === 1" class="quick-order-step">
+                    <div class="form-group">
+                        <label>Kunde auswählen *</label>
+                        <select v-model="selectedQuickOrderCustomer" class="select-input" @change="onQuickOrderCustomerSelect">
+                            <option value="">-- Kunde wählen --</option>
+                            <option v-for="customer in quickOrderCustomers" :key="customer.id" :value="customer">
+                                {{ customer.name }}{{ customer.lastOrderDate ? ' (letzte Bestellung: ' + customer.lastOrderDate + ')' : '' }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div v-if="selectedQuickOrderCustomer && lastOrderForCustomer" class="last-order-preview">
+                        <h3>📦 Letzte Bestellung von {{ selectedQuickOrderCustomer.name }}</h3>
+                        <div class="order-preview-date">
+                            📅 {{ lastOrderForCustomer.deliveryDate }}{% if lastOrderForCustomer.deliveryTime %} um {{ lastOrderForCustomer.deliveryTime }}{% endif %}
+                        </div>
+                        <div class="order-preview-items">
+                            <div v-for="(item, idx) in lastOrderForCustomer.items" :key="idx" class="preview-item">
+                                <span class="preview-quantity">{{ item.quantity }} {{ item.unit }}</span>
+                                <span class="preview-product">{{ item.productName }} ({{ item.logLength }}cm)</span>
+                                <span class="preview-price">{{ formatCurrency(item.total || (item.quantity * item.pricePerUnit)) }}</span>
+                            </div>
+                        </div>
+                        <div class="order-preview-total">
+                            Gesamt: <strong>{{ formatCurrency(lastOrderForCustomer.total) }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div v-else-if="selectedQuickOrderCustomer && !lastOrderForCustomer" class="no-last-order-hint">
+                        <p>💡 Dieser Kunde hat noch keine bisherigen Bestellungen. Du kannst eine neue Bestellung anlegen.</p>
+                    </div>
+                    
+                    <div class="quick-order-actions">
+                        <button @click="startNewQuickOrder" class="btn-action btn-action-primary" :disabled="!selectedQuickOrderCustomer">
+                            {{ lastOrderForCustomer ? '🔄 Letzte Bestellung laden & anpassen' : '➕ Neue Bestellung für diesen Kunden' }}
+                        </button>
+                        <button @click="showQuickOrderModal = false" class="btn-action btn-action-secondary">Abbrechen</button>
+                    </div>
+                </div>
+                
+                <!-- Schritt 2: Bestellung bearbeiten -->
+                <div v-if="quickOrderStep === 2" class="quick-order-step">
+                    <div class="quick-order-header">
+                        <h3>📝 Bestellung bearbeiten</h3>
+                        <button @click="resetQuickOrder" class="btn-small">← Zurück zur Auswahl</button>
+                    </div>
+                    
+                    <!-- Kunde anzeigen (nicht änderbar hier) -->
+                    <div class="quick-order-customer-display">
+                        <strong>Kunde:</strong> {{ quickOrderData.customerName }}
+                        <button @click="changeQuickOrderCustomer" class="btn-small btn-link">Wechseln</button>
+                    </div>
+                    
+                    <!-- Produkte -->
+                    <div class="quick-order-items-section">
+                        <h4>Produkte</h4>
+                        <div v-for="(item, idx) in quickOrderData.items" :key="idx" class="quick-order-item">
+                            <div class="item-info">
+                                <span class="item-name">{{ item.productName }}</span>
+                                <span class="item-details">{{ item.woodType }}, {{ item.logLength }}cm</span>
+                            </div>
+                            <div class="item-controls">
+                                <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" class="item-qty-input" style="width: 80px;">
+                                <select v-model="item.unit" class="item-unit-select" style="width: 70px;">
+                                    <option value="FM">FM</option>
+                                    <option value="RM">RM</option>
+                                    <option value="SRM">SRM</option>
+                                </select>
+                                <button @click="removeQuickOrderItem(idx)" class="btn-icon-delete">🗑️</button>
+                            </div>
+                        </div>
+                        
+                        <button @click="addQuickOrderProduct" class="btn-add-small">
+                            <span>➕</span> Produkt hinzufügen
+                        </button>
+                    </div>
+                    
+                    <!-- Lieferadresse -->
+                    <div class="form-group">
+                        <label>Lieferadresse *</label>
+                        <textarea v-model="quickOrderData.deliveryAddress" rows="2" placeholder="Straße, PLZ Ort"></textarea>
+                    </div>
+                    
+                    <!-- Lieferdatum & Zeit -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieferdatum *</label>
+                            <input type="date" v-model="quickOrderData.deliveryDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Lieferzeit</label>
+                            <input type="time" v-model="quickOrderData.deliveryTime">
+                        </div>
+                    </div>
+                    
+                    <!-- Zahlungsart -->
+                    <div class="form-group">
+                        <label>Zahlungsart</label>
+                        <select v-model="quickOrderData.paymentMethod" class="select-input">
+                            <option value="bar">Bar bei Lieferung</option>
+                            <option value="ueberweisung">Überweisung</option>
+                            <option value="paypal">PayPal</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Notizen -->
+                    <div class="form-group">
+                        <label>Notizen</label>
+                        <textarea v-model="quickOrderData.notes" rows="2" placeholder="z.B. Klingeln nicht möglich..."></textarea>
+                    </div>
+                    
+                    <!-- Gesamtpreis Vorschau -->
+                    <div class="quick-order-total-preview">
+                        <div class="total-row">
+                            <span>Zwischensumme:</span>
+                            <span>{{ formatCurrency(calculateQuickOrderSubtotal()) }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Lieferkosten:</span>
+                            <input type="number" v-model.number="quickOrderData.deliveryCosts" step="0.01" min="0" class="delivery-cost-input" style="width: 100px; text-align: right;">
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Gesamt:</span>
+                            <span><strong>{{ formatCurrency(calculateQuickOrderTotal()) }}</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-order-actions">
+                        <button @click="submitQuickOrder" class="btn-action btn-action-primary btn-action-large">
+                            ✅ Bestellung speichern
+                        </button>
+                        <button @click="resetQuickOrder" class="btn-action btn-action-secondary">Abbrechen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
