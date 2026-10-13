@@ -245,7 +245,7 @@ createApp({
             // Finde den nächsten ausstehenden Auftrag basierend auf Lieferdatum und -zeit
             const pendingOrders = this.orders.filter(o => {
                 const status = o.status || '';
-                return status !== 'erledigt' && status !== 'storniert' && o.deliveryDate;
+                return status !== 'abgeschlossen' && status !== 'storniert' && o.deliveryDate;
             });
 
             if (pendingOrders.length === 0) return null;
@@ -266,7 +266,7 @@ createApp({
             
             const todaysOrders = this.orders.filter(o => {
                 const status = o.status || '';
-                return o.deliveryDate === today && status !== 'erledigt' && status !== 'storniert';
+                return o.deliveryDate === today && status !== 'abgeschlossen' && status !== 'storniert';
             });
 
             // Nach Uhrzeit sortieren
@@ -1529,7 +1529,7 @@ createApp({
             const today = new Date().toISOString().split('T')[0];
             this.todayOrders = this.orders.filter(o => {
                 const status = o.status || '';
-                return o.deliveryDate === today && status !== 'erledigt' && status !== 'storniert';
+                return o.deliveryDate === today && status !== 'abgeschlossen' && status !== 'storniert';
             }).sort((a, b) => {
                 const timeA = a.deliveryTime || '00:00';
                 const timeB = b.deliveryTime || '00:00';
