@@ -3798,9 +3798,9 @@ createApp({
                 const email = await DriveSync.connect();
                 this.refreshDriveStatus();
                 this.driveStatusMessage = '✓ Verbunden mit ' + (email || 'Google Drive') + '. Starte ersten Sync...';
-                const result = await DriveSync.syncNow();
-                this.driveStatusMessage = '✓ ' + result;
-                if (result && result.includes('ersetzt')) {
+                const result = await DriveSync.syncAfterConnect();
+                this.driveStatusMessage = '✓ ' + result.message;
+                if (result.needsReload) {
                     setTimeout(() => window.location.reload(), 1500);
                 }
             } catch (e) {

@@ -328,6 +328,37 @@ const DriveSync = {
         localStorage.setItem(DRIVE_SYNC_META_KEY, snapshot.lastChanged || new Date().toISOString());
     },
 
+    // Prüft, ob ein Snapshot leer ist (keine Keys oder alle Werte leer)
+    snapshotIsEmpty(snapshot) {
+        if (!snapshot || !snapshot.data || typeof snapshot.data !== 'object') return true;
+        return !Object.values(snapshot.data).some(v => {
+            try {
+                const parsed = JSON.parse(v);
+                if (Array.isArray(parsed)) return parsed.length > 0;
+                if (parsed && typeof parsed === 'object') return Object.keys(parsed).length > 0;
+                return !!parsed;
+            } catch {
+                return !!v;
+            }
+        });
+    },
+
+    // Prüft, ob lokal mindestens ein Datenkey Inhalte hat
+    localHasData() {
+        return DRIVE_SYNC_KEYS.some(k => {
+            const v = localStorage.getItem(k);
+            if (!v) return false;
+            try {
+                const p = JSON.parse(v);
+                if (Array.isArray(p)) return p.length > 0;
+                if (p && typeof p === 'object') return Object.keys(p).length > 0;
+                return !!p;
+            } catch {
+                return true;
+            }
+        });
+    },
+
     // ---------- Zentrale Sync-Logik ----------
 
     // Wird beim App-Start aufgerufen. Gibt Status-String zurück.
@@ -347,7 +378,13 @@ const DriveSync = {
             }
 
             const remoteChanged = remote.lastChanged || null;
-            if (!remoteChanged || !localChanged || remoteChanged > localChanged) {
+            if (remoteChanged && (!localChanged || remoteChanged > localChanged)) {
+                // Schutz: Leere Cloud-Daten sollen lokale Daten nicht auslöschen
+                if (this.snapshotIsEmpty(remote) && this.localHasData()) {
+                    console.warn('Cloud-Stand ist leer, lokale Daten vorhanden — lade lokal hoch statt zu überschreiben.');
+                    await this.push();
+                    return 'pushed_local';
+                }
                 this.applySnapshot(remote);
                 return 'applied_remote';
             }
@@ -419,6 +456,35 @@ const DriveSync = {
             connectedAt: new Date().toISOString()
         }));
         return email;
+    },
+
+    // Erster Sync direkt nach dem Verbinden (lädt Cloud-Daten ODER lädt lokale hoch)
+    // Gibt { message, needsReload } zurück — needsReload=true → Seite neu laden!
+    async syncAfterConnect() {
+        const remote = await this.pull();
+
+        if (!remote) {
+            // Keine Cloud-Daten: lokale hochladen
+            await this.push();
+            return { message: 'Verbunden — deine lokalen Daten wurden zu Google Drive hochgeladen.', needsReload: false };
+        }
+
+        const remoteChanged = remote.lastChanged || null;
+        const localChanged = this.lastChangedLocal();
+
+        // Schutz: Leere Cloud-Daten nicht auf lokale Daten anwenden
+        if (this.snapshotIsEmpty(remote)) {
+            if (this.localHasData()) {
+                await this.push();
+                return { message: 'Verbunden — Cloud-Stand war leer, lokale Daten wurden hochgeladen.', needsReload: false };
+            }
+            await this.push();
+            return { message: 'Verbunden — alles synchron (beide Seiten leer).', needsReload: false };
+        }
+
+        // Cloud hat Daten: anwenden + neu laden, damit die UI sie zeigt
+        this.applySnapshot(remote);
+        return { message: 'Verbunden — Cloud-Daten wurden geladen. Die Seite wird neu geladen...', needsReload: true };
     },
 
     disconnect() {
