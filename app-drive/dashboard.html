@@ -250,6 +250,10 @@
                                 <span class="detail-value">{{ product.logLength ? product.logLength + ' cm' : '—' }}</span>
                             </div>
                             <div class="detail-item detail-row">
+                                <span class="detail-label">Eingekauft</span>
+                                <span class="detail-value">{{ product.initialQuantity ? product.initialQuantity.toFixed(1) + ' ' + product.unit : '—' }}</span>
+                            </div>
+                            <div class="detail-item detail-row">
                                 <span class="detail-label">Trocknungsgrad</span>
                                 <span class="detail-value">{{ product.dryness || '—' }}</span>
                             </div>
@@ -1502,6 +1506,10 @@
                     <div class="detail-item detail-row">
                         <span class="detail-label">Lagerbestand</span>
                         <span class="detail-value">{{ detailProduct.quantity.toFixed(1) }} {{ detailProduct.unit }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Ursprünglich eingekauft</span>
+                        <span class="detail-value">{{ detailProduct.initialQuantity ? detailProduct.initialQuantity.toFixed(1) + ' ' + detailProduct.unit : '—' }}</span>
                     </div>
                     <div class="detail-item detail-row">
                         <span class="detail-label">Lagerort</span>

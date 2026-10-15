@@ -1527,6 +1527,7 @@ createApp({
                 ['price_lengths', 'priceLengths'],
                 ['quantity_splits', 'quantitySplits'],
                 ['storage_location_index', 'storageLocationIndex'],
+                ['initial_quantity', 'initialQuantity'],
                 ['purchase_date', 'purchaseDate'],
                 ['product_type', 'productType'],
                 ['purchase_price', 'purchasePrice'],
@@ -1572,6 +1573,9 @@ createApp({
 
             // Rueckwirkend fehlende Wareneinkaeufe erstellen
             await this.createMissingInventoryExpenses();
+
+            // Urspruengliche Einkaufsmengen rueckwirkend aus Wareneinkaeufen ermitteln
+            this.backfillInitialQuantities();
 
             // Bestehende Wareneinkaeufe mit Lagerorten reparieren
             await this.repairInventoryExpenseStorageLocations();
@@ -2163,6 +2167,7 @@ createApp({
                 const product = {
                     name: this.newProduct.name.trim(),
                     quantity: parseFloat(this.newProduct.quantity) || 0,
+                    initial_quantity: parseFloat(this.newProduct.quantity) || 0, // ursprünglich eingekaufte Menge (unverändert)
                     unit: this.newProduct.unit,
                     wood_type: this.newProduct.woodType,
                     log_length: parseInt(this.newProduct.logLength) || 25,
@@ -4017,6 +4022,7 @@ createApp({
             const expense = {
                 id: 'inv-' + Date.now().toString(),
                 amount: totalValue,
+                quantity: parseFloat(product.quantity) || 0, // ursprünglich eingekaufte Menge (für Backfill)
                 category: 'material',
                 description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
                 date: product.purchase_date || new Date().toISOString().split('T')[0],
@@ -4043,6 +4049,7 @@ createApp({
             const expense = {
                 id: 'inv-' + Date.now().toString(),
                 amount: totalValue,
+                quantity: parseFloat(product.quantity) || 0, // ursprünglich eingekaufte Menge (für Backfill)
                 category: 'material',
                 description: `Wareneinkauf: ${product.name} (${product.quantity} ${product.unit})`,
                 date: product.purchase_date || new Date().toISOString().split('T')[0],
@@ -4056,6 +4063,45 @@ createApp({
             this.expenses.push(expense);
             this.saveExpenses();
             console.log('✓ Automatische Ausgabe für Wareneinkauf erstellt (local):', expense.description);
+        },
+
+        backfillInitialQuantities() {
+            // Ermittelt initial_quantity rückwirkend für Produkte ohne dieses Feld.
+            // Quelle: beschreibung des Wareneinkaufs ("Wareneinkauf: Name (12.5 RM)")
+            // bzw. dessen quantity-Feld (neuere Wareneinkäufe speichern es direkt).
+            let backfilled = 0;
+            for (const product of this.products) {
+                if (product.initial_quantity !== undefined && product.initial_quantity !== null && product.initial_quantity !== '') continue;
+
+                const expense = this.expenses.find(e =>
+                    (e.product_id === product.id || e.productId === product.id) &&
+                    (e.is_inventory_purchase === true || e.isInventoryPurchase === true)
+                );
+                if (!expense) continue;
+
+                // 1. Direkt gespeicherte Menge im Wareneinkauf (bevorzugt)
+                let initial = parseFloat(expense.quantity);
+                // 2. Fallback: Menge aus der Beschreibung parsen
+                if (!initial || isNaN(initial)) {
+                    const desc = expense.description || '';
+                    const m = desc.match(new RegExp('\\(([\\d.,]+)\\s*(' + (product.unit || '') + ')\\)', 'i'));
+                    if (m) {
+                        initial = parseFloat(m[1].replace(',', '.'));
+                    }
+                }
+
+                if (initial && !isNaN(initial) && initial > 0) {
+                    product.initial_quantity = initial;
+                    product.initialQuantity = initial;
+                    backfilled++;
+                }
+            }
+
+            if (backfilled > 0) {
+                this.saveProducts();
+                scheduleDriveSync();
+                console.log(`✓ ${backfilled} Produkte mit ursprünglicher Einkaufsmenge ergänzt`);
+            }
         },
 
         async createMissingInventoryExpenses() {
