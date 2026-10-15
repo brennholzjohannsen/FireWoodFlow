@@ -1810,6 +1810,7 @@
                                 <div class="item-controls">
                                     <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateOrderTotals()" class="item-quantity-input">
                                     <span>{{ item.unit }}</span>
+                                    <input type="number" v-model.number="item.pricePerUnit" min="0" step="0.01" @change="calculateOrderTotals()" class="item-price-input" title="Preis pro Einheit anpassbar" style="width: 80px;">
                                     <span class="item-price-display">{{ formatCurrency(item.quantity * item.pricePerUnit) }}</span>
                                     <button type="button" @click="removeProductFromOrder(item.productId, true)" class="btn-remove-item">×</button>
                                 </div>
@@ -2473,12 +2474,13 @@
                                 <span class="item-details">{{ item.woodType }}, {{ item.logLength }}cm</span>
                             </div>
                             <div class="item-controls">
-                                <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" class="item-qty-input" style="width: 80px;">
+                                <input type="number" v-model.number="item.quantity" min="0.01" step="0.01" @change="calculateQuickOrderTotals()" class="item-qty-input" style="width: 80px;">
                                 <select v-model="item.unit" class="item-unit-select" style="width: 70px;">
                                     <option value="FM">FM</option>
                                     <option value="RM">RM</option>
                                     <option value="SRM">SRM</option>
                                 </select>
+                                <input type="number" v-model.number="item.pricePerUnit" min="0" step="0.01" @change="onQuickOrderPriceChange(item)" class="item-qty-input" style="width: 90px;" title="Preis pro Einheit (z. B. für Rabatt)">
                                 <button @click="removeQuickOrderItem(idx)" class="btn-icon-delete">🗑️</button>
                             </div>
                         </div>

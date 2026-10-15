@@ -2814,18 +2814,23 @@ createApp({
             // Wenn priceLengths existiert und die Scheitlänge konfiguriert ist
             if (product.priceLengths && product.priceLengths[logLength]) {
                 const lengthPrices = product.priceLengths[logLength];
+                const srm = parseFloat(lengthPrices.srm) || 0;
+                const rm = parseFloat(lengthPrices.rm) || 0;
                 
-                // Preis basierend auf Einheit wählen
-                if (orderUnit === 'SRM' && lengthPrices.srm) {
-                    pricePerUnit = parseFloat(lengthPrices.srm);
-                } else if (orderUnit === 'RM' && lengthPrices.rm) {
-                    pricePerUnit = parseFloat(lengthPrices.rm);
+                // Preis basierend auf Einheit wählen; fehlt die Einheit, aus der anderen umrechnen
+                // (1 SRM = 1.42 RM, 1 FM = 1.42 RM)
+                if (orderUnit === 'SRM') {
+                    if (srm) pricePerUnit = srm;
+                    else if (rm) pricePerUnit = rm * 1.42;
+                } else if (orderUnit === 'RM') {
+                    if (rm) pricePerUnit = rm;
+                    else if (srm) pricePerUnit = srm / 1.42;
                 } else if (orderUnit === 'FM') {
                     // FM-Preis: RM-Preis × 1.42 (da 1 FM = 1.42 RM)
-                    if (lengthPrices.rm) {
-                        pricePerUnit = parseFloat(lengthPrices.rm) * 1.42;
-                    } else if (lengthPrices.srm) {
-                        pricePerUnit = parseFloat(lengthPrices.srm) * 2.0164; // 1.42 × 1.42
+                    if (rm) {
+                        pricePerUnit = rm * 1.42;
+                    } else if (srm) {
+                        pricePerUnit = srm * 2.0164; // 1.42 × 1.42
                     }
                 }
             }
@@ -3438,17 +3443,23 @@ createApp({
             
             // Wenn letzte Bestellung existiert, diese laden
             if (this.lastOrderForCustomer) {
-                // Items kopieren (ohne IDs damit sie neu sind)
-                this.quickOrderData.items = this.lastOrderForCustomer.items.map(item => ({
-                    productId: item.productId,
-                    productName: item.productName,
-                    woodType: item.woodType,
-                    logLength: item.logLength,
-                    quantity: item.quantity,
-                    unit: item.unit,
-                    pricePerUnit: item.pricePerUnit,
-                    total: item.total
-                }));
+                // Items kopieren (ohne IDs damit sie neu sind); Preise vom aktuellen Produktstand übernehmen
+                this.quickOrderData.items = this.lastOrderForCustomer.items.map(item => {
+                    const product = this.products.find(p => p.id === item.productId);
+                    const currentPrice = product
+                        ? this.getProductPrice(product, item.unit, item.logLength)
+                        : item.pricePerUnit;
+                    return {
+                        productId: item.productId,
+                        productName: item.productName,
+                        woodType: item.woodType,
+                        logLength: item.logLength,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        pricePerUnit: currentPrice,
+                        total: item.quantity * (parseFloat(currentPrice) || 0)
+                    };
+                });
                 
                 // Lieferadresse von Kunde übernehmen (kann geändert werden)
                 this.quickOrderData.deliveryAddress = this.lastOrderForCustomer.deliveryAddress || customer.address;
@@ -3518,12 +3529,31 @@ createApp({
             this.calculateQuickOrderTotals();
         },
         
-        getProductPrice(product, unit) {
+        onQuickOrderPriceChange(item) {
+            // Manuell gesetzter Preis (z. B. Rabatt) wird bei Neuberechnung nicht überschrieben
+            item.priceAdjusted = true;
+            item.pricePerUnit = parseFloat(item.pricePerUnit) || 0;
+            this.calculateQuickOrderTotals();
+        },
+        
+        getProductPrice(product, unit, logLength = null) {
             // Preis aus priceLengths holen wenn vorhanden, sonst Basis-Preis
-            if (product.priceLengths && product.priceLengths[product.logLength]) {
-                const lengthPrices = product.priceLengths[product.logLength];
-                if (unit === 'SRM' && lengthPrices.srm) return parseFloat(lengthPrices.srm);
-                if (unit === 'RM' && lengthPrices.rm) return parseFloat(lengthPrices.rm);
+            const length = logLength !== null ? logLength : product.logLength;
+            if (product.priceLengths && product.priceLengths[length]) {
+                const lengthPrices = product.priceLengths[length];
+                const srm = parseFloat(lengthPrices.srm) || 0;
+                const rm = parseFloat(lengthPrices.rm) || 0;
+                // Fehlt die Einheit, aus der anderen umrechnen (1 SRM = 1.42 RM)
+                if (unit === 'SRM') {
+                    if (srm) return srm;
+                    if (rm) return rm * 1.42;
+                } else if (unit === 'RM') {
+                    if (rm) return rm;
+                    if (srm) return srm / 1.42;
+                } else if (unit === 'FM') {
+                    if (rm) return rm * 1.42;
+                    if (srm) return srm * 2.0164; // 1.42 × 1.42
+                }
             }
             return parseFloat(product.price) || 0;
         },
@@ -3531,7 +3561,10 @@ createApp({
         calculateQuickOrderSubtotal() {
             let subtotal = 0;
             this.quickOrderData.items.forEach(item => {
-                const price = this.getProductPriceByItemId(item);
+                // Manuell angepassten Positionspreis verwenden (z. B. Rabatt), sonst neu berechnen
+                const price = (item.priceAdjusted && item.pricePerUnit !== undefined && item.pricePerUnit !== null)
+                    ? parseFloat(item.pricePerUnit) || 0
+                    : this.getProductPriceByItemId(item);
                 item.total = (parseFloat(item.quantity) || 0) * price;
                 subtotal += item.total;
             });
