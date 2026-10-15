@@ -2262,7 +2262,8 @@ createApp({
                 };
             });
             
-            // quantitySplits VORBEREITEN (bereits vorhandene Scheitlängen laden)
+            // quantitySplits VORBEREITEN (bereits vorhandene Scheitlängen laden) und
+            // auf den AKTUELLEN Lagerbestand skalieren (nicht die alte Einkaufs-Aufteilung zeigen)
             const quantitySplits = {};
             if (product.quantity_splits) {
                 // Von Datenbank (snake_case)
@@ -2278,6 +2279,25 @@ createApp({
                         quantity: product.quantitySplits[length].quantity || 0
                     };
                 });
+            }
+            
+            // Aufteilung an aktuellen Bestand anpassen: Summe der Split-Mengen auf
+            // die aktuelle quantity skalieren (Proportional-Verteilung, auf 2 Stellen gerundet)
+            const splitKeys = Object.keys(quantitySplits);
+            const currentQuantity = parseFloat(product.quantity) || 0;
+            if (splitKeys.length > 0) {
+                const oldSum = splitKeys.reduce((sum, length) => sum + (parseFloat(quantitySplits[length].quantity) || 0), 0);
+                if (oldSum > 0 && Math.abs(oldSum - currentQuantity) > 0.005) {
+                    splitKeys.forEach((length, idx) => {
+                        if (idx === splitKeys.length - 1) {
+                            // Letzte Scheitlänge nimmt Rest, damit die Summe exakt stimmt
+                            const assigned = splitKeys.slice(0, -1).reduce((s, l) => s + (parseFloat(quantitySplits[l].quantity) || 0), 0);
+                            quantitySplits[length].quantity = Math.max(0, Math.round((currentQuantity - assigned) * 100) / 100);
+                        } else {
+                            quantitySplits[length].quantity = Math.round((quantitySplits[length].quantity / oldSum * currentQuantity) * 100) / 100;
+                        }
+                    });
+                }
             }
             
             // Produkt zum Bearbeiten laden - ALLES auf einmal um Vue Reaktivität korrekt zu triggeren
