@@ -1562,7 +1562,27 @@ createApp({
 
             const savedOrders = localStorage.getItem('firewoodflow_orders');
             if (savedOrders) {
-                this.orders = JSON.parse(savedOrders);
+                // Items normalisieren: Alte Bestellungen (vor Einführung von
+                // pricePerUnit/total oder ohne woodType) würden sonst "NaN €"
+                // bzw. "(, 25 cm)" anzeigen.
+                this.orders = JSON.parse(savedOrders).map(o => {
+                    o.items = (o.items || []).map(item => ({
+                        ...item,
+                        productName: item.productName ?? item.name ?? '',
+                        woodType: item.woodType ?? item.wood_type ?? '',
+                        logLength: item.logLength ?? item.log_length ?? null,
+                        quantity: parseFloat(item.quantity) || 0,
+                        pricePerUnit: isFinite(parseFloat(item.pricePerUnit))
+                            ? parseFloat(item.pricePerUnit)
+                            : (isFinite(parseFloat(item.price_per_unit)) ? parseFloat(item.price_per_unit)
+                                : (parseFloat(item.price) || 0))
+                    }));
+                    o.items.forEach(item => {
+                        const t = parseFloat(item.total);
+                        item.total = isFinite(t) ? t : item.quantity * item.pricePerUnit;
+                    });
+                    return o;
+                });
             }
             this.ordersCount = this.orders.length;
 
@@ -2861,6 +2881,11 @@ createApp({
             }
             
             // Neues Item mit der eingegebenen Menge, Einheit und Scheitlänge
+            // Schutz: Fallback-Preise können NaN sein (z.B. Alter Bestand ohne
+            // gültigen Einkaufspreis) — dann 0 setzen statt "NaN €" anzuzeigen.
+            if (!isFinite(pricePerUnit)) {
+                pricePerUnit = 0;
+            }
             targetItems.push({
                 id: Date.now().toString() + Math.random().toString().slice(2, 7),
                 productId: product.id,
@@ -3237,7 +3262,21 @@ createApp({
         },
 
         editOrder(order) {
-            this.editingOrder = { ...order, items: [...order.items] };
+            // Items normalisieren: alte Bestellungen können ohne
+            // pricePerUnit/woodType gespeichert sein — ohne Aufbereitung
+            // zeigt der Editor "NaN €" und leere Texte.
+            this.editingOrder = {
+                ...order,
+                items: (order.items || []).map(item => ({
+                    ...item,
+                    pricePerUnit: isFinite(parseFloat(item.pricePerUnit))
+                        ? parseFloat(item.pricePerUnit)
+                        : (parseFloat(item.price) || 0),
+                    quantity: parseFloat(item.quantity) || 0,
+                    logLength: item.logLength ?? item.log_length ?? null,
+                    woodType: item.woodType ?? item.wood_type ?? ''
+                }))
+            };
             this.showEditOrder = true;
         },
 

@@ -4187,3 +4187,132 @@ body {
 .btn-small:hover {
     background: var(--border-color);
 }
+
+/* ============================================
+   MOBILE OVERFLOW FIXES (schmale Viewports)
+   Lange unumbruchbare Inhalte (E-Mails, lange Namen/
+   Produkttitel, lange Select-Optionen) dürfen Grid-/Flex-
+   Tracks nicht mehr über die Viewport-Breite aufblähen.
+   ============================================ */
+@media (max-width: 767px) {
+    /* 1) Grid-Tracks dürfen schrumpfen: 1fr wirkt wie minmax(0, 1fr) */
+    .product-list,
+    .customer-list,
+    .top-section-grid,
+    .revenue-stats-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* 2) Karten/Elemente dürfen schmaler als ihr Inhalt werden */
+    .product-card,
+    .customer-card,
+    .order-card,
+    .top-section-card,
+    .revenue-stat-card,
+    .stat-card,
+    .summary-card,
+    .order-items-editor {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* 3) Lange Wörter umbrechen (E-Mail, Namen, lange Titels) */
+    .customer-header h3,
+    .product-header h3,
+    .top-name,
+    .top-detail,
+    .top-value,
+    .detail-label,
+    .detail-value,
+    .item-name,
+    .order-customer,
+    .next-order-customer,
+    .delivery-customer,
+    .expense-description {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    /* 4) Top-Listen: Zeile darf umbrechen statt seitlich zu laufen */
+    .top-item {
+        flex-wrap: wrap;
+    }
+
+    /* 5) Aktionszeilen umbrechen statt über den Rand zu laufen */
+    .order-actions,
+    .product-actions,
+    .customer-actions {
+        flex-wrap: wrap;
+    }
+    .order-actions .status-select {
+        flex: 1 1 150px;
+        min-width: 0;
+    }
+    .product-actions .btn-edit,
+    .product-actions .btn-delete,
+    .customer-actions .btn-edit,
+    .customer-actions .btn-delete,
+    .customer-actions .btn-action-cost,
+    .customer-actions .btn-action-details {
+        flex: 1 1 130px;
+        min-width: 0;
+    }
+    .item-controls {
+        flex-wrap: wrap;
+    }
+    .order-item-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    /* 6) Flex-Kinder dürfen schrumpfen (Datumsfeld + Kalender-Button) */
+    .delivery-customer {
+        min-width: 0;
+    }
+    .input-with-calendar .date-input {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    /* 7) Formular-Grid: Spalten dürfen schrumpfen */
+    .form-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* 8) Modals: Inhalt nie breiter als der Viewport */
+    .modal-overlay {
+        padding: 10px;
+    }
+    .modal-content {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .modal-content select,
+    .modal-content input,
+    .modal-content textarea {
+        min-width: 0;
+        max-width: 100%;
+    }
+}
+
+/* Sehr schmale Handys: Formularfelder untereinander statt 2-spaltig */
+@media (max-width: 480px) {
+    .form-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Preistabelle (Neues Produkt): anpassen statt Modal aufzublähen */
+    .price-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .price-table th,
+    .price-table td {
+        padding: 8px 6px;
+    }
+    .price-table input {
+        width: 100%;
+        min-width: 0;
+    }
+}
