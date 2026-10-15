@@ -210,9 +210,9 @@ createApp({
         filteredProducts() {
             if (!this.searchQuery) return this.products;
             const query = this.searchQuery.toLowerCase();
-            return this.products.filter(p => 
+            return this.products.filter(p =>
                 p.name.toLowerCase().includes(query) ||
-                p.woodType.toLowerCase().includes(query)
+                (p.woodType || '').toLowerCase().includes(query)
             );
         },
 
@@ -1492,12 +1492,39 @@ createApp({
             this.editingProduct = { ...this.editingProduct, priceLengths: { ...this.editingProduct.priceLengths } };
         },
 
+        // Felder sowohl snake_case (Speicherung/Cloud) als auch camelCase (UI)
+        // spiegeln, damit Inventarliste, Suche und Bestellungen die Werte immer finden.
+        // Quelle der Wahrheit ist snake_case, falls beide vorhanden sind (verhindert veraltete Aliasse).
+        normalizeProduct(p) {
+            if (!p || typeof p !== 'object') return p;
+            const pairs = [
+                ['wood_type', 'woodType'],
+                ['log_length', 'logLength'],
+                ['price_lengths', 'priceLengths'],
+                ['quantity_splits', 'quantitySplits'],
+                ['storage_location_index', 'storageLocationIndex'],
+                ['purchase_date', 'purchaseDate'],
+                ['product_type', 'productType'],
+                ['purchase_price', 'purchasePrice'],
+                ['price_input_mode', 'priceInputMode']
+            ];
+            const out = { ...p };
+            pairs.forEach(([snake, camel]) => {
+                if (out[snake] !== undefined) {
+                    out[camel] = out[snake];
+                } else if (out[camel] !== undefined) {
+                    out[snake] = out[camel];
+                }
+            });
+            return out;
+        },
+
         async loadData() {
             // Drive Edition: Alle Daten kommen aus localStorage
             // (Drive-Sync laeuft vorher in mounted() und haelt sie aktuell)
             const savedProducts = localStorage.getItem('firewoodflow_products');
             if (savedProducts) {
-                this.products = JSON.parse(savedProducts);
+                this.products = JSON.parse(savedProducts).map(p => this.normalizeProduct(p));
             }
             this.inventoryCount = this.products.length;
             this.totalValue = this.calculateTotalValue();
@@ -2134,11 +2161,12 @@ createApp({
                 product.id = crypto.randomUUID();
                 product.created_at = new Date().toISOString();
                 product.updated_at = product.created_at;
-                this.products.push(product);
+                const normalizedProduct = this.normalizeProduct(product);
+                this.products.push(normalizedProduct);
                 console.log('✓ Produkt lokal gespeichert');
                 
                 // Automatisch Ausgabe für Wareneinkauf erstellen
-                await this.createInventoryExpense(product, null);
+                await this.createInventoryExpense(normalizedProduct, null);
                 
                 this.inventoryCount = this.products.length;
                 this.totalValue = this.calculateTotalValue();
@@ -2281,12 +2309,12 @@ createApp({
                 // Drive Edition: lokal aktualisieren
                     scheduleDriveSync();
                     
-                    // Lokal aktualisieren
-                    const updatedProduct = {
+                    // Lokal aktualisieren (normalize spiegelt snake_case → camelCase für die UI)
+                    const updatedProduct = this.normalizeProduct({
                         ...this.products[index],
                         ...updatedProductData,
                         updatedAt: new Date().toISOString()
-                    };
+                    });
 
                     // Array kopieren um Reaktivität sicherzustellen
                     const updatedProducts = [...this.products];
