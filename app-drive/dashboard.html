@@ -228,8 +228,8 @@
                         </button>
                     </div>
 
-                    <div v-for="product in filteredProducts" :key="product.id" class="product-card">
-                        <div class="product-header">
+                    <div v-for="product in filteredProducts" :key="product.id" class="product-card" @click="openProductDetails(product)" style="cursor: pointer;">
+                        <div class="product-header" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
                             <h3>
                                 <span v-if="product.storageLocationIndex !== null && product.storageLocationIndex !== undefined && storageLocations[product.storageLocationIndex]" class="storage-location-badge">
                                     {{ storageLocations[product.storageLocationIndex].name || 'Lager ' + (product.storageLocationIndex + 1) }}
@@ -240,27 +240,19 @@
                                 {{ product.quantity.toFixed(1) }} {{ product.unit }}
                             </span>
                         </div>
-                        <div class="product-details">
-                            <div class="detail-item">
-                                <span class="detail-label">Holzsorte:</span>
-                                <span class="detail-value">{{ product.woodType }}</span>
+                        <div class="product-details product-details-table">
+                            <div class="detail-item detail-row">
+                                <span class="detail-label">Holzsorte</span>
+                                <span class="detail-value">{{ product.woodType || '—' }}</span>
                             </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Scheitlänge:</span>
-                                <span class="detail-value">{{ product.logLength }} cm</span>
+                            <div class="detail-item detail-row">
+                                <span class="detail-label">Scheitlänge</span>
+                                <span class="detail-value">{{ product.logLength ? product.logLength + ' cm' : '—' }}</span>
                             </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Trocknungsgrad:</span>
-                                <span class="detail-value">{{ product.dryness }}</span>
+                            <div class="detail-item detail-row">
+                                <span class="detail-label">Trocknungsgrad</span>
+                                <span class="detail-value">{{ product.dryness || '—' }}</span>
                             </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Einkaufspreis:</span>
-                                <span class="detail-value price">{{ formatCurrency(product.price) }} / {{ product.priceUnit || product.unit }}</span>
-                            </div>
-                        </div>
-                        <div class="product-actions">
-                            <button @click="editProduct(product)" class="btn-edit">Bearbeiten</button>
-                            <button @click="deleteProduct(product)" class="btn-delete">Löschen</button>
                         </div>
                     </div>
                 </div>
@@ -1480,6 +1472,100 @@
 
                     <button type="submit" class="btn-submit">Änderungen speichern</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Product Details Modal -->
+        <div class="modal-overlay" v-if="showProductDetails && detailProduct" @click="showProductDetails = false">
+            <div class="modal-content modal-large" @click.stop>
+                <button class="modal-close" @click="showProductDetails = false">&times;</button>
+                <h2>{{ detailProduct.name }}</h2>
+
+                <!-- Stammdaten als Tabelle -->
+                <div class="product-details product-details-table detail-modal-table">
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Holzsorte</span>
+                        <span class="detail-value">{{ detailProduct.woodType || '—' }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Scheitlänge</span>
+                        <span class="detail-value">{{ detailProduct.logLength ? detailProduct.logLength + ' cm' : '—' }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Trocknungsgrad</span>
+                        <span class="detail-value">{{ detailProduct.dryness || '—' }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Produkttyp</span>
+                        <span class="detail-value">{{ detailProduct.productType || '—' }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Lagerbestand</span>
+                        <span class="detail-value">{{ detailProduct.quantity.toFixed(1) }} {{ detailProduct.unit }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Lagerort</span>
+                        <span class="detail-value">{{ detailProduct.storageLocationIndex !== null && detailProduct.storageLocationIndex !== undefined && storageLocations[detailProduct.storageLocationIndex] ? (storageLocations[detailProduct.storageLocationIndex].name || 'Lager ' + (detailProduct.storageLocationIndex + 1)) : '—' }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Einkaufspreis</span>
+                        <span class="detail-value">{{ formatCurrency(detailProduct.price) }} / {{ detailProduct.priceUnit || detailProduct.unit }}</span>
+                    </div>
+                    <div class="detail-item detail-row">
+                        <span class="detail-label">Einkaufsdatum</span>
+                        <span class="detail-value">{{ detailProduct.purchaseDate ? formatDateGerman(detailProduct.purchaseDate) : (detailProduct.purchase_date ? formatDateGerman(detailProduct.purchase_date) : '—') }}</span>
+                    </div>
+                    <div class="detail-item detail-row" v-if="detailProduct.notes">
+                        <span class="detail-label">Notizen</span>
+                        <span class="detail-value">{{ detailProduct.notes }}</span>
+                    </div>
+                </div>
+
+                <!-- Verkaufspreise je Scheitlänge -->
+                <div v-if="hasLengthPrices(detailProduct)" class="detail-section">
+                    <h3 class="detail-section-title">Verkaufspreise je Scheitlänge</h3>
+                    <div class="product-details product-details-table detail-modal-table">
+                        <template v-for="(prices, length) in detailProduct.priceLengths" :key="length">
+                            <div class="detail-item detail-row" v-if="prices && (prices.rm || prices.srm)">
+                                <span class="detail-label">{{ length }} cm</span>
+                                <span class="detail-value">
+                                    <template v-if="prices.rm">RM: {{ formatCurrency(prices.rm) }}</template>
+                                    <template v-if="prices.rm && prices.srm"> · </template>
+                                    <template v-if="prices.srm">SRM: {{ formatCurrency(prices.srm) }}</template>
+                                </span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Verkaufshistorie -->
+                <div class="detail-section">
+                    <h3 class="detail-section-title">Verkaufshistorie</h3>
+                    <div v-if="detailSalesHistory.length === 0" class="empty-state" style="padding: 12px 0;">
+                        <p>Noch keine Verkäufe für dieses Produkt.</p>
+                    </div>
+                    <div v-else class="sales-history">
+                        <div v-for="sale in detailSalesHistory" :key="sale.key" class="sales-history-item">
+                            <div class="sales-history-main">
+                                <span class="sales-history-customer">{{ sale.customerName }}</span>
+                                <span class="sales-history-date">{{ formatDateGerman(sale.date) }}</span>
+                            </div>
+                            <div class="sales-history-main" style="justify-content: flex-end;">
+                                <span class="sales-history-qty">{{ sale.quantity.toFixed(2) }} {{ sale.unit }}</span>
+                                <span class="sales-history-price">{{ formatCurrency(sale.total) }}</span>
+                            </div>
+                            <div class="sales-history-sub" v-if="sale.logLength">
+                                {{ sale.logLength }} cm · {{ formatCurrency(sale.pricePerUnit) }} / {{ sale.unit }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aktionen -->
+                <div class="product-actions" style="margin-top: 18px;">
+                    <button @click="editProduct(detailProduct); showProductDetails = false;" class="btn-edit">Bearbeiten</button>
+                    <button @click="deleteProduct(detailProduct); showProductDetails = false;" class="btn-delete">Löschen</button>
+                </div>
             </div>
         </div>
 

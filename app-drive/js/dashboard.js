@@ -84,8 +84,9 @@ createApp({
                 notes: ''
             },
             
-            // Kunden Daten
-            customerCount: 0,
+        detailProduct: null,
+        showProductDetails: false,
+        customerCount: 0,
             customers: [],
             showAddCustomer: false,
             showAddCustomerFromOrder: false,
@@ -214,6 +215,29 @@ createApp({
                 p.name.toLowerCase().includes(query) ||
                 (p.woodType || '').toLowerCase().includes(query)
             );
+        },
+
+        detailSalesHistory() {
+            if (!this.detailProduct || !this.detailProduct.id) return [];
+            const sales = [];
+            this.orders.forEach(o => {
+                if (o.status === 'storniert') return;
+                (o.items || []).forEach((item, idx) => {
+                    if (item.productId !== this.detailProduct.id) return;
+                    sales.push({
+                        key: (o.id || o.orderNumber || idx) + '-' + idx,
+                        customerName: o.customerName || o.customer_name || 'Unbekannt',
+                        date: o.deliveryDate || o.delivery_date || o.created_at,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        logLength: item.logLength || item.log_length || null,
+                        pricePerUnit: item.pricePerUnit || item.price_per_unit || 0,
+                        total: item.total !== undefined ? item.total : (item.quantity * (item.pricePerUnit || 0))
+                    });
+                });
+            });
+            // Neueste Lieferung zuerst
+            return sales.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         },
 
         filteredCustomers() {
@@ -2345,6 +2369,16 @@ createApp({
                 console.error('Fehler beim Speichern:', error);
                 alert('❌ Fehler beim Speichern: ' + error.message);
             }
+        },
+
+        openProductDetails(product) {
+            this.detailProduct = this.normalizeProduct({ ...product });
+            this.showProductDetails = true;
+        },
+
+        hasLengthPrices(product) {
+            return !!(product && product.priceLengths &&
+                Object.values(product.priceLengths).some(pr => pr && (parseFloat(pr.rm) || parseFloat(pr.srm))));
         },
 
         async deleteProduct(product) {

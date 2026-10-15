@@ -723,6 +723,100 @@ body {
     font-weight: 700;
 }
 
+/* Tabellarische Detail-Zeilen: Label links, Wert rechts */
+.detail-row {
+    flex-direction: row !important;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--bg-light);
+    gap: 12px;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row .detail-label {
+    font-size: 0.85em;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.detail-row .detail-value {
+    font-size: 0.9em;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+/* Abschnitte im Produkt-Detail-Modal */
+.detail-section {
+    margin-top: 18px;
+}
+
+.detail-section-title {
+    font-size: 0.95em;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--bg-light);
+}
+
+.detail-modal-table {
+    margin-bottom: 0;
+    background: var(--bg-light);
+    border-radius: 8px;
+    padding: 6px 4px;
+}
+
+/* Verkaufshistorie */
+.sales-history {
+    display: grid;
+    gap: 8px;
+}
+
+.sales-history-item {
+    background: var(--bg-light);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.sales-history-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.sales-history-customer {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9em;
+}
+
+.sales-history-date {
+    color: var(--text-light);
+    font-size: 0.8em;
+}
+
+.sales-history-qty {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9em;
+}
+
+.sales-history-price {
+    font-weight: 700;
+    color: var(--success-color);
+    font-size: 0.9em;
+}
+
+.sales-history-sub {
+    margin-top: 4px;
+    color: var(--text-light);
+    font-size: 0.78em;
+}
+
 .product-actions,
 .customer-actions {
     display: flex;
